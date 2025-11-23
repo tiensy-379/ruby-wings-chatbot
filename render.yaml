@@ -6,6 +6,7 @@ services:
     buildCommand: "pip install -r requirements.txt"
     startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
     envVars:
-      - key: OPENROUTER_API_KEY
-        value: "<PASTE_OPENROUTER_KEY_HERE_IF_YOU_REALLY_WANT_IN_FILE>"
-        # recommended: instead of committing here, click Render service -> Environment -> Add var
+      - key: OPENAI_API_KEY
+        value: "<PASTE_OPENAI_KEY_HERE>"
+      - key: OPENAI_BASE_URL
+        value: "https://api.openai.com/v1"
