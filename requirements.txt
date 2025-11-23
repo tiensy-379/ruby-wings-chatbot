@@ -3,8 +3,13 @@ flask-cors==4.0.0
 requests==2.31.0
 gunicorn==21.2.0
 
-# FAISS CPU (ổn định, tương thích Render)
-faiss-cpu==1.7.4
+# OpenAI official SDK (bắt buộc cho Chat + Embedding)
+openai>=1.3.5
 
-# Xử lý embedding & mảng
-numpy==1.26.4
+# FAISS vector search — phiên bản tương thích Render & Python 3.13
+faiss-cpu==1.11.0
+
+# Embedding & xử lý dữ liệu
+numpy>=1.26.0
+tqdm>=4.65.0
+scikit-learn>=1.3.2

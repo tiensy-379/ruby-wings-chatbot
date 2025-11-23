@@ -1,3 +1,4 @@
+[
 {
   "id": "tour_dau_an_vi_tuyen",
   "name": "Dấu ấn Vĩ tuyến - Kết nối thế hệ từ quá khứ đến tương lai",
@@ -35,7 +36,6 @@
   },
   "transport": ["Xe 16 chỗ", "Xe 35 chỗ", "Xe 45 chỗ"]
 },
-
 {
   "id": "tour_mua_do_truong_son",
   "name": "Mưa Đỏ và Trường Sơn – Hành Trình Khát Vọng",
@@ -85,8 +85,6 @@
     "note": "Tùy dịch vụ khách lựa chọn"
   }
 },
-
-
 {
   "id": "tour_theo_dau_chan_anh",
   "name": "Theo dấu chân Anh – Thanh niên thắp sáng hành trình xanh",
@@ -120,8 +118,6 @@
     ]
   }
 },
-
-
 {
   "id": "tour_mua_do_truong_son_ngan",
   "name": "Mưa Đỏ và Trường Sơn – Hành Trình Khát Vọng",
@@ -143,17 +139,16 @@
     "day_2": "Hướng Hóa – Nghĩa trang Liệt sĩ Trường Sơn – Đông Hà (Ăn sáng, trưa, tối)"
   },
   "price_range": {
-    "amount": "1.500.000 – 2.200.000",
+       "amount": "1.500.000 – 2.200.000",
     "unit": "VNĐ/người",
     "note": "Tùy lựa chọn dịch vụ"
   }
-},
+  },
+  {
+    "id": "tour_ky_uc_lich_su_dai_ngan",
+    "name": "Ký ức – Lịch Sử và Đại Ngàn – Tĩnh Lặng",
+    "duration": "2 ngày 1 đêm",
 
-
-{
-  "id": "tour_ky_uc_lich_su_dai_ngan",
-  "name": "Ký ức – Lịch Sử và Đại Ngàn – Tĩnh Lặng",
-  "duration": "2 ngày 1 đêm",
   "type": "Hành trình tri ân – kết nối lịch sử – tĩnh tại giữa đại ngàn",
   "style": "Không chỉ tham quan mà là sự kết nối quá khứ – hiện tại, lịch sử – đời sống, con người – thiên nhiên. Mang về năng lượng mới và sự an yên nội tâm.",
   "description": "Một hành trình 2N1Đ đưa du khách trở về ký ức xưa, lắng nghe câu chuyện lịch sử từ những người thuyết minh chuyên sâu, thực hành thiền – khí công giữa thiên nhiên trong lành của Bạch Mã và tham dự nghi lễ tri ân tại Thành cổ Quảng Trị.",
@@ -214,8 +209,6 @@
     "note": "Tùy gói dịch vụ và lựa chọn của đội nhóm"
   }
 },
-
-
 {
   "id": "tour_hanh_trinh_lanh_dao",
   "name": "Hành trình Lãnh đạo – Từ kỷ luật, vượt khó đến thức tỉnh tư duy và tầm nhìn",
@@ -243,8 +236,6 @@
     "note": "Chi phí tương tự hành trình Sức Bật (tuỳ option dịch vụ)"
   }
 },
-
-
 {
   "id": "tour_mua_do_doi_bo_hien_luong",
   "name": "Mưa Đỏ và Đôi bờ Hiền Lương",
@@ -281,8 +272,6 @@
   },
   "transport": ["Xe 16 chỗ", "Xe 29 chỗ", "Xe 35 chỗ", "Xe 45 chỗ"]
 },
-
-
 {
   "id": "tour_ngon_lua_truong_son",
   "name": "Ngọn Lửa Trường Sơn – Ký ức và Khát vọng",
@@ -321,7 +310,6 @@
   },
   "transport": ["Xe 16 chỗ", "Xe 29 chỗ", "Xe 35 chỗ", "Xe 45 chỗ"]
 },
-
 {
   "id": "tour_tri_tue_phung_su",
   "name": "Hành Trình Trí Tuệ & Phụng Sự – Về Nguồn, Kiến Tạo Tầm Nhìn",
@@ -349,8 +337,6 @@
     "note": "Giá thay đổi theo số lượng đoàn, xe, dịch vụ kèm theo."
   }
 },
-
-
 {
   "id": "tour_ve_nguon_thau_hieu_se_chia",
   "name": "Về Nguồn – Thấu Hiểu & Sẻ Chia",
@@ -385,7 +371,7 @@
   "duration": "2 ngày 1 đêm",
   "type": "Hành trình lịch sử – văn hoá bản địa – retreat thiên nhiên",
   "style": "Kết hợp lịch sử hào hùng, văn hoá Tây Trường Sơn đa sắc màu và không gian retreat tĩnh lặng giữa đại ngàn. Mỗi hoạt động đều hướng đến kết nối cảm xúc, nuôi dưỡng năng lượng và lan toả giá trị sống.",
-  "description": "Một hành trình 2N1Đ hội tụ cả lịch sử bi tráng của Mưa Đỏ và bản sắc sống động của Tây Trường Sơn. Du khách được nghe nhân chứng lịch sử kể chuyện, trải nghiệm văn hoá bản địa, đắm mình trong đêm lửa trại sử thi và thực hành thiền – khí công giữa núi rừng. Đây là hành trình kết nối ký ức – thiên nhiên – cộng đồng, để mỗi thành viên mang về cảm hứng sống đẹp và trách nhiệm với hiện tại.",
+  "description": "Một hành trình 2N1Đ hội tụ cả lị sử bi tráng của Mưa Đỏ và bản sắc sống động của Tây Trường Sơn. Du khách được nghe nhân chứng lịch sử kể chuyện, trải nghiệm văn hoá bản địa, đắm mình trong đêm lửa trại sử thi và thực hành thiền – khí công giữa núi rừng. Đây là hành trình kết nối ký ức – thiên nhiên – cộng đồng, để mỗi thành viên mang về cảm hứng sống đẹp và trách nhiệm với hiện tại.",
   "highlights": [
     "Gặp gỡ và nghe chuyện từ Cựu chiến binh – nhân chứng lịch sử",
     "Đêm lửa trại 'Ngọn lửa Trường Sơn' với cồng chiêng – đàn Ta Lư",
@@ -404,10 +390,10 @@
     "unit": "VNĐ/người",
     "note": "Tùy lựa chọn dịch vụ, phương tiện và số lượng đoàn"
   }
-},
-{
-  "id": "tour_ngon_lua_truong_son_ky_uc",
-  "name": "Ngọn Lửa Trường Sơn – Hành Trình Ký Ức",
+  },
+  {
+    "id": "tour_ngon_lua_truong_son_ky_uc",
+    "name": "Ngọn Lửa Trường Sơn – Hành Trình Ký Ức",
   "duration": "2 ngày 1 đêm",
   "type": "Retreat đa sắc màu – lịch sử – kết nối thế hệ – chăm sóc sức khỏe tự nhiên",
   "style": "Retreat kết hợp sự tĩnh tại và năng động, nuôi dưỡng năng lượng thể chất – tinh thần, lan tỏa giá trị cuộc sống, kết nối lịch sử – văn hóa – thiên nhiên.",
@@ -492,7 +478,7 @@
       "34-36": 1140,
       "37-39": 1095,
       "40-42": 1065
-    }
+     }
   },
   "transport": ["Xe 16 chỗ", "Xe 35 chỗ", "Xe 45 chỗ"]
 },
@@ -565,10 +551,10 @@
     "unit": "VNĐ/người (nghìn)",
     "table": {
       "group_size": ["11-13","14-16","17-19","20-22","23-25","26-28","29-31","32-34","35-37","38-40"],
-      "prices":   ["2570","2500","2250","2070","1950","1900","1860","1820","1770","1720"]
-    },
-    "transport": ["Xe 16 chỗ", "Xe 29 chỗ", "Xe 35 chỗ", "Xe 45 chỗ"]
+      "prices": ["2570","2500","2250","2070","1950","1900","1860","1820","1770","1720"]
+    }
   },
+  "transport": ["Xe 16 chỗ", "Xe 29 chỗ", "Xe 35 chỗ", "Xe 45 chỗ"],
   "included_services": [
     "Xe du lịch đời mới – điều hòa – lái xe chuyên nghiệp",
     "Lưu trú 1 đêm tại homestay hoặc KS 3* (cách 1km), có ăn sáng",
@@ -579,7 +565,7 @@
     "Quà tặng mũ/nón du lịch Ruby Wings",
     "Chi phí giao lưu văn hóa cộng đồng với âm thanh chất lượng cao",
     "Hỗ trợ âm thanh – không gian cho Tổng kết hành trình",
-    "Ghi dấu hành trình: ảnh chụp – clip kỷ niệm – slideshow cơ bản"
+     "Ghi dấu hành trình: ảnh chụp – clip kỷ niệm – slideshow cơ bản"
   ]
 },
 {
@@ -652,7 +638,7 @@
     "Nước ngọt trên đảo hạn chế – sử dụng tiết kiệm",
     "Không xả rác bừa bãi – mang túi rác cá nhân",
     "Không quay phim/chụp ảnh khu vực cấm – Flycam cần giấy phép",
-    "Không bắt/di chuyển động vật rừng, cua đá, nhổ cây rừng"
+     "Không bắt/di chuyển động vật rừng, cua đá, nhổ cây rừng"
   ]
 },
 {
@@ -722,7 +708,7 @@
     "Vé tham quan các điểm nêu trong chương trình",
     "Hướng dẫn viên địa phương/đoàn theo chương trình",
     "Lưu trú 5 đêm theo tiêu chuẩn đã chọn",
-    "Các bữa ăn theo chương trình",
+    "Các bữa ın theo chương trình",
     "Bảo hiểm du lịch cơ bản"
   ]
 },
@@ -819,7 +805,7 @@
     "Tham quan Nhà thờ đá Sa Pa và văn hóa bản địa",
     "Chinh phục đỉnh Fansipan bằng cáp treo",
     "Đèo Ô Quy Hồ – một trong Tứ đại đỉnh đèo Việt Nam",
-    "Bản Cát Cát – văn hoá H’Mông, cảnh đẹp và làng nghề truyền thống",
+    "Bản Cát Cát – văn hoá H'Mông, cảnh đẹp và làng nghề truyền thống",
     "Thăm Đền Hùng – nơi lưu giữ cội nguồn dân tộc"
   ],
   "target_audience": "Du khách yêu thiên nhiên – văn hóa, muốn khám phá Tây Bắc và trải nghiệm đỉnh Fansipan.",
@@ -827,7 +813,7 @@
     "day_1": [
       "06:30 – Khởi hành từ Đông Hà đi Hà Nội",
       "12:00 – Ăn trưa tại TP Vinh",
-      "17:30 – Đến Hà Nội, ăn tối, nhận phòng hoặc tự do khám phá Hà Nội về đêm"
+      "17:30 – Đến Hà Nội, Ăn tối, nhận phòng hoặc tự do khám phá Hà Nội về đêm"
     ],
     "day_2": [
       "07:00 – Khởi hành đi Sa Pa",
@@ -856,14 +842,14 @@
     "unit": "VNĐ/khách",
     "note": "Áp dụng cho đoàn 15+1; giá thay đổi theo số lượng và loại xe.",
     "groups": [
-      { "group_size": "8–9 khách", "price": "7,270,000" },
-      { "group_size": "10–11 khách", "price": "6,590,000" },
-      { "group_size": "12–13 khách", "price": "6,300,000" },
-      { "group_size": "14–15 khách", "price": "5,950,000" },
-      { "group_size": "16–17 khách", "price": "5,690,000" },
-      { "group_size": "18–19 khách", "price": "5,480,000" },
-      { "group_size": "20–21 khách", "price": "5,340,000" },
-      { "group_size": "22–23 khách", "price": "5,200,000" }
+      { "group_size": "8–9 khách", "price": 7270000 },
+      { "group_size": "10–11 khách", "price": 6590000 },
+      { "group_size": "12–13 khách", "price": 6300000 },
+      { "group_size": "14–15 khách", "price": 5950000 },
+      { "group_size": "16–17 khách", "price": 5690000 },
+      { "group_size": "18–19 khách", "price": 5480000 },
+      { "group_size": "20–21 khách", "price": 5340000 },
+      { "group_size": "22–23 khách", "price": 5200000 }
     ]
   },
   "transport_options": {
@@ -894,7 +880,7 @@
   "notes": [
     "Có thể thay đổi thứ tự điểm tham quan nhưng vẫn đảm bảo đầy đủ chương trình.",
     "Trang phục phù hợp cho thời tiết vùng núi và cáp treo Fansipan.",
-    "Chuẩn bị đồ ấm nếu đi mùa lạnh."
+     "Chuẩn bị đồ ấm nếu đi mùa lạnh."
   ]
 },
 {
@@ -977,8 +963,8 @@
   ],
   "target_audience": "Gia đình, nhóm bạn, cơ quan đoàn thể muốn trải nghiệm du lịch Tết kết hợp biển – núi – văn hóa.",
   "itinerary": {
-    "day_1": "Đông Hà → Nha Trang (Ăn trưa, tối). Khởi hành lúc 06:00. Ăn trưa tại Hoài Nhơn. Chiều đến Nha Trang, nhận phòng, ăn tối và tự do khám phá thành phố biển về đêm.",
-    "day_2": "Nha Trang → Vinpearl Land → Đà Lạt (Ăn sáng, trưa, tối). Đi cáp treo Vinpearl, vui chơi cả buổi sáng. Tham quan Tháp Bà Ponagar. Tùy thời gian: Viện Hải Dương Học. Chiều di chuyển Đà Lạt, ăn tối và nhận phòng.",
+    "day_1": "Đông Hà → Nha Trang (Ăn trưa, tối). Khởi hành lúc 06:00. Ăn trưa tại Hoài Nhơn. Chiều đến Nha Trang, nhận phòng, Ăn tối và tự do khám phá thành phố biển về đêm.",
+    "day_2": "Nha Trang → Vinpearl Land → Đà Lạt (Ăn sáng, trưa, tối). Đi cáp treo Vinpearl, vui chơi cả buổi sáng. Tham quan Tháp Bà Ponagar. Tùy thời gian: Viện Hải Dương Học. Chiều di chuyển Đà Lạt, Ăn tối và nhận phòng.",
     "day_3": "Tham quan Đà Lạt (Ăn sáng, trưa, tối). Thác Datanla – Thiền Viện Trúc Lâm – Vườn hoa Thành phố – Chùa Linh Phước – Dinh Bảo Đại. Chiều tham quan chợ Đà Lạt, tối thưởng thức đặc sản địa phương.",
     "day_4": "Đà Lạt → Đông Hà (Ăn sáng, trưa, tối). Khởi hành 06:30. Ăn trưa Tuy Hòa. Ăn tối tại Đà Nẵng. 23:00 về đến Đông Hà, kết thúc chương trình."
   },
@@ -1006,10 +992,9 @@
   "notes": [
     "Chương trình có thể điều chỉnh thứ tự điểm tham quan tùy thực tế nhưng vẫn đủ nội dung.",
     "Nên mang trang phục phù hợp biển – núi – chùa.",
-    "Tết nhu cầu cao, nên đặt tour sớm để tránh hết phòng/xe."
+     "Tết nhu cầu cao, nên đặt tour sớm để tránh hết phòng/xe."
   ]
 },
-
 {
   "id": "tour_tet_dong_ha_nha_trang_da_lat_4n3d",
   "name": "Đông Hà – Nha Trang – Đà Lạt – Huế (Tết Nguyên Đán)",
@@ -1040,14 +1025,14 @@
   "price_range": {
     "unit": "VNĐ/người",
     "amount_table": {
-      "8-9 khách": "8.570.000",
-      "10-11 khách": "7.960.000",
-      "12-13 khách": "7.620.000",
-      "14-15 khách": "7.530.000",
-      "16-17 khách": "7.300.000",
-      "18-19 khách": "7.120.000",
-      "20-21 khách": "6.960.000",
-      "22-23 khách": "6.840.000"
+      "8-9_khach": 8570000,
+      "10-11_khach": 7960000,
+      "12-13_khach": 7620000,
+      "14-15_khach": 7530000,
+      "16-17_khach": 7300000,
+      "18-19_khach": 7120000,
+      "20-21_khach": 6960000,
+      "22-23_khach": 6840000
     },
     "note": "Xe 16–29–35 chỗ; giá chưa bao gồm vé máy bay."
   },
@@ -1079,7 +1064,6 @@
     "Nên chuẩn bị áo ấm vì Đà Lạt buổi tối khá lạnh."
   ]
 },
-
 {
   "id": "tour_tet_dong_ha_nha_trang_da_lat_bmt_4n3d",
   "name": "Đông Hà – Nha Trang – Đà Lạt – Buôn Ma Thuột – Đông Hà (Tết Nguyên Đán)",
@@ -1109,7 +1093,6 @@
     "note": "Thay đổi theo loại xe (Transit hoặc Vip Fuso Dcar) và số lượng khách."
   }
 },
-
 {
   "id": "tour_phu_quoc_4n3d_nam_bac_dao",
   "name": "Phú Quốc 4N3Đ – Khám phá Nam đảo & Bắc đảo",
@@ -1138,7 +1121,8 @@
     "unit": "VNĐ/người",
     "note": "Áp dụng cho đoàn 09 khách; chưa bao gồm vé máy bay."
   }
-},
+}
+,
 {
   "id": "tour_nha_trang_quy_nhon_5n4d_tau_va_xe",
   "name": "Đông Hà – Nha Trang – Quy Nhơn – Đông Hà (5 ngày 4 đêm)",
@@ -1194,7 +1178,7 @@
   "price_range": {
     "amount": "5.160.000 – 7.210.000",
     "unit": "VNĐ/người",
-    "note": "Tùy số lượng đoàn. Có tùy chọn xe 16, 29, 35 chỗ hoặc VIP Limousine."
+      "note": "Tùy số lượng đoàn. Có tùy chọn xe 16, 29, 35 chỗ hoặc VIP Limousine."
   }
 },
 {
@@ -1256,7 +1240,7 @@
   "id": "tour_tet_dong_ha_ha_noi_sapa_phu_tho_5n4d",
   "name": "Đông Hà – Hà Nội – Sa Pa – Phú Thọ – Hà Nội (Tết Nguyên Đán)",
   "duration": "5 ngày 4 đêm",
-  "type": "Du xuân – văn hóa – tâm linh – thiên nhiên",
+  "type": "Du xuân – văn hóa – tâm linh – trải nghiệm vùng cao",
   "style": "Hành trình kết hợp trải nghiệm mùa xuân miền Bắc, khám phá văn hóa vùng cao Sa Pa, không khí lễ hội đầu năm và các điểm đến lịch sử – tâm linh.",
   "description": "Chuyến đi đưa đoàn từ Đông Hà ra Thủ đô Hà Nội bằng tàu hỏa, tiếp tục lên Sa Pa ngắm cảnh núi rừng Tây Bắc, tham quan các điểm nổi bật như nhà thờ đá, Fansipan, bản Cát Cát. Ngày 4 di chuyển về Phú Thọ viếng Đền Hùng, sau đó quay lại Hà Nội trước khi trở về Đông Hà.",
   "highlights": [
@@ -1264,7 +1248,7 @@
     "Khám phá Sa Pa mùa xuân",
     "Nhà thờ đá Sa Pa – biểu tượng kiến trúc Pháp",
     "Option Fansipan (cáp treo – chi phí tự túc)",
-    "Tham quan bản Cát Cát – đời sống người H’Mông",
+    "Tham quan bản Cát Cát – đời sống người H'Mông",
     "Đền Hùng – đất tổ thiêng liêng của dân tộc"
   ],
   "target_audience": "Nhóm gia đình, thầy cô, cơ quan – đơn vị muốn du xuân miền Bắc kết hợp nghỉ dưỡng nhẹ nhàng.",
@@ -1366,49 +1350,6 @@
         "Phục vụ hậu cần (khi đủ 12 khách/xe 16 chỗ)",
         "Bảo hiểm du lịch"
       ]
-    },
-    "enhanced_package": {
-      "name": "Gói trải nghiệm nâng cao – Chạm sâu đại ngàn",
-      "unit": "nghìn VNĐ/người",
-      "by_group": {
-        "4": 2245,
-        "5": 1880,
-        "6": 2090,
-        "7": 1860,
-        "8": 1695,
-        "9": 1560,
-        "10": 1460
-      },
-      "vehicle": ["Xe 7 chỗ riêng", "Xe 16 chỗ đời mới 2024"],
-      "extra_values": [
-        "Bữa sáng nhẹ (chay)",
-        "Quà tặng dấu ấn theo đặc điểm nhóm",
-        "Chụp ảnh máy chuyên dụng",
-        "Thiền dài hơn – trải nghiệm sâu hơn",
-        "Giới hạn tối đa 10 người",
-        "Tư vấn 1:1 theo nhu cầu sau hành trình"
-      ]
-    },
-    "premium_package": {
-      "name": "Gói cao cấp – Trở về bên trong (Retreat riêng)",
-      "unit": "nghìn VNĐ/người",
-      "by_group": {
-        "4": 3950,
-        "5": 3360,
-        "6": 2990,
-        "7": 2732,
-        "8": 2550,
-        "9": 2300
-      },
-      "vehicle": ["Xe 9 – 16 chỗ 2025 (riêng tư tuyệt đối)"],
-      "extra_values": [
-        "Chương trình riêng – linh hoạt",
-        "Thiền sâu: thiền hành, thiền khí công...",
-        "Thực đơn dưỡng sinh cá nhân hóa",
-        "Quà tặng biểu tượng hành trình",
-        "Phân tích cá nhân hóa chuyên sâu bằng huyền học",
-        "Giới hạn tối đa 8 người"
-      ]
     }
   },
   "excluded": [
@@ -1489,1913 +1430,4 @@
   "price_info": {
     "note": "Giá từ 500.000 đến 1.2 triệu tùy theo nhu cầu nhóm, thực đơn và loại xe; thêm vào khi có dữ liệu đầy đủ."
   }
-},
-{
-  "id": "tour_hue_quang_binh_ozo_3n2d",
-  "name": "Huế – Quảng Bình: Sống chậm giữa Ozo",
-  "duration": "3 ngày 2 đêm",
-  "type": "Retreat lãng mạn – thiên nhiên – trải nghiệm suối rừng",
-  "style": "Retreat nhẹ nhàng, sống chậm, tập trung kết nối cảm xúc cho cặp đôi; kết hợp trải nghiệm suối Ozo, Phong Nha và sông Son.",
-  "description": "Hành trình 3N2Đ khởi hành từ Huế dành cho cặp đôi muốn tĩnh lặng, chạm cảm xúc nguyên bản và tái tạo năng lượng bên suối Ozo, rừng nguyên sinh và Phong Nha – Kẻ Bàng. Nghỉ đêm lều/ bungalow riêng tư, picnic bên suối, tản bộ sàn gỗ 999m, chèo thuyền trên sông Son và những khoảnh khắc hoà mình cùng thiên nhiên.",
-  "highlights": [
-    "Suối Ozo – tản bộ, picnic và tắm suối trong rừng nguyên sinh",
-    "Sàn gỗ 999m – dạo bước giữa không gian rừng yên tĩnh",
-    "Trải nghiệm ngủ lều/homestay bungalow gần Phong Nha",
-    "Chèo thuyền sông Son – đón bình minh, hoàng hôn trên sông",
-    "Phong Nha – Kẻ Bàng: hang động, trải nghiệm thiên nhiên di sản",
-    "Không gian riêng tư, tối ưu cho cặp đôi – nhiều khoảnh khắc kết nối"
-  ],
-  "target_audience": "Cặp đôi, vợ chồng trẻ (22–38 tuổi), khách muốn nghỉ ngơi sâu, sống chậm và kết nối tình cảm.",
-  "itinerary": {
-    "day_1": {
-      "title": "Huế → Quảng Trị → Quảng Bình (Suối Ozo)",
-      "activities": [
-        "Khởi hành sớm từ Huế, dừng chân ngắn tại Quảng Trị",
-        "Đến khu Suối Ozo: check-in, hướng dẫn an toàn, tản bộ nhẹ",
-        "Picnic bên suối, thời gian tự do tắm suối/ thư giãn",
-        "Nhận lều/bungalow riêng tư, bữa tối ấm áp dưới ánh đèn"
-      ]
-    },
-    "day_2": {
-      "title": "Ozo → Phong Nha – Sông Son",
-      "activities": [
-        "Sáng sớm thiền/thiền hành ngắn bên suối, thưởng thức bữa sáng nhẹ",
-        "Tản bộ trên sàn gỗ 999m, chụp ảnh, tận hưởng rừng nguyên sinh",
-        "Di chuyển Phong Nha: khám phá hang động (option), chèo thuyền sông Son",
-        "Hoàng hôn & bữa tối lãng mạn; nghỉ đêm tại bungalow/homestay"
-      ]
-    },
-    "day_3": {
-      "title": "Phong Nha → Đồng Hới → Huế",
-      "activities": [
-        "Buổi sáng tự do trong không gian retreat: picnic sáng hoặc yoga nhẹ",
-        "Trả phòng, tham quan ngắn Phong Nha / mua đặc sản địa phương",
-        "Hành trình về Đồng Hới, ghé nghỉ ngắn, sau đó về Huế, kết thúc tour"
-      ]
-    }
-  },
-  "price_info": {
-    "note": "Giá tùy theo loại phòng (lều / bungalow), số lượng khách và dịch vụ option (ví dụ hang động có hướng dẫn/ vé). Vui lòng cung cấp yêu cầu để nhận giá chi tiết."
-  },
-  "included": [
-    "Vận chuyển theo lịch (Huế ↔ Quảng Bình ↔ Huế)",
-    "Bungalow / lều riêng theo mô tả (theo gói)",
-    "Bữa chính & bữa sáng nhẹ theo chương trình",
-    "HDV địa phương + hướng dẫn an toàn suối",
-    "Vé tham quan cơ bản (suối Ozo, sàn gỗ, chèo thuyền sông Son)",
-    "Bảo hiểm du lịch, nước uống"
-  ],
-  "excluded": [
-    "Chi phí cá nhân, tip, vé tham quan option (ví dụ tour hang động có thu phí riêng)",
-    "VAT"
-  ],
-  "notes": [
-    "Không khuyến nghị cho trẻ em dưới 9 tuổi hoặc người có vấn đề sức khỏe nghiêm trọng",
-    "Mang theo đồ bơi, giày leo nhẹ, áo khoác mỏng, đồ dùng cá nhân cần thiết",
-    "Cung cấp danh sách người tham gia (họ tên, năm sinh, số liên lạc) trước 5 ngày để chuẩn bị chỗ ngủ và quà nhỏ (nếu có)"
-  ]
-},
-{
-  "id": "tour_hue_tapuong_2n1d",
-  "name": "Huế – Thác Tà Puồng – Fam Koi – Tà Cơn (2N1Đ)",
-  "duration": "2 ngày 1 đêm",
-  "type": "Khám phá – thiên nhiên – trải nghiệm bản địa",
-  "style": "Trekking nhẹ, trải nghiệm thác hoang sơ, picnic, lửa trại và homestay mộc mạc.",
-  "description": "Hành trình 2N1Đ đưa bạn từ Huế đến thác Tà Puồng – một trong những điểm đến hoang sơ nhất Hướng Hóa, trải nghiệm picnic bên suối, tắm thác, tối vui bên lửa trại tại homestay Fam Koi và sáng hôm sau tham quan sân bay Tà Cơn.",
-  "highlights": [
-    "Trekking nhẹ 800m vào thác Tà Puồng – nước trong xanh, cảnh đẹp nguyên sơ",
-    "Picnic địa phương ngay chân thác",
-    "Ở homestay Fam Koi – mộc mạc, gần thiên nhiên",
-    "Lửa trại – giao lưu văn nghệ",
-    "Tham quan sân bay Tà Cơn – di tích lịch sử Khe Sanh",
-    "Uống cà phê tại Homi – quán view đẹp nổi tiếng ở Khe Sanh"
-  ],
-  "itinerary": {
-    "day_1": {
-      "title": "Huế – Thác Tà Puồng – Fam Koi",
-      "activities": [
-        "06:00 Khởi hành từ Huế đi Hướng Hóa – Quảng Trị",
-        "09:30 – 11:00 Tắm thác Tà Puồng, trekking nhẹ 800m",
-        "11:30 – 12:30 Picnic trưa tại chân thác (ẩm thực địa phương: gà nướng, xôi...)",
-        "13:00 – 14:00 Nghỉ ngơi, tắm suối tự do",
-        "14:00 – 15:00 Di chuyển về Fam Koi, nhận phòng homestay",
-        "16:00 – 17:30 Thăm vườn, hồ cá Koi, chụp ảnh hoàng hôn",
-        "18:30 – 21:00 Ăn tối, sinh hoạt lửa trại, văn nghệ",
-        "21:30 Nghỉ đêm tại homestay (tiêu chuẩn cơ bản, gần gũi thiên nhiên)"
-      ]
-    },
-    "day_2": {
-      "title": "Tà Cơn – Cà phê Homi – Huế",
-      "activities": [
-        "06:30 – 07:00 Trà sáng nhẹ, thu dọn đồ",
-        "07:15 – 08:15 Tham quan Sân bay Tà Cơn – tìm hiểu lịch sử Khe Sanh",
-        "08:30 – 09:00 Thư giãn, uống cà phê Homi",
-        "09:00 – 12:30 Khởi hành trở về Huế"
-      ]
-    }
-  },
-  "price_info": {
-    "range": "2.000.000 – 3.500.000 VNĐ/người",
-    "note": "Giá phụ thuộc vào số lượng khách, loại xe và mức dịch vụ (picnic – ăn tối – homestay)."
-  },
-  "included": [
-    "Xe đón – trả Huế ↔ Hướng Hóa ↔ Huế",
-    "Picnic trưa tại thác",
-    "1 bữa tối + 1 bữa sáng nhẹ",
-    "Homestay Fam Koi (phòng cộng đồng hoặc phòng riêng tuỳ gói)",
-    "Vé tham quan theo chương trình",
-    "Lửa trại & hỗ trợ hoạt náo",
-    "Nước uống, bảo hiểm"
-  ],
-  "excluded": [
-    "Chi phí cá nhân, đồ uống thêm",
-    "Tip lái xe – HDV",
-    "VAT (nếu xuất hóa đơn)"
-  ],
-  "notes": [
-    "Mang theo đồ bơi, khăn, giày trekking nhẹ",
-    "Thác Tà Puồng đường dễ đi nhưng có đoạn đá ướt – cẩn thận khi di chuyển",
-    "Không khuyến nghị cho trẻ quá nhỏ dưới 5 tuổi",
-    "Cung cấp danh sách khách trước 3–5 ngày để chuẩn bị homestay"
-  ]
-},
-{
-  "id": "tour_hue_tapuong_2n1d_full",
-  "name": "Huế – Thác Tà Puồng – Fam Koi – Tà Cơn (2N1Đ)",
-  "duration": "2 ngày 1 đêm",
-  "type": "Trekking nhẹ – thiên nhiên – văn hoá bản địa",
-  "style": "Trải nghiệm suối rừng, cắm trại, kết nối thiên nhiên, phù hợp nhóm bạn trẻ – team building nhẹ.",
-  "slogan": "Tà Puồng – Mạch sống hoang sơ giữa đại ngàn",
-  "description": "Hành trình 2N1Đ chạm vào vẻ đẹp hoang sơ của thác Tà Puồng, picnic giữa rừng, tắm suối trong xanh và đêm lửa trại ấm áp tại Fam Koi. Ngày thứ hai tham quan Tà Cơn – Khe Sanh và thưởng cà phê Homi trước khi trở về Huế.",
-  "highlights": [
-    "Trekking nhẹ 800m xuyên rừng vào thác Tà Puồng",
-    "Picnic với gà bản nướng – xôi – rau rừng ngay cạnh thác",
-    "Tự do tắm suối và nghỉ ngơi giữa thiên nhiên",
-    "Nghỉ đêm lều/ phòng homestay tại Fam Koi",
-    "Lửa trại – giao lưu văn nghệ – tùy chọn giao lưu cồng chiêng Vân Kiều",
-    "Tham quan sân bay Tà Cơn – di tích lịch sử Khe Sanh",
-    "Cà phê Homi – quán view núi nổi tiếng",
-    "Xe đời mới từ 2024 – phục vụ xuyên suốt hành trình"
-  ],
-  "itinerary": {
-    "day_1": {
-      "title": "Huế – Tà Puồng – Fam Koi",
-      "activities": [
-        "06:00 Khởi hành từ Huế – cảm nhận sự chuyển cảnh từ phố thị đến núi rừng",
-        "09:30 – 11:00 Trekking nhẹ 800m, tắm thác Tà Puồng, check-in, thư giãn",
-        "11:30 – 12:30 Picnic tại chân thác với gà bản nướng – xôi – rau rừng",
-        "13:00 – 14:00 Nghỉ ngơi tự do tại thác (võng – suối – chòi tre)",
-        "15:00 – 16:00 Di chuyển về Fam Koi – nhận lều/ phòng",
-        "16:00 – 17:30 Dạo vườn, hồ Koi, chụp ảnh hoàng hôn",
-        "18:30 – 21:00 Ăn tối – lửa trại – văn nghệ giao lưu",
-        "21:30 Nghỉ đêm tại lều hoặc phòng homestay"
-      ]
-    },
-    "day_2": {
-      "title": "Tà Cơn – Cà phê Homi – Huế",
-      "activities": [
-        "06:30 – 07:00 Trà sáng nhẹ – thu dọn hành lý",
-        "07:15 – 08:15 Tham quan sân bay Tà Cơn – Khe Sanh",
-        "08:30 – 09:00 Cà phê sáng tại Homi (chi phí tự túc)",
-        "09:00 – 12:30 Khởi hành về lại Huế"
-      ]
-    }
-  },
-  "price_info": {
-    "group_prices": {
-      "4_5_khach": null,
-      "6_8_khach": null,
-      "9_11_khach": null,
-      "12_14_khach": null,
-      "15_17_khach": 1420000,
-      "18_20_khach": 1315000,
-      "21_23_khach": null,
-      "24_26_khach": null,
-      "27_29_khach": 1280000,
-      "30_33_khach": 1275000,
-      "34_37_khach": 1200000,
-      "38_42_khach": 1180000
-    },
-    "vehicle": [
-      "Xe 7 chỗ",
-      "Xe 16 chỗ",
-      "Xe 25 chỗ",
-      "Xe 35 chỗ",
-      "Xe 45 chỗ"
-    ],
-    "note": "Nếu giao lưu văn hóa bản địa (cồng chiêng, hát dân ca), phụ thu khoảng 75.000/bạn (giá giảm nếu đoàn đông)."
-  },
-  "included": [
-    "Xe đời mới (2024+) Huế ↔ Hướng Hóa ↔ Huế",
-    "Lều trại 2 người/lều hoặc phòng homestay tùy gói",
-    "02 bữa chính: 120.000đ (Tà Puồng) + 150.000đ (Farm Koi)",
-    "Ăn sáng miễn phí nếu ở farm Koi",
-    "Hướng dẫn viên + 01 phục vụ theo đoàn",
-    "Vé tham quan Tà Puồng – Tà Cơn",
-    "Nước uống 3 chai/người/ngày",
-    "Quà tặng khoảng 30.000đ/khách",
-    "Bảo hiểm du lịch"
-  ],
-  "excluded": [
-    "Chi phí dịch vụ ngoài chương trình (zipline, đồ uống thêm…)",
-    "Giao lưu văn hóa đồng bào (cồng chiêng, dân ca)",
-    "Đồ ăn uống gọi thêm, rượu – bia",
-    "VAT",
-    "Tiền tip HDV – lái xe"
-  ],
-  "notes": [
-    "Nên mang giày thể thao/ giày trekking – đồ bơi – khăn – quần áo khô",
-    "Mang theo áo khoác mỏng, thuốc cá nhân cần thiết",
-    "Đường vào thác có đá ướt – ưu tiên giày bám tốt",
-    "Cung cấp danh sách đoàn trước 10 ngày để chuẩn bị homestay & hồ sơ",
-    "Trẻ em: 11+ mua 1 vé; 8–10 tuổi: 75%; 4–7 tuổi: 50%; dưới 4 tuổi miễn phí"
-  ]
-},
-{
-  "id": "tour_hue_20_10_dong_chay_yeu_thuong_2n1d",
-  "name": "Đông Hà – Huế: Dòng chảy yêu thương (2N1Đ)",
-  "duration": "2 ngày 1 đêm",
-  "type": "Tri ân – văn hoá – trải nghiệm nhẹ nhàng",
-  "style": "Hành trình tôn vinh phụ nữ, kết hợp tham quan di sản Huế và trải nghiệm nghỉ dưỡng nhẹ nhàng.",
-  "description": "Hành trình 2N1Đ dịp 20/10 dành tặng các bà, các mẹ và các chị – với những điểm đến mang đậm giá trị văn hóa như Làng Hương, chùa Thiên Mụ và những bữa tiệc ấm áp tại Huế Ecolodge. Đây là món quà tinh thần ý nghĩa, giúp mỗi người phụ nữ được trân trọng, nâng niu và lưu giữ những ký ức đẹp.",
-  "highlights": [
-    "Làng Hương Thủy Xuân – sắc màu rực rỡ của nghề truyền thống Huế",
-    "Nghỉ dưỡng tại Huế Ecolodge – không gian xanh, yên bình",
-    "Chùa Thiên Mụ – biểu tượng tâm linh cổ kính của Cố đô",
-    "Bữa tối ấm áp tri ân phái đẹp – menu riêng",
-    "Khám phá và mua đặc sản Huế",
-    "Hành trình được thiết kế để tôn vinh phụ nữ nhân ngày 20/10"
-  ],
-  "target_audience": "Các bà, các mẹ, chị em phụ nữ; đoàn thể muốn tổ chức hành trình tri ân ngày 20/10.",
-  "itinerary": {
-    "day_1": {
-      "title": "Đông Hà → Huế – Làng Hương – Ecolodge",
-      "activities": [
-        "13:30 – Đón đoàn tại phường Đông Hà (02 Nguyễn Trãi)",
-        "13:45 – 16:15: Khởi hành đi Huế – ghé làng nghề",
-        "16:15 – 17:45: Tham quan Làng Hương rực rỡ, chụp ảnh, trải nghiệm thủ công",
-        "17:45 – 18:45: Nhận phòng Huế Ecolodge – nghỉ ngơi",
-        "18:45 – 20:00: Dùng bữa tối ấm áp (menu riêng, 200.000đ/suất)"
-      ]
-    },
-    "day_2": {
-      "title": "Huế – Thiên Mụ – Mua sắm – Đông Hà",
-      "activities": [
-        "06:00 – 09:00: Ăn sáng và thư giãn tại Ecolodge – trả phòng",
-        "09:00 – 11:30: Di chuyển – tham quan chùa Thiên Mụ",
-        "11:30 – 13:30: Ăn trưa tại cơm niêu – menu riêng (200.000đ/suất)",
-        "13:30 – 15:30: Tham quan – mua sắm đặc sản Huế",
-        "15:30 – 17:00: Trở về Đông Hà – kết thúc hành trình"
-      ]
-    }
-  },
-  "included": [
-    "Xe vận chuyển theo chương trình",
-    "Nghỉ dưỡng Huế Ecolodge (1 đêm)",
-    "Bữa tối 20/10 (menu riêng), bữa sáng, bữa trưa cơm niêu",
-    "HDV theo đoàn",
-    "Vé tham quan theo chương trình",
-    "Nước uống",
-    "Quà tặng tri ân (nếu đoàn yêu cầu)"
-  ],
-  "excluded": [
-    "Chi tiêu cá nhân, nước uống gọi ngoài",
-    "VAT (nếu yêu cầu)",
-    "Tip cho HDV và lái xe"
-  ],
-  "notes": [
-    "Chuẩn bị trang phục lịch sự khi vào chùa",
-    "Khuyến khích mang theo áo dài để chụp hình tại Huế",
-    "Thông báo danh sách đoàn trước khởi hành 3–5 ngày"
-  ]
-},
-{
-  "company": {
-    "id": "ruby_wings_profile_v1",
-    "name": "Ruby Wings",
-    "vision": "Kết nối ký ức, kiến tạo trải nghiệm du lịch trải nghiệm có chiều sâu và bền vững",
-    "mission": "Tạo ra hành trình kết nối thế hệ, nuôi dưỡng giá trị văn hóa và phát triển cộng đồng địa phương",
-    "core_values": [
-      "Tận tâm phục vụ",
-      "Chất lượng là gốc",
-      "Sáng tạo có trách nhiệm",
-      "Minh bạch tài chính",
-      "Tôn trọng cộng đồng địa phương"
-    ],
-    "hiring_criteria": {
-      "must_have": [
-        "Đam mê du lịch trải nghiệm",
-        "Cam kết gắn bó dài hạn",
-        "Tư duy phục vụ và tinh thần đồng đội"
-      ],
-      "nice_to_have": [
-        "Kinh nghiệm HDV/trekking",
-        "Kỹ năng ngoại ngữ cơ bản"
-      ]
-    },
-    "operations_focus": {
-      "training": [
-        "Onboarding văn hóa & tiêu chuẩn phục vụ",
-        "Đào tạo an toàn & sơ cứu",
-        "Huấn luyện trải nghiệm khách (storytelling, dẫn tour cảm xúc)"
-      ],
-      "product_quality": [
-        "Checklist điểm tham quan (an toàn, vệ sinh, trải nghiệm)",
-        "Kiểm duyệt đối tác cung cấp (homestay, xe, ăn uống)",
-        "Quy trình kiểm tra trước tour 48h"
-      ],
-      "feedback_loop": [
-        "Thu thập phản hồi sau tour (form + rating)",
-        "Họp nội bộ review hàng tuần",
-        "Cải tiến sản phẩm theo dữ liệu"
-      ]
-    },
-    "finance_compliance": {
-      "principles": [
-        "Minh bạch sổ sách",
-        "Tuân thủ quy định thuế",
-        "Quản lý công nợ chặt chẽ"
-      ],
-      "community_fund": {
-        "purpose": "Hỗ trợ phát triển du lịch cộng đồng, tri ân cựu chiến binh và hoạt động môi trường",
-        "allocation_policy": "Trích % lợi nhuận theo quý (cấu hình bởi kế toán)"
-      }
-    },
-    "notes": "Lưu ý: cập nhật phiên bản JSON mỗi khi thay đổi chính sách tuyển dụng, gói dịch vụ hoặc tiêu chuẩn an toàn."
-  }
-},
-{
-  "id": "ruby_wings_brand_story",
-  "name": "Ruby Wings – Ý nghĩa tên gọi, Logo và Hệ sinh thái",
-  "meaning_of_name": {
-    "summary": "Ruby Wings — chắp cánh cho sự kết nối, chữa lành và tái sinh năng lượng. Một đôi cánh xanh nâng niu viên ruby hồng – hình ảnh của trái tim, sự sống và niềm tin.",
-    "ruby": "Biểu tượng của trái tim, sự sống mãnh liệt, tình yêu thương và năng lượng nội tâm.",
-    "wings": "Biểu tượng của tự do, khát vọng vươn lên, hành trình bay xa và sự chuyển hóa.",
-    "combined_meaning": "Khi kết hợp, Ruby Wings truyền tải ý niệm chắp cánh cho những tâm hồn đang tìm kiếm sự bình yên, hành trình sâu sắc và trải nghiệm nuôi dưỡng cảm xúc."
-  },
-  "logo_philosophy": {
-    "overview": "Logo Ruby Wings được xem như một tấm bản đồ thu nhỏ của triết lý nhân sinh và hệ sinh thái thương hiệu.",
-    "symbolic_layers": {
-      "four_green_wings": "Tượng trưng cho Thân – Tâm – Thiên nhiên – Niềm tin. Bốn cánh dang rộng vừa nâng đỡ, vừa hội tụ năng lượng.",
-      "ecosystem_reflection": {
-        "ruby_wings": "Hành trình du lịch chữa lành",
-        "ruby_learn": "Nuôi dưỡng phát triển nội tâm & kỹ năng sống",
-        "ruby_auto": "Không gian di chuyển cân bằng",
-        "ruby_stay": "Không gian nghỉ dưỡng xanh"
-      },
-      "ruby_core": "Trọng tâm là viên ruby hồng tươi đỏ – trái tim con người, biểu tượng cho sự khai mở, cân bằng, tự giáo dục nội tâm và rèn luyện sức khỏe.",
-      "pink_circle": "Vòng tròn hồng tươi bao quanh ruby – biểu tượng cho sự kết nối, trọn vẹn, chu kỳ bất tận của sự sống và vòng tay bao dung của vũ trụ."
-    },
-    "color_meaning": {
-      "pink": "Sắc màu của tình yêu thương, niềm vui, sự chữa lành và năng lượng cảm xúc tích cực.",
-      "green": "Sắc màu của sự sống, hy vọng, cân bằng và phát triển bền vững.",
-      "combined": "Khi hòa quyện, chúng nâng niu trái tim nhân ái và gieo mầm hy vọng cho tương lai."
-    }
-  },
-  "ecosystem": {
-    "origin": "Khởi nguồn từ Huế – mảnh đất của di sản, ký ức và sự trầm mặc.",
-    "vision": "Không chỉ là công ty du lịch, mà là một hệ sinh thái sống nhân văn – tử tế.",
-    "components": {
-      "experiential_travel": "Mỗi hành trình là một cơ hội chữa lành và gắn kết.",
-      "emotional_retreat": "Không gian để sống chậm – tái tạo năng lượng – phục hồi cảm xúc.",
-      "inner_growth": "Trải nghiệm giúp con người tìm về chính mình và nuôi dưỡng nội tâm."
-    },
-    "human_message": "Trong một xã hội hối hả, Ruby Wings nguyện trở thành nơi mọi người có thể: 'Thở sâu – sống chậm – sống thật và trở về với gốc rễ con người – Nơi đó có Hạnh Phúc.'"
-  }
-},
-
-{
-  "id": "origin_story_ruby_wings_v1",
-  "title": "Câu chuyện khởi nguồn - Ruby Wings",
-  "summary": "Ruby Wings sinh ra từ trải nghiệm hồi sinh của người sáng lập: vượt qua bệnh tật bằng thiền, khí công và kỷ luật cá nhân, rồi chuyển hoá trải nghiệm đó thành một sứ mệnh cộng đồng — xây dựng hệ sinh thái du lịch chữa lành, nhân văn và bền vững.",
-  "founder_journey": {
-    "year": 2015,
-    "crisis": "Bệnh tật nghiêm trọng (chẩn đoán: viêm không đặc hiệu / bệnh tự miễn), cơ thể suy kiệt (~40kg), thời gian dài nằm viện, tinh thần và thể chất đi xuống.",
-    "turning_point": "Tiếp cận thiền và khí công, thực hành kỷ luật thở, vận động, lắng nghe cơ thể; dần hồi phục cả thể chất lẫn tinh thần.",
-    "insight": "Từ hồi sinh cá nhân nảy sinh câu hỏi: liệu trải nghiệm hồi sinh này có thể được chuyển hoá thành hành trình để lan toả, giúp cộng đồng vượt qua áp lực hiện đại?"
-  },
-  "early_phases": {
-    "approach": "Không vội vã ra sản phẩm, chọn bước đi chậm và bền vững.",
-    "activities": [
-      "Khảo sát thực địa (Hướng Hóa, Đakrông, Quảng Bình, Hội An …)",
-      "Kết nối & lắng nghe cộng đồng bản địa",
-      "Xây dựng nền tảng nội bộ: triết lý sống, hệ điều hành nhân sự, quy chế vận hành"
-    ],
-    "period_label": "Giai đoạn 2024–2025: 'Gieo hạt' — truyền tư duy du lịch tử tế và gieo mầm niềm tin."
-  },
-  "core_philosophy": {
-    "principles": [
-      "Du lịch là phương tiện chữa lành, cân bằng và kết nối nội tâm.",
-      "Mỗi hành trình không chỉ là điểm đến mà là cánh cửa nội tâm.",
-      "Doanh nghiệp phải lan toả giá trị tử tế, không chỉ chạy theo lợi nhuận."
-    ],
-    "founding_manifesto": "Con người hôm nay và ngày mai cần những hành trình có cảm xúc, có giá trị thật và kết nối với giá trị thật."
-  },
-  "mission_from_story": "Biến trải nghiệm hồi sinh cá nhân thành hành trình tập thể: đội ngũ, cộng sự và du khách cùng kiến tạo mô hình du lịch nhân văn, chữa lành, xanh và bền vững; mỗi khách ra về mang theo niềm tin vào khả năng vượt nghịch cảnh.",
-  "practical_lessons": [
-    "Khởi nguồn dự án nên xuất phát từ trải nghiệm thực tế, không chỉ kế hoạch trên giấy.",
-    "Gieo hạt: khảo sát & kết nối cộng đồng trước khi mở bán sản phẩm.",
-    "Xây nền móng nhân sự và quy trình vận hành trước khi mở rộng."
-  ],
-  "usage_notes": "Dùng đoạn này làm phần 'Origin Story' trong knowledge.json / company profile / About Us; có thể rút gọn cho website hoặc mở rộng cho tài liệu truyền thông.",
-  "source_file_path": "/mnt/data/48ff8cce-8a5d-4336-8d74-2086adfbebfd.docx",
-  "version": "2025-11-23",
-  "authoring_note": "Nếu muốn, tôi sẽ chuyển JSON này vào file knowledge.json hiện có hoặc xuất sang định dạng markdown/sơ đồ tóm tắt để dùng cho trang 'About Us'."
-},
-{
-  "id": "ruby_wings_manifesto",
-  "title": "Tuyên Ngôn Ruby Wings",
-  "slogan": "Hành trình của chiều sâu cảm xúc – nơi bạn không chỉ đến một nơi, mà còn được trở về với chính mình.",
-  "origin_intent": {
-    "starting_point": "Khởi nguồn từ một trăn trở về nhu cầu được sống chậm, thở sâu, phục hồi năng lượng và kết nối lại với thiên nhiên – văn hóa – và chính nội tâm.",
-    "human_need": "Giữa nhịp sống hối hả, ai cũng cần một khoảng dừng để chữa lành 'tâm bệnh', cân bằng thân–tâm–trí và chạm vào những điều tưởng như đã quên."
-  },
-  "guiding_belief": {
-    "statement": "Con người hôm nay cần những hành trình chạm vào cảm xúc thật và kết nối với giá trị thật để cân bằng và chữa lành.",
-    "approach": "Ruby Wings không khởi đầu bằng bảng giá hay khuyến mãi, mà bắt đầu bằng triết lý sống, hệ điều hành văn hóa và tinh thần chuẩn mực – chân thành – có chiều sâu."
-  },
-  "core_values": {
-    "chuan_muc": "Duy trì tiêu chuẩn cao trong mọi khâu: thiết kế hành trình, dịch vụ, vận hành.",
-    "chan_thanh": "Sự chân thật trong hành xử, giao tiếp và trải nghiệm – không màu mè, không đối phó.",
-    "chieu_sau": "Mỗi hành trình là cơ hội khám phá bản thân, kết nối với thiên nhiên và nuôi dưỡng nội tâm."
-  },
-  "ecosystem_vision": {
-    "definition": "Hệ sinh thái du lịch xanh – nhân văn, vận hành bằng chuẩn mực, phát triển bằng cảm xúc và lan tỏa bằng sự chân thành.",
-    "pillars": {
-      "du_lich_xanh": "Tôn trọng môi trường, bảo tồn tài nguyên, phát triển bền vững.",
-      "du_lich_nhan_van": "Đặt con người – cộng đồng – văn hóa bản địa làm trung tâm.",
-      "van_hanh_chuan_muc": "Quy trình chuyên nghiệp, minh bạch, đáng tin cậy."
-    }
-  },
-  "idealism_vs_reality": {
-    "insight": "Muốn bay xa phải giữ gốc. Muốn lan tỏa lý tưởng – phải có nền tảng thực tế.",
-    "implementation": "Ruby Wings chấp nhận thực hiện các hành trình trải nghiệm linh hoạt để nuôi dưỡng nguồn lực, duy trì hoạt động và kiến tạo những giá trị sâu sắc hơn."
-  },
-  "experience_philosophy": {
-    "approach": "Không chỉ đưa khách đến một điểm rồi kết thúc.",
-    "meaning": "Mỗi chuyến đi là cánh cửa nội tâm – nơi khách có thể chạm vào điều gì đó sâu bên trong, nuôi dưỡng cảm xúc và hồi phục năng lượng."
-  },
-  "purpose": "Lan tỏa một mô hình du lịch tử tế, cảm xúc, có khả năng chữa lành và đem lại sự cân bằng cho con người hiện đại.",
-  "version": "1.0"
-},
-{
-  "id": "ruby_wings_value_pillars",
-  "title": "Hệ Giá Trị & Trụ Cột Nội Dung Ruby Wings",
-  "pillars": [
-    {
-      "key": "tri_an",
-      "name": "Tri Ân",
-      "description": "Hành trình trở về với những di tích lịch sử thiêng liêng – nơi lưu giữ dấu ấn oai hùng của dân tộc; tưởng nhớ những hy sinh cao cả của thế hệ cha anh vì độc lập và tự do. Là dịp để bày tỏ lòng biết ơn, nuôi dưỡng niềm tự hào và trách nhiệm giữ gìn giá trị cho thế hệ mai sau.",
-      "cta": "Xem bài viết"
-    },
-    {
-      "key": "ket_noi",
-      "name": "Kết Nối",
-      "description": "Tạo ra những nhịp cầu gắn kết giữa các thế hệ, giữa người lính năm xưa và lớp trẻ hôm nay; kết nối con người với thiên nhiên, với quá khứ – hiện tại, và với chính nội tâm để tìm thấy sự đồng điệu và sức mạnh bên trong.",
-      "cta": "Xem bài viết"
-    },
-    {
-      "key": "thien_khi_cong_suc_khoe",
-      "name": "Thiền – Khí công dưỡng sinh & Sức khỏe",
-      "description": "Khám phá sức mạnh chữa lành từ Thiền và Khí công dưỡng sinh, giúp cân bằng tâm trí, phục hồi năng lượng, tăng cường sức khỏe tinh thần – thể chất, đồng thời mở ra hành trình chữa lành bền vững trong từng bước đi.",
-      "cta": "Xem bài viết"
-    },
-    {
-      "key": "lan_toa",
-      "name": "Lan Tỏa",
-      "description": "Gieo mầm những giá trị sống tốt đẹp, khơi dậy tình yêu quê hương – đất nước – con người; lan tỏa cảm hứng yêu thương và trân trọng chính bản thân, cùng chung tay xây dựng ý thức du lịch xanh – bền vững.",
-      "cta": "Xem bài viết"
-    },
-    {
-      "key": "cong_dong_ban_sac",
-      "name": "Cộng Đồng – Bản Sắc",
-      "description": "Gìn giữ và phát huy bản sắc văn hóa độc đáo của từng địa phương; xây dựng một cộng đồng du lịch bền vững, có trách nhiệm với thiên nhiên, xã hội và các giá trị truyền thống.",
-      "cta": "Xem bài viết"
-    },
-    {
-      "key": "giao_duc_ky_nang",
-      "name": "Giáo dục kỹ năng",
-      "description": "Rèn luyện kỹ năng sống, kỹ năng sinh tồn, kỹ năng mềm và khả năng ứng xử xã hội cho thanh thiếu niên qua các hành trình trải nghiệm, hoạt động thực tế và chương trình huấn luyện ý nghĩa.",
-      "cta": "Xem bài viết"
-    }
-  ]
-}, 
-{
-  "id": "ruby_wings_nature_sustainability",
-  "title": "Vẻ đẹp thiên nhiên & Du lịch bền vững",
-  "sections": [
-    {
-      "key": "ky_quan_thien_nhien_vn",
-      "name": "Kỳ quan thiên nhiên Việt Nam",
-      "description": "Khám phá những kỳ quan thiên nhiên hàng đầu Việt Nam – nơi hội tụ vẻ đẹp hùng vĩ, trù phú và đa dạng sinh học.",
-      "items": [
-        "Vịnh Hạ Long – Di sản thiên nhiên thế giới",
-        "Fansipan – Nóc nhà Đông Dương",
-        "Đồng bằng sông Cửu Long – Vựa lúa quốc gia",
-        "Hải Vân – Thiên hạ đệ nhất hùng quan",
-        "Đầm phá Tam Giang – Hệ đầm phá lớn nhất Đông Nam Á",
-        "Thác Bản Giốc – Một trong những thác nước đẹp nhất Việt Nam"
-      ],
-      "cta": "Khám phá thêm vẻ đẹp thiên nhiên"
-    },
-    {
-      "key": "ve_dep_quang_tri",
-      "name": "Vẻ đẹp đất trời Quảng Trị",
-      "description": "Quảng Trị – vùng đất hội tụ nét đẹp biển – rừng – đảo, giàu bản sắc và trầm mặc.",
-      "items": [
-        "Cửa Tùng – 'Nữ hoàng bãi tắm'",
-        "Rú Lịnh – Rừng nguyên sinh đa dạng",
-        "Đảo Cồn Cỏ – Di sản biển đảo",
-        "Bãi biển Nhật Lệ – Cát trắng, nước trong",
-        "Suối nước nóng Bang – Khu nghỉ dưỡng tự nhiên"
-      ],
-      "cta": "Khám phá vẻ đẹp Quảng Trị"
-    },
-    {
-      "key": "du_lich_xanh_ben_vung",
-      "name": "Du lịch xanh – bền vững",
-      "description": "Trải nghiệm du lịch có trách nhiệm, hài hòa với thiên nhiên và cộng đồng bản địa.",
-      "items": [
-        "Hành trình Xuyên rừng Phong Nha (trekking – tắm suối)",
-        "Homestay sinh thái ven sông Son",
-        "Ẩm thực địa phương – đặc sản vùng miền",
-        "Workshop làm bánh địa phương",
-        "Hành trình ngắm chim tại rừng ngập mặn"
-      ],
-      "cta": "Tìm hiểu về du lịch bền vững"
-    },
-    {
-      "key": "bao_ton_thien_nhien",
-      "name": "Bảo tồn thiên nhiên",
-      "description": "Cùng chung tay gìn giữ thiên nhiên xanh – sạch – bền vững.",
-      "items": [
-        "Lan tỏa tinh thần bảo vệ môi trường",
-        "Hoạt động trồng cây xanh – lan tỏa du lịch xanh",
-        "Hạn chế dùng nhựa và tái chế",
-        "Kết nối cùng cộng đồng địa phương bảo vệ môi trường",
-        "Giữ gìn thiên nhiên trong lành cho thế hệ tương lai"
-      ],
-      "cta": "Tham gia hoạt động bảo tồn"
-    },
-    {
-      "key": "goc_anh_cau_chuyen",
-      "name": "Góc ảnh & câu chuyện",
-      "description": "Những khoảnh khắc đẹp, cảm xúc sâu sắc về thiên nhiên và con người.",
-      "items": [
-        "\"Sống ảo\" giữa thiên nhiên hoang sơ",
-        "Người gìn giữ động Phong Nha",
-        "Hành trình khám phá hang Sơn Đoòng",
-        "Cuộc sống đêm trong rừng nguyên sinh",
-        "Hoàng hôn trên phá Tam Giang"
-      ],
-      "cta": "Xem thư viện ảnh"
-    },
-    {
-      "key": "le_hoi_van_hoa",
-      "name": "Lễ hội & văn hóa địa phương",
-      "description": "Khám phá nét văn hóa bản địa độc đáo, giàu truyền thống và bản sắc.",
-      "items": [
-        "Lễ hội cầu ngư (Quảng Bình)",
-        "Tái hiện đường Hồ Chí Minh huyền thoại (Quảng Trị)",
-        "Lễ hội hoa đăng trên sông Thạch Hãn",
-        "Văn hóa ẩm thực làng chài",
-        "Nghệ thuật bài chòi truyền thống",
-        "Lễ hội Thống nhất Non sông"
-      ],
-      "cta": "Khám phá văn hóa địa phương"
-    }
-  ]
-},
-{
-  "id": "ruby_wings_global_introduction",
-  "title": "Quả địa cầu – Kết nối quốc tế Ruby Wings",
-  "section": {
-    "header": "Khám phá Việt Nam – Dành cho du khách quốc tế",
-    "intro": {
-      "vi": "Ruby Wings là đơn vị du lịch hàng đầu khu vực miền Trung Việt Nam, mang trong mình khát vọng giới thiệu vẻ đẹp của đất nước đến với bạn bè quốc tế. Trong khi các gói tour quốc tế đang được hoàn thiện, chúng tôi kính mời bạn bắt đầu hành trình khám phá Việt Nam qua những cảnh quan kỳ vĩ và kho tàng văn hóa sống động dưới đây.",
-      "en": "Ruby Wings is a leading travel company based in Central Vietnam. We are dedicated to showcasing the unique beauty of Vietnam to the world. While our international travel packages are currently being finalized, we invite you to explore Vietnam’s breathtaking landscapes and vibrant cultural heritage below.",
-      "zh": "Ruby Wings 是越南中部知名的旅游企业，始终致力于向全球展示越南独特的魅力。在我们精心打造国际旅游线路的同时，诚邀您在此先行领略越南震撼人心的自然奇观与多元交融的文化风采。"
-    },
-    "highlights": [
-      {
-        "title": "Vẻ đẹp thiên nhiên nổi bật của Việt Nam",
-        "items": [
-          "Vịnh Hạ Long – Di sản thiên nhiên thế giới",
-          "Phong Nha – Kẻ Bàng – Hệ thống hang động kỳ vĩ",
-          "Sa Pa – Văn hóa bản địa & đỉnh Fansipan",
-          "Hội An – Di sản văn hóa thế giới",
-          "Đầm phá Tam Giang – Hệ đầm phá lớn nhất Đông Nam Á"
-        ]
-      },
-      {
-        "title": "Văn hóa & con người",
-        "items": [
-          "Ẩm thực Việt Nam nổi tiếng thế giới",
-          "75+ nhóm dân tộc với bản sắc đa dạng",
-          "Lễ hội truyền thống quanh năm",
-          "Nghệ thuật & di sản văn hoá lâu đời"
-        ]
-      },
-      {
-        "title": "Trải nghiệm dành cho du khách quốc tế",
-        "items": [
-          "Tour thiên nhiên – trải nghiệm sinh thái",
-          "Retreat – Thiền – Chữa lành",
-          "Hành trình biển đảo",
-          "Du lịch văn hóa – lịch sử",
-          "Hoạt động cộng đồng – bền vững"
-        ]
-      }
-    ],
-    "note": "Các chương trình quốc tế (Inbound) của Ruby Wings dự kiến ra mắt trong thời gian tới. Vui lòng liên hệ để được tư vấn hoặc thiết kế hành trình theo yêu cầu."
-  }
-},
-{
-  "id": "ruby_wings_healing_categories",
-  "name": "Chữa lành – Thiền – Khí công – Tâm lý",
-  "sections": [
-    {
-      "key": "thien_khi_cong",
-      "title": "Thiền & Khí công",
-      "description": "Điều hòa năng lượng, an định tâm trí và nuôi dưỡng sức khỏe toàn diện thông qua thực hành Thiền Chánh niệm và Khí công dưỡng sinh – những pháp môn cổ truyền nuôi dưỡng thân và tâm.",
-      "action": "Khám phá"
-    },
-    {
-      "key": "chua_lanh_tu_nhien",
-      "title": "Chữa lành tự nhiên",
-      "description": "Chữa lành bằng sự kết nối với thiên nhiên, nuôi dưỡng cơ thể và tâm trí qua liệu pháp từ cây cỏ, thảo dược và nguồn năng lượng an lành của môi trường tự nhiên.",
-      "action": "Khám phá"
-    },
-    {
-      "key": "ton_thuong_tam_ly",
-      "title": "Tổn thương tâm lý",
-      "description": "Nhận diện bản chất và chữa lành những vết thương sâu kín trong tâm hồn, khôi phục sự bình an nội tại để sống trọn vẹn và ý nghĩa hơn.",
-      "action": "Khám phá"
-    },
-    {
-      "key": "dong_tay_chua_lanh",
-      "title": "Đông – Tây chữa lành",
-      "description": "Kết hợp trí tuệ y học cổ truyền phương Đông và khoa học hiện đại phương Tây, mang đến giải pháp cân bằng – chữa lành toàn diện cho thân và tâm.",
-      "action": "Khám phá"
-    },
-    {
-      "key": "cong_dong_chua_lanh",
-      "title": "Cộng đồng chữa lành",
-      "description": "Không gian để mỗi người được kết nối, sẻ chia và đồng hành trong một môi trường tích cực, thấu hiểu và nâng đỡ – cùng nhau chữa lành và phát triển.",
-      "action": "Khám phá"
-    },
-    {
-      "key": "yoga_tri_lieu",
-      "title": "Yoga & Trị liệu",
-      "description": "Kết hợp Yoga (một hình thức Thiền – Khí công) cùng các bài tập thể dục trị liệu chuyên biệt, giúp phục hồi và nâng cao sức khỏe toàn diện cho thân – tâm.",
-      "action": "Khám phá"
-    }
-  ]
-}, 
-
-{
-  "id": "ruby_wings_healing_articles",
-  "categories": [
-    {
-      "key": "thien_khi_cong",
-      "title": "Thiền & Khí công",
-      "latest_article": {
-        "title": "Thiền, Khí công cơ bản cho người mới bắt đầu",
-        "subtitle": "Hướng dẫn từng bước để bắt đầu hành trình Thiền Chánh niệm, Khí công dưỡng sinh đơn giản giúp giảm lo âu, căng thẳng, stress và chuẩn bị cho tiến trình phục hồi...",
-        "date": "2025-03-15",
-        "reading_time": "5 phút đọc",
-        "action": "Xem các bài viết"
-      },
-      "pagination": [1, 2, 3, 4, 5, 6]
-    },
-    {
-      "key": "chua_lanh_tu_nhien",
-      "title": "Chữa lành tự nhiên",
-      "latest_article": {
-        "title": "Tắm rừng - Liệu pháp chữa lành từ thiên nhiên",
-        "subtitle": "Hiệu ứng forest bathing & placebo – liệu pháp tự nhiên giúp con người thư giãn, phục hồi khi hòa mình vào thiên nhiên; trong khi niềm tin tích cực có thể kích hoạt khả năng tự chữa lành của cơ thể.",
-        "date": "2025-03-12",
-        "reading_time": "7 phút đọc",
-        "action": "Xem các bài viết"
-      },
-      "pagination": [1, 2, 3, 4, 5, 6]
-    },
-    {
-      "key": "ton_thuong_tam_ly",
-      "title": "Tổn thương tâm lý",
-      "latest_article": {
-        "title": "Hiểu và chữa lành tổn thương tâm lý",
-        "subtitle": "Các phương pháp tiếp cận hiệu quả giúp nhận diện, đối diện và chữa lành tổn thương tâm lý sâu sắc; từ trị liệu, thiền, khí công chữa lành cho đến sự nâng đỡ cộng đồng, từng bước phục hồi cân bằng...",
-        "date": "2025-03-08",
-        "reading_time": "10 phút đọc",
-        "action": "Xem các bài viết"
-      },
-      "pagination": [1, 2, 3, 4, 5, 6]
-    }
-  ]
-}, 
-
-{
-  "about_us": {
-    "brand_name": "Ruby Wings Travel",
-    "slogan": "Hành trình của chiều sâu cảm xúc, nơi bạn không chỉ đến một nơi, mà còn có thể được trở về với chính mình.",
-    "info": {
-      "tax_code": "3301743759",
-      "address": "148 Trương Gia Mô, Vỹ Dạ, TP. Huế",
-      "phone": "0332510486",
-      "hotline": "0332510586",
-      "hotline_apps": ["WhatsApp", "Zalo"],
-      "email": "rubywingslsa@gmail.com",
-      "website": "www.rubywings.vn"
-    },
-    "contact_channels": {
-      "zalo": "Zalo Ruby Wings",
-      "community_group": {
-        "description": "Tham gia nhóm cộng đồng Ruby Wings để nhận thông tin mới nhất, chia sẻ trải nghiệm và lan tỏa những thông điệp tốt đẹp.",
-        "action": "Tham gia nhóm"
-      }
-    },
-    "leadership": {
-      "director": "Lương Tiến Sỹ"
-    }
-  }
-}, 
-{
-  "ruby_wings": {
-    "overview": {
-      "brand": "Ruby Wings Travel",
-      "tagline": "Hành trình của chiều sâu cảm xúc – nơi bạn không chỉ đến một nơi, mà còn có thể được trở về với chính mình.",
-      "origin": "Khởi nguồn từ Huế – mảnh đất của di sản, thiên nhiên và chiều sâu văn hóa. Ruby Wings ra đời không chỉ để làm du lịch, mà để tạo ra những hành trình nhân văn – có chiều sâu – kết nối con người với thiên nhiên và chính nội tâm của mình.",
-      "essence": "Mỗi hành trình đều có yếu tố chia sẻ, hình thức cân bằng – chữa lành đơn giản (thiền, hơi thở, khí công, thiên nhiên) giúp du khách được chạm vào những tầng cảm xúc mà du lịch thông thường không mang lại."
-    },
-
-    "history_mission_vision_values": {
-      "history": {
-        "summary": "Ruby Wings có khởi nguồn hơn 10 năm trước từ trải nghiệm cá nhân của nhà sáng lập trong hành trình vượt qua bệnh tật, tìm lại sức khỏe và sự tỉnh thức. Điều ấy đã gieo nên hạt giống cho một mô hình du lịch nhân văn và chữa lành.",
-        "details": [
-          "Thành lập tại Huế, lấy triết lý sống chậm – sâu – tỉnh thức làm nền tảng.",
-          "Đi theo hướng du lịch cảm xúc – xanh – bền vững thay vì du lịch thương mại đại trà.",
-          "Xây dựng hệ sinh thái du lịch – giáo dục – cộng đồng dựa trên sự tử tế, chuẩn mực và có chiều sâu."
-        ]
-      },
-      "mission": "Lan tỏa giá trị sống chuẩn mực – chân thành – có chiều sâu thông qua du lịch, giáo dục và những hoạt động cộng đồng. Mỗi hành trình là cơ hội chữa lành – kết nối – phát triển nội tâm.",
-      "vision": "Đến năm 2030, trở thành đơn vị hàng đầu về du lịch cảm xúc và phát triển con người toàn diện tại miền Trung, hướng đến cộng đồng trong nước và một phần thị trường quốc tế. Phát triển hệ sinh thái gồm Ruby Wings Travel, Ruby Learn, Ruby Stay và Ruby Auto.",
-      "core_values": {
-        "summary": "Chuẩn mực – Chân thành – Có chiều sâu",
-        "details": {
-          "chuan_muc": "Làm đúng – làm đủ – làm thật. Tôn trọng kỷ luật, con người và sự thật.",
-          "chan_thanh": "Sự thật lòng trong ứng xử, nói điều cần nói, làm điều cần làm, mang lại giá trị thật.",
-          "co_chieu_sau": "Không chạy theo số lượng – ưu tiên chất lượng và ý nghĩa. Mỗi sản phẩm hay hành trình đều có giá trị nội tâm sâu sắc."
-        }
-      }
-    },
-
-    "entrepreneurship_and_philosophy": {
-      "entrepreneurship_mindset": {
-        "description": "Ruby Wings khởi nghiệp không chỉ vì kinh doanh mà còn vì mục tiêu xây dựng một mô hình sống – làm việc – cống hiến có ý nghĩa.",
-        "pillars": [
-          "Khởi nghiệp từ bên trong – rèn kỷ luật, bản lĩnh và thái độ trước khi tìm kiếm thành công.",
-          "Phát triển bền vững – ưu tiên giá trị thật và sự tử tế.",
-          "Làm việc có chiều sâu – dù việc nhỏ vẫn phải làm tử tế.",
-          "Học suốt đời – học chuyên môn, học làm người và học hòa hợp."
-        ]
-      },
-      "humanistic_philosophy": {
-        "summary": "Triết lý nhân văn Ruby Wings xây dựng trên tinh thần Chuẩn mực – Chân thành – Có chiều sâu.",
-        "details": [
-          "Phát triển tổ chức là phát triển con người.",
-          "Chữa lành – cân bằng – kết nối là tinh thần xuyên suốt của mọi hành trình.",
-          "Con người là trung tâm: nhân sự có phẩm chất thì tổ chức mới bền vững.",
-          "Tạo dựng một cộng đồng biết sống đẹp – có trách nhiệm – tỉnh thức."
-        ]
-      }
-    },
-
-    "ecosystem": {
-      "overview": "Hệ sinh thái Ruby Wings gồm các dự án liên kết chặt chẽ, xoay quanh ba trụ cột: Du lịch – Giáo dục – Cộng đồng.",
-      "branches": {
-        "ruby_travel": {
-          "name": "Ruby Wings Travel",
-          "focus": [
-            "Du lịch trải nghiệm – du lịch cảm xúc – du lịch chữa lành.",
-            "Hành trình retreat thiền – khí công – thiên nhiên.",
-            "Du lịch linh hoạt nhưng có chất chữa lành.",
-            "Hành trình kết nối văn hóa bản địa và phát triển nội tâm."
-          ]
-        },
-        "ruby_learn": {
-          "name": "Ruby Learn",
-          "focus": [
-            "Giáo dục nội tâm – kỹ năng nghề – kỹ năng sinh tồn.",
-            "Chương trình dành cho thanh thiếu niên và người trưởng thành.",
-            "Phát triển con người trước – mở rộng tổ chức sau."
-          ]
-        },
-        "ruby_stay": {
-          "name": "Ruby Stay",
-          "focus": [
-            "Không gian lưu trú xanh – bền vững – gần thiên nhiên.",
-            "Nghỉ dưỡng cảm xúc, sống chậm, cân bằng.",
-            "Kết hợp các workshop & hành trình retreat."
-          ]
-        },
-        "ruby_auto": {
-          "name": "Ruby Auto",
-          "focus": [
-            "Không gian di chuyển chuẩn mực – tiện nghi – tử tế.",
-            "Tạo cảm giác an toàn – cân bằng – nhẹ nhàng suốt hành trình."
-          ]
-        }
-      },
-      "ecosystem_direction": "Các nhánh hoạt động độc lập nhưng tương hỗ, cùng hướng đến triết lý Ruby Mind – chữa lành và cân bằng qua thiền, khí công, thiên nhiên và niềm tin."
-    },
-
-    "culture_spirit": {
-      "spirit": "Chuẩn mực – Chân thành – Có chiều sâu",
-      "meaning": {
-        "chuan_muc": "Làm đúng – làm thật – tôn trọng nguyên tắc.",
-        "chan_thanh": "Ứng xử thật lòng – mang lại giá trị thật – xây dựng niềm tin thật.",
-        "co_chieu_sau": "Nhìn sâu – nghĩ kỹ – hành động có ý thức – không chạy theo số lượng."
-      },
-      "integration": [
-        "Chuẩn mực giúp Chân thành được bày tỏ đúng cách.",
-        "Chân thành nuôi dưỡng Chiều sâu.",
-        "Chiều sâu củng cố lại Chuẩn mực, hình thành hệ giá trị bền vững."
-      ],
-      "reflection": "Tinh thần này thể hiện ở mọi nơi: từ vận hành tour, nội bộ nhân sự, quan hệ đối tác, chăm sóc khách hàng, đến cách ứng xử với thiên nhiên và cộng đồng."
-    }
-  }
-}, 
-
-{
-  "ruby_wings": {
-    "organizational_culture": {
-      "section_title": "Văn hóa tổ chức & Hành vi chuẩn Ruby Wings",
-      "meaning": "Văn hóa Ruby Wings dựa trên tinh thần Chuẩn mực – Chân thành – Có chiều sâu, thể hiện qua giao tiếp, phản hồi, báo cáo và phong cách làm việc chuyên nghiệp. Đây không chỉ là quy định mà là bản sắc nội bộ, quyết định sự trưởng thành của từng thành viên và sức mạnh của tổ chức.",
-      
-      "communication_feedback_reporting": {
-        "title": "Giao tiếp – Phản hồi – Báo cáo",
-        "role_meaning": {
-          "summary": "Ba trụ cột tạo nên môi trường làm việc chuyên nghiệp và tử tế.",
-          "details": [
-            "Giao tiếp đúng – đầy đủ – có trách nhiệm là thước đo văn hóa.",
-            "Phản hồi kịp thời phản ánh tinh thần hợp tác và tinh thần học hỏi.",
-            "Báo cáo minh bạch thể hiện tính chuẩn mực, kỷ luật và tôn trọng hệ thống.",
-            "Hiệu quả của nhân sự không chỉ đo bằng kỹ năng mà còn bằng chất lượng giao tiếp và phối hợp."
-          ]
-        },
-
-        "communication_principles": {
-          "title": "Nguyên tắc giao tiếp nội bộ Ruby Wings",
-          "clarity_accuracy": [
-            "Thông tin rõ ràng, có cấu trúc, không vòng vo.",
-            "Sử dụng dữ liệu hoặc ví dụ để chứng minh đề xuất.",
-            "Không nói mơ hồ, không phóng đại."
-          ],
-          "respect_sincerity": [
-            "Giao tiếp bằng thái độ tôn trọng, bình tĩnh, cầu thị.",
-            "Tập trung vào hành vi – không tấn công cá nhân.",
-            "Dùng ngôn ngữ tích cực, hỗ trợ, khuyến khích."
-          ],
-          "right_channel_right_time": [
-            "Sử dụng đúng kênh: gặp trực tiếp – nhóm chat – email – form.",
-            "Không đưa việc nội bộ ra mạng xã hội hoặc bên ngoài.",
-            "Phản hồi trong vòng 24 giờ với các công việc liên quan."
-          ]
-        },
-
-        "feedback_culture": {
-          "title": "Văn hóa phản hồi chuyên nghiệp",
-          "principles": [
-            "Lắng nghe trọn vẹn, không ngắt lời, không phòng thủ.",
-            "Phản hồi dựa trên quan sát & mục tiêu chung, không cảm tính.",
-            "Nêu lỗi kèm giải pháp, hướng đến cải thiện – không chỉ trích.",
-            "Ghi nhận đúng lúc để củng cố động lực.",
-            "Phản hồi 2 chiều là tiêu chí bắt buộc trong đánh giá hiệu suất."
-          ]
-        },
-
-        "reporting_and_coordination": {
-          "title": "Chuẩn mực báo cáo & phối hợp công việc",
-          "reporting_principles": [
-            "Báo cáo đúng hạn – đúng biểu mẫu – đúng trọng tâm.",
-            "Nội dung trung thực, có tóm tắt vấn đề – nguyên nhân – hướng giải quyết.",
-            "Thông tin không để trôi nổi, phải được lưu trữ trên hệ thống.",
-            "Dùng chung biểu mẫu khi công việc liên ngành (Travel – Learn – Stay – Auto)."
-          ],
-          "tools": [
-            "Google Drive: tài liệu, hình ảnh chung.",
-            "Notion: SOP – quy trình – nhật ký làm việc.",
-            "Trello: quản lý tiến độ & nhiệm vụ.",
-            "Google Form: thu thập phản hồi khách hàng & nội bộ."
-          ],
-          "frequency": {
-            "weekly": "Báo cáo tuần: cập nhật tiến độ – vấn đề – hướng xử lý.",
-            "monthly": "Báo cáo tháng: kết quả – phản tỉnh – đề xuất cải tiến.",
-            "quarterly": "Báo cáo quý: hiệu suất – hành vi – sáng kiến – nội tâm."
-          }
-        }
-      },
-
-      "working_style": {
-        "title": "Phong cách làm việc chuyên nghiệp Ruby Wings",
-        "principles": {
-          "proactive": "Không chờ giao việc. Biết hỏi khi chưa rõ. Chủ động đề xuất.",
-          "mindful": "Giữ tâm bình an, không lan truyền năng lượng tiêu cực.",
-          "disciplined": "Tuân thủ quy trình, đúng giờ, trình bày khoa học.",
-          "sincere": "Thật lòng lắng nghe – học hỏi – phản hồi.",
-          "deep": "Hiểu bối cảnh trước khi làm. Nhìn vấn đề nhiều chiều. Tôn trọng hệ thống."
-        },
-        "meaning": "Phong cách này giúp tạo sự đồng bộ trong toàn hệ sinh thái Ruby Wings (Travel – Learn – Stay – Auto), đảm bảo mọi thành viên hoạt động trên cùng nền tảng giá trị."
-      },
-
-      "expected_outcomes": {
-        "title": "Kết quả kỳ vọng của nhân sự sau bồi dưỡng",
-        "outcomes": [
-          "Giao tiếp chuẩn mực – rõ ràng – đúng kênh – tôn trọng.",
-          "Phản hồi tích cực, giúp đồng đội và tổ chức phát triển.",
-          "Báo cáo đúng hạn, trung thực và có hệ thống.",
-          "Duy trì năng lượng làm việc tích cực và truyền cảm hứng.",
-          "Hành vi – lời nói – tác phong thể hiện giá trị thật và tinh thần nhân văn của Ruby Wings."
-        ],
-        "goal": "Xây dựng một tập thể mà mỗi thành viên đều là hiện thân của tinh thần Chuẩn mực – Chân thành – Có chiều sâu."
-      }
-    }
-  }
-},
-
-{
-  "ruby_wings": {
-    "work_system_tools": {
-      "section_title": "Phần 3. Hệ thống & Công cụ làm việc cơ bản",
-      
-      "hr_operating_system": {
-        "title": "Hệ điều hành nhân sự & Quy chế làm việc",
-
-        "hros": {
-          "name": "Hệ điều hành nhân sự Ruby Wings",
-          "meaning": "Nền tảng quản trị con người – văn hóa – vận hành, giúp đội ngũ làm việc thống nhất, minh bạch và bền vững. Đây là 'bộ não văn hóa' định hướng tư duy – hành vi – giá trị của mỗi thành viên.",
-          "principles": [
-            "Nhân văn – lấy con người làm trung tâm.",
-            "Công bằng – đánh giá theo năng lực và đóng góp.",
-            "Minh bạch – chính sách rõ ràng, quy trình công khai.",
-            "Linh hoạt – thích ứng hoàn cảnh nhưng không lệch giá trị gốc.",
-            "Bền vững – phát triển con người trước khi mở rộng tổ chức."
-          ],
-          "goal": "Xây dựng Ruby Wings thành môi trường tự vận hành, giàu văn hóa và nuôi dưỡng con người lâu dài."
-        },
-
-        "regulations": {
-          "title": "Quy chế làm việc",
-          "spirit": "Làm việc không chỉ để hoàn thành nhiệm vụ, mà để kiến tạo giá trị thật, giữ tinh thần Chuẩn mực – Chân thành – Có chiều sâu.",
-          "working_hours": "7h45 – 17h00 (nghỉ trưa 11h30 – 13h30), Thứ Hai – hết sáng Thứ Bảy.",
-          "principles": [
-            "Làm việc có trách nhiệm – đúng hạn – theo quy trình.",
-            "Giao tiếp tôn trọng – thẳng thắn – không đổ lỗi.",
-            "Góp ý trên tinh thần xây dựng và cải thiện.",
-            "Mọi hành vi phải thể hiện văn hóa tử tế – tôn trọng của Ruby Wings."
-          ]
-        }
-      },
-
-      "tools_management": {
-        "title": "Công cụ quản lý công việc – báo cáo – phản hồi",
-
-        "systems": [
-          {
-            "tool": "Notion",
-            "use": "Quản lý công việc, dự án, hành trình. Mỗi thành viên có bảng nhiệm vụ và deadline."
-          },
-          {
-            "tool": "Google Workspace",
-            "use": "Gmail, Drive, Sheets/Docs, checklist – báo cáo chung."
-          },
-          {
-            "tool": "Timesheet & Check-in nội tâm",
-            "use": "Ghi nhận giờ làm và trạng thái năng lượng (A–B–C–D)."
-          }
-        ],
-
-        "daily_weekly_reports": {
-          "job_report": "Cập nhật kết quả – tiến độ – vướng mắc – đề xuất.",
-          "mindful_report": "3 dòng: Cảm nhận – Học được gì – Điều biết ơn."
-        },
-
-        "feedback_process": {
-          "reflection_meeting": "Họp 1 lần/tuần để phản hồi 2 chiều giữa nhân sự và quản lý.",
-          "reporting_rules": [
-            "Gửi qua email hoặc form chuẩn.",
-            "Tiêu đề rõ ràng, có dữ liệu, nêu vấn đề – nguyên nhân – giải pháp."
-          ],
-          "channels": {
-            "zalo": "Thông báo nhanh, giao việc nhỏ.",
-            "email": "Nội dung cần xác nhận & lưu vết.",
-            "weekly_sync": "Họp đầu tuần: mục tiêu – trạng thái – ưu tiên."
-          }
-        },
-
-        "mindfulness_in_operations": {
-          "meaning": "Ứng dụng Thiền – Khí công giúp giữ sự tỉnh táo – cân bằng trong vận hành.",
-          "practices": [
-            "Trước khi phản hồi vấn đề nhạy cảm: thở sâu 3 hơi – nhận diện cảm xúc.",
-            "Khi căng thẳng: thả lỏng vai – mỉm cười – quan sát hơi thở."
-          ]
-        }
-      },
-
-      "performance_system": {
-        "title": "Hệ thống đánh giá hiệu suất – hành vi – sáng kiến",
-
-        "philosophy": "Đánh giá không phải để chấm điểm, mà để phát triển con người – nâng năng lực – nuôi dưỡng nội tâm.",
-        "pillars": ["Hiệu suất", "Hành vi", "Sáng kiến"],
-        "feedback_levels": [
-          "Tự đánh giá",
-          "Phản hồi đồng đội",
-          "Quản lý đánh giá",
-          "Hội đồng nhân sự xác nhận"
-        ],
-
-        "structure": {
-          "performance": {
-            "description": "Đánh giá kết quả thực tế & KPI.",
-            "criteria": [
-              "Đúng tiến độ",
-              "Đúng chất lượng",
-              "Tính chủ động & sáng tạo"
-            ],
-            "standard": "≥ 70% là đạt chuẩn."
-          },
-          "behavior": {
-            "description": "Hành vi văn hóa theo 6 nhóm cốt lõi.",
-            "groups": [
-              "Trung thực",
-              "Hợp tác",
-              "Kỷ luật",
-              "Trách nhiệm",
-              "Tôn trọng",
-              "Tích cực"
-            ]
-          },
-          "innovation": {
-            "description": "Khuyến khích cải tiến nhỏ – thực tế – khả thi.",
-            "policy": "Mỗi quý gửi 01 đề xuất cải tiến."
-          }
-        },
-
-        "mindfulness_component": {
-          "meaning": "Đánh giá tỉnh thức – dựa trên sự quan sát nội tâm.",
-          "methods": [
-            "3 phút tĩnh tâm trước buổi họp.",
-            "Sau họp: ghi 'Học được gì – Cần buông điều gì – Biết ơn điều gì'.",
-            "Khi nhận phản hồi: không biện minh – không phòng thủ – lắng nghe."
-          ]
-        },
-
-        "reward_and_correction": {
-          "reward": [
-            "Khen thưởng quý cho sáng kiến – hành vi xuất sắc.",
-            "Vinh danh nội bộ.",
-            "Hỗ trợ ngân sách học tập – rèn luyện."
-          ],
-          "correction": [
-            "Hành vi vi phạm văn hóa: cảnh báo.",
-            "Hiệu suất thấp 2 kỳ liên tiếp: huấn luyện hỗ trợ 1 tháng."
-          ]
-        },
-
-        "expected_outcomes": [
-          "Nhân sự biết tự đo lường tiến bộ.",
-          "Phát triển cả năng lực lẫn thái độ.",
-          "Hình thành thói quen lập kế hoạch – phản tỉnh – đóng góp sáng kiến.",
-          "Tạo đội ngũ trưởng thành – chuyên nghiệp – có chiều sâu."
-        ]
-      },
-
-      "workflows": {
-        "title": "Quy trình làm việc theo từng mảng",
-
-        "overview": "Toàn hệ sinh thái vận hành nhất quán: Travel – Learn – Stay – Auto. Mỗi mảng độc lập nhưng liên kết chặt chẽ.",
-
-        "service_travel_stay": {
-          "title": "Mảng Dịch vụ (Travel – Stay)",
-          "process": [
-            "Thiết kế hành trình theo nhu cầu – mục tiêu.",
-            "Dự toán – phê duyệt.",
-            "Triển khai – phối hợp hậu cần – chăm sóc khách.",
-            "Báo cáo sau hành trình & rút kinh nghiệm."
-          ],
-          "special_note": "Hành trình retreat có tích hợp thiền – khí công – thiên nhiên – kết nối cộng đồng."
-        },
-
-        "communication": {
-          "title": "Mảng Truyền thông",
-          "tasks": [
-            "Lên kế hoạch theo hành trình/dự án.",
-            "Sản xuất nội dung (viết – hình ảnh – video).",
-            "Duyệt & đăng tải – theo dõi phản hồi."
-          ],
-          "principles": [
-            "Trung thực – cảm xúc – tôn trọng giá trị thật.",
-            "Không giật tít – không phô trương quá mức."
-          ],
-          "mindfulness": "Trước khi sáng tạo nội dung: 2 phút tĩnh tâm đặt ý niệm thiện lành."
-        },
-
-        "hr": {
-          "title": "Mảng Hành chính – Nhân sự",
-          "process": [
-            "Tuyển dụng – hội nhập – ký hợp đồng.",
-            "Chấm công – hồ sơ – phúc lợi.",
-            "Đánh giá – phản hồi – bồi dưỡng."
-          ],
-          "philosophy": "HR là nơi 'giữ lửa' năng lượng nội tâm của tập thể."
-        },
-
-        "finance": {
-          "title": "Mảng Tài chính – Kế toán",
-          "principles": [
-            "Minh bạch",
-            "Kỷ luật",
-            "Tiết kiệm",
-            "Hiệu quả"
-          ],
-          "tasks": [
-            "Theo dõi thu – chi – công nợ.",
-            "Đề xuất chi – duyệt chi theo định mức.",
-            "Báo cáo tuần/tháng/quý."
-          ],
-          "mindfulness": "Trước khi duyệt chi: 3 hơi thở sâu – xem xét mục đích & giá trị của khoản chi."
-        },
-
-        "expected_outcomes": [
-          "Các bộ phận phối hợp rõ ràng – không chồng chéo.",
-          "Quy trình minh bạch – gắn trách nhiệm đến từng cá nhân.",
-          "Mỗi thành viên làm việc với tinh thần chánh niệm – hiệu quả – nhân văn.",
-          "Hệ sinh thái tự vận hành – bền vững – đồng điệu trong giá trị."
-        ]
-      }
-    }
-  }
-},
-
-{
-  "ruby_wings": {
-    "professional_skills_and_attitude": {
-      "section_title": "Phần 4. Kỹ năng & Thái độ làm việc chuyên nghiệp",
-
-      "time_management": {
-        "title": "1. Quản lý thời gian – Ưu tiên công việc – Làm việc có kế hoạch",
-        "philosophy": {
-          "meaning": "Thời gian được xem là năng lượng sống – cần được sử dụng có ý thức, không chỉ để hoàn thành việc, mà để tạo ra giá trị thật.",
-          "principles": [
-            "Làm ít nhưng chất – chọn việc có tác động thật.",
-            "Luôn có kế hoạch rõ ràng – mục tiêu – lịch trình – cam kết.",
-            "Giữ khoảng tĩnh giữa các hoạt động – dùng thiền/khí công/đi bộ nhẹ để tái tạo năng lượng."
-          ],
-          "quote": "Không phải ta thiếu thời gian, mà ta để năng lượng trôi đi mà không tỉnh."
-        },
-
-        "planning_process": {
-          "title": "Quy trình lập kế hoạch công việc – 3 tầng",
-          "weekly_plan": [
-            "Họp nhóm sáng thứ Hai (Travel – Learn – Media – HR – Finance).",
-            "Xác định 3 mục tiêu trọng tâm tuần.",
-            "Ưu tiên việc quan trọng trước khẩn cấp (Ma trận Eisenhower)."
-          ],
-          "daily_plan": [
-            "Ghi 3 việc quan trọng nhất vào Notion mỗi sáng.",
-            "Cuối ngày thực hành Reflection: Hoàn thành gì – Cải thiện gì – Biết ơn điều gì."
-          ],
-          "project_plan": [
-            "Mỗi dự án có checklist, deadline rõ ràng.",
-            "Quản lý dự án cập nhật tiến độ trên Notion hằng ngày."
-          ]
-        },
-
-        "mindful_time_management": {
-          "title": "Quản lý thời gian trong chánh niệm",
-          "techniques": [
-            "Làm một việc tại một thời điểm – không đa nhiệm vô thức.",
-            "Thực hành '3 hơi thở chuyển việc' trước khi đổi công việc.",
-            "Nhịp nghỉ tự nhiên 45–90 phút: tạm dừng 5 phút vận động – thở sâu – thư giãn."
-          ]
-        },
-
-        "tools_and_habits": {
-          "tools": ["Notion", "Google Drive", "Trello"],
-          "habits": [
-            "Họp đúng giờ – chuẩn bị trước.",
-            "Báo cáo đúng hạn – minh bạch tiến độ.",
-            "Không mang năng lượng tiêu cực vào giờ làm – nếu mệt, xin 5 phút thiền."
-          ]
-        },
-
-        "expected_outcomes": [
-          "Biết ưu tiên công việc quan trọng.",
-          "Duy trì năng lượng ổn định.",
-          "Làm việc có chiều sâu, không xao nhãng.",
-          "Hình thành thói quen sống – làm việc tỉnh thức."
-        ]
-      },
-
-      "responsibility_and_proactiveness": {
-        "title": "2. Tinh thần trách nhiệm và Chủ động trong công việc",
-
-        "importance": "Hai phẩm chất cốt lõi giúp Ruby Wings vận hành bền vững – duy trì niềm tin nội bộ và chất lượng dịch vụ.",
-        
-        "responsibility": {
-          "meaning": "Làm hết – làm đúng – làm có ý thức.",
-          "elements": [
-            "Làm hết: hoàn thành nhiệm vụ đến cùng, không bỏ dở.",
-            "Làm đúng: tuân thủ quy trình – deadline – chất lượng.",
-            "Làm có ý thức: hiểu lý do – không làm theo thói quen."
-          ],
-          "quote": "Trách nhiệm là biểu hiện của lòng tự trọng và sự trưởng thành nội tâm."
-        },
-
-        "proactiveness": {
-          "meaning": "Tự khởi động – tự học – tự đề xuất.",
-          "behaviors": [
-            "Chủ động tìm giải pháp.",
-            "Chủ động hỗ trợ đồng đội.",
-            "Chủ động học hỏi, cải tiến."
-          ],
-          "importance": "Yếu tố 'chủ động' chiếm 20% điểm hành vi – sáng kiến."
-        },
-
-        "mindful_practice": {
-          "title": "Thực hành chủ động – trách nhiệm trong chánh niệm",
-          "steps": [
-            "Trước khi nhận việc khó: hít sâu – đánh giá nguồn lực.",
-            "Khi làm: quan sát trạng thái, nếu căng thẳng tạm nghỉ 3–5 phút.",
-            "Sau khi làm: phản tỉnh: tôi học gì – có thể làm tốt hơn ở đâu?"
-          ],
-          "process": "Chu trình Nhận – Làm – Soi – Cải thiện."
-        },
-
-        "expected_outcomes": [
-          "Làm việc đáng tin cậy – đúng hạn – đúng chất lượng.",
-          "Chủ động đóng góp giải pháp.",
-          "Trưởng thành trong cảm xúc – biết tự điều chỉnh.",
-          "Nhận thức mỗi việc nhỏ đều là phần của sứ mệnh chung."
-        ]
-      },
-
-      "continuous_learning_and_improvement": {
-        "title": "3. Học hỏi liên tục – Phản tỉnh – Cải tiến bản thân",
-
-        "philosophy": {
-          "meaning": "Học để giỏi nghề – học để làm người – học để nuôi dưỡng nội tâm.",
-          "layers": ["Học nghề", "Học người", "Học tâm"],
-          "quote": "Khi tâm an, trí sáng; khi trí sáng, hành động có giá trị."
-        },
-
-        "learning_system": {
-          "internal_training": [
-            "Training chuyên môn mỗi tháng.",
-            "Workshop Thiền – phản tỉnh mỗi quý."
-          ],
-          "ruby_learn_program": [
-            "Khóa kỹ năng nghề – kỹ năng sống – thiền ứng dụng.",
-            "Hỗ trợ 50–100% chi phí khóa phù hợp."
-          ],
-          "library": "Tài nguyên học tập: ebook, podcast, tài liệu chuyên môn."
-        },
-
-        "reflection": {
-          "meaning": "Nhìn lại để hiểu – để lớn.",
-          "method": "Chu trình 3R: Review – Reflect – Refine",
-          "practices": [
-            "Ghi bài học cuối tuần.",
-            "Họp nhóm cuối tháng chia sẻ 1 điều học được – 1 điều cần buông bỏ.",
-            "Thiền 5 phút trước khi viết báo cáo."
-          ]
-        },
-
-        "self_improvement": {
-          "principles": [
-            "Quan sát vấn đề – không đổ lỗi.",
-            "Thừa nhận lỗi để học – không để sợ.",
-            "Mỗi quý có 1 sáng kiến cải tiến."
-          ]
-        },
-
-        "expected_outcomes": [
-          "Có thái độ cầu thị.",
-          "Biết phản tỉnh – rút kinh nghiệm.",
-          "Tự tạo động lực phát triển.",
-          "Xem học tập như hành trình sống."
-        ]
-      },
-
-      "teamwork_and_interdepartmental_communication": {
-        "title": "4. Hợp tác nhóm & Giao tiếp liên bộ phận",
-
-        "spirit": "Ruby Wings là một đội – không phải tập hợp cá nhân. Hợp tác để đồng hành – để lớn cùng nhau.",
-        
-        "principles": {
-          "common_goal": "Cả nhóm hiểu mục tiêu chung.",
-          "clarity": "Vai trò – trách nhiệm minh bạch.",
-          "communication": "Lắng nghe – phản hồi – hỗ trợ.",
-          "respect": "Tôn trọng sự khác biệt."
-        },
-
-        "cross_department_communication": {
-          "channels": {
-            "email": "Nội dung chính thức – cần xác nhận.",
-            "zalo": "Thông tin nhanh – ngắn – rõ.",
-            "notion_drive": "Lưu tài liệu – checklist – SOP.",
-            "trello": "Theo dõi tiến độ công việc."
-          },
-          "rules": [
-            "Nói đúng trọng tâm – có giải pháp.",
-            "Phản hồi trong 24 giờ.",
-            "Giao tiếp tích cực – không than vãn – không đổ lỗi."
-          ],
-          "mindfulness": "Trước cuộc họp: 60–90 giây thở sâu, buông cảm xúc cá nhân để đối thoại trong sự tôn trọng."
-        },
-
-        "teamwork_in_practice": {
-          "leader_role": "Mỗi nhóm có điều phối viên (Team Leader).",
-          "debrief": "Sau mỗi dự án có phiên tổng kết – rút kinh nghiệm.",
-          "conflict_resolution": "Nói riêng – hiểu nhau – tìm hướng tốt hơn.",
-          "analogy": "Đội ngũ như hành trình thầy trò Đường Tăng – mỗi người có vai trò khác nhau, nhưng cùng hướng về mục tiêu chung."
-        },
-
-        "expected_outcomes": [
-          "Làm việc nhóm chủ động – tôn trọng – hiệu quả.",
-          "Giao tiếp rõ ràng – đúng kênh.",
-          "Chuyển hóa mâu thuẫn thành cơ hội học hỏi.",
-          "Tạo môi trường yêu thương – đoàn kết – tích cực."
-        ]
-      }
-    }
-  }
-},
-
-{
-  "ruby_wings": {
-    "part": "PHẦN 5. RÈN LUYỆN THÂN - TÂM - TRÍ",
-    "source_file_url": "/mnt/data/48ff8cce-8a5d-4336-8d74-2086adfbebfd.docx",
-    "overview": {
-      "frame": "Trích - phát triển từ 'Giáo trình Khí công - Thiền Chánh niệm Ruby Wings'. Phần này là cốt lõi rèn luyện năng lượng cho nhân sự và cộng đồng: tái tạo năng lượng, quân bình cảm xúc, nâng cao khả năng tập trung để làm việc bền vững và sống có chiều sâu.",
-      "primary_goals": [
-        "Tái tạo năng lượng: phục hồi thể chất và giảm căng thẳng.",
-        "Quân bình cảm xúc: quản lý và chuyển hóa trạng thái tiêu cực.",
-        "Tăng khả năng tập trung: nền tảng cho hiệu suất và sáng tạo."
-      ]
-    },
-
-    "application_in_work_environment": {
-      "daily_modulation": [
-        "Đầu ca: '5 phút tỉnh thức đầu ca' (thiền hơi thở) để thiết lập trạng thái.",
-        "Giữa ca: 5 phút 'thở thư giãn' hoặc thiền tại chỗ/khí công nhẹ.",
-        "Cuối ngày: 5 phút 'thiền cảm ơn' và phản tỉnh ngắn."
-      ],
-      "in_retreats_and_workshops": "Thực hành dài hơn: Thiền – Khí công – Thiền hành – Thiền trà do Ruby Learn hướng dẫn.",
-      "expected_benefits_in_office": [
-        "Giảm mệt mỏi và stress, tăng sự tỉnh táo.",
-        "Cải thiện chất lượng ra quyết định và năng suất.",
-        "Lan tỏa năng lượng tích cực trong tập thể."
-      ]
-    },
-
-    "principles_thân_tâm_khí": {
-      "summary": "Con người là hệ thống Thân - Tâm - Khí; mọi rèn luyện nhằm cân bằng ba yếu tố để đạt hiệu suất bền vững.",
-      "manifestation_in_work": [
-        {
-          "layer": "Thân (Body)",
-          "practice": "Giữ tư thế đúng, thả lỏng vai, vận động ngắn 5 phút/giờ",
-          "benefit": "Giảm mỏi, tăng oxy lên não, cải thiện tập trung"
-        },
-        {
-          "layer": "Tâm (Mind)",
-          "practice": "Dừng lại quan sát cảm xúc trước khi phản ứng",
-          "benefit": "Xử lý xung đột điềm tĩnh, phản hồi chuyên nghiệp"
-        },
-        {
-          "layer": "Khí (Energy)",
-          "practice": "5 phút điều hòa hơi thở sáng sớm",
-          "benefit": "Khởi động năng lượng tích cực cho ngày làm việc"
-        }
-      ]
-    },
-
-    "tools_and_practices": {
-      "breathing_meditation": {
-        "name": "Thiền hơi thở (A-na-pa-na-sa-ti)",
-        "purpose": [
-          "Ổn định Thân - Tâm - Khí",
-          "Tăng khả năng tập trung",
-          "Là cửa ngõ vào các thực hành khác"
-        ],
-        "practice_notes": {
-          "duration_recommendation": "10 phút mỗi sáng (có thể 3-10 phút tại văn phòng)",
-          "posture": "Ngồi thẳng, vai thả lỏng, tay đặt nhẹ",
-          "instructions": [
-            "Thở tự nhiên, nhận biết hơi thở vào/ra",
-            "Khi tâm phân tán, mỉm cười nhẹ và quay về hơi thở",
-            "Ứng dụng: 3 hơi thở sâu trước họp/ứng xử nhạy cảm"
-          ]
-        }
-      },
-
-      "walking_meditation": {
-        "name": "Thiền hành (Walking Meditation)",
-        "purpose": "Thiền trong động — làm chậm nhịp, tăng tập trung",
-        "practice_notes": {
-          "duration": "5–10 phút",
-          "method": [
-            "Bước chậm, cảm nhận bàn chân chạm đất",
-            "Thầm niệm 'Bước — Biết', 'Dừng — Biết'",
-            "Giữ hơi thở đều, mắt nhìn mềm"
-          ],
-          "application": "Đầu ca, giữa giờ nghỉ, trong hành trình retreat"
-        }
-      },
-
-      "tea_meditation": {
-        "name": "Thiền trà",
-        "purpose": [
-          "Nuôi chánh niệm, biết ơn, kết nối cảm xúc",
-          "Giảm căng thẳng trước/after meetings"
-        ],
-        "practice_notes": [
-          "Chuẩn bị im lặng, chú ý âm thanh khi rót trà",
-          "Uống chậm, cảm nhận mùi vị và hơi ấm",
-          "Tiếng im lặng vài phút đầu, sau đó chia sẻ cảm nhận"
-        ],
-        "application": "Reflection Meeting, Tea Talk nội bộ"
-      },
-
-      "baduanjin_qigong": {
-        "name": "Bát đoạn cẩm (Baduanjin)",
-        "purpose": "Khí công dưỡng sinh giúp lưu thông khí huyết, giảm mỏi, tăng dẻo dai",
-        "principles": [
-          "Chậm - Thở - Thật",
-          "Hít bằng mũi, thở nhẹ bằng miệng",
-          "Ý dẫn khí: tập trung cảm nhận vùng vận động"
-        ],
-        "practice_recommendation": {
-          "daily": "15–20 phút/ngày để đạt hiệu quả",
-          "at_office": "Một vài động tác ngắn để giảm mỏi vai gáy",
-          "in_retreat": "Tập toàn bộ bài như phần mở đầu"
-        },
-        "expected_effects": [
-          "Cơ thể dẻo dai, ngủ sâu hơn",
-          "Tâm tĩnh, phản ứng điềm tĩnh",
-          "Cảm nhận dòng năng lượng lưu thông"
-        ]
-      }
-    },
-
-    "mindfulness_application": {
-      "core_philosophy": "Chánh niệm là nghệ thuật sống trọn vẹn trong từng khoảnh khắc — áp dụng trong công việc, ăn uống, giao tiếp, hành trình chữa lành.",
-      "workplace_practices": [
-        "3 hơi thở đầu tiên khi bắt đầu ngày",
-        "Duy trì 1 việc tại 1 thời điểm; quay về hơi thở khi mất tập trung",
-        "Trước trả lời nội dung nhạy cảm: dừng 1 nhịp, hít sâu rồi phản hồi"
-      ],
-      "life_practices": [
-        "Ăn trong chánh niệm — cảm nhận mùi vị và biết ơn",
-        "Nghe trong chánh niệm — lắng trước khi nói",
-        "Biến mỗi hành động nhỏ thành bài tập tỉnh thức"
-      ],
-      "benefits": [
-        "Giảm lo âu, tăng hiệu suất, cải thiện quan hệ",
-        "Nuôi dưỡng năng lượng tích cực, truyền cảm hứng cho tập thể"
-      ]
-    },
-
-    "5_minute_morning_ritual": {
-      "title": "Rèn luyện '5 phút tỉnh thức đầu ca'",
-      "purpose": "Nghi thức năng lượng khởi động ngày làm việc: tái kết nối Thân - Tâm - Trí, thiết lập trạng thái bình an và tập trung.",
-      "rationale": "Không phải hình thức; là khoảnh khắc tập thể tái hòa nhịp năng lượng để làm việc nhẹ, sâu và hiệu quả.",
-      "sample_protocol": [
-        "1 phút: Ngồi hoặc đứng thẳng — hít 3 hơi sâu (hít 4 - nín 1 - thở 6 tùy nhóm)",
-        "1 phút: Quét thân (body scan) từ đầu tới chân, thả lỏng vùng căng",
-        "1 phút: Thiền hơi thở - nhận biết vào/ra (nhắm hoặc khép mắt)",
-        "1 phút: Thiền hành tại chỗ (bước nhẹ nếu không gian cho phép)",
-        "1 phút: Ý định ngày (mỗi thành viên nghĩ 1 câu ngắn: 'Hôm nay tôi làm việc trong bình an...')"
-      ],
-      "implementation_notes": [
-        "Áp dụng khi văn phòng đủ số lượng nhân sự; có thể thực hiện trực tuyến cho remote team.",
-        "Người điều phối (Team Lead) dẫn nghi thức, kết thúc bằng lời tri ân ngắn."
-      ],
-      "expected_metrics": {
-        "subjective": "Cảm nhận năng lượng bắt đầu ngày tích cực hơn",
-        "operational": "Giảm 40–60% căng thẳng đầu ca (mức báo cáo tự đánh giá)",
-        "team": "Tăng kết nối đồng đội, cải thiện mood chung"
-      }
-    },
-
-    "outcomes_and_impact": {
-      "individual": [
-        "Tự điều hòa năng lượng, giảm bị cuốn vào căng thẳng",
-        "Khả năng tập trung và sáng tạo được nâng cao",
-        "Kỹ năng lắng nghe và phản hồi cải thiện"
-      ],
-      "team_and_organization": [
-        "Môi trường làm việc bình an, năng lượng tích cực",
-        "Văn hóa 'làm việc trong chánh niệm' trở thành điểm khác biệt",
-        "Tăng tính bền vững năng suất – ít burnout"
-      ],
-      "long_term_vision": "Nhân sự Ruby Wings không chỉ làm việc giỏi mà giữ được tâm an; tổ chức trở thành nơi làm việc hạnh phúc, sáng tạo và bền vững."
-    },
-
-    "implementation_guidelines": {
-      "training_path": [
-        "Onboarding: giới thiệu PHẦN 5 và hướng dẫn '5 phút đầu ca'.",
-        "Khoá cơ bản: Thiền hơi thở + 4 động tác Bát đoạn cẩm (15–20 phút).",
-        "Khoá nâng cao: Toàn bộ Bát đoạn cẩm + Thiền hành + Thiền trà.",
-        "Refresher: Buổi ngắn hàng tháng + Reflection Meeting."
-      ],
-      "measurement": [
-        "Báo cáo năng lượng hàng ngày (A-B-C-D) + reflection 3 dòng",
-        "Khảo sát định kỳ: stress, sleep quality, job-satisfaction",
-        "Ghi nhận sáng kiến cải tiến về năng lượng và sức khỏe"
-      ],
-      "guiding_principles": [
-        "Khuyến khích thực hành liên tục (nhỏ nhưng đều).",
-        "Tôn trọng thể trạng và giới hạn cá nhân (không ép).",
-        "Tích hợp linh hoạt trong ca làm việc và chuyến hành trình."
-      ]
-    },
-
-    "notes": [
-      "Tài liệu chi tiết các bài tập, hình minh họa và video hướng dẫn được soạn trong 'Giáo trình Khí công - Thiền Chánh niệm Ruby Wings' (tham chiếu trong source_file_url).",
-      "Mọi chương trình thực hành cần có người hướng dẫn có kinh nghiệm; với nhân sự có bệnh lý, cần tham vấn y tế trước khi tham gia các bài tập khí công mạnh."
-    ]
-  }
-}, 
-{
-  "policies_and_growth": {
-    "activation_conditions": {
-      "financial_thresholds": {
-        "monthly_revenue_average": "Đạt mức doanh thu yêu cầu trong 3 tháng liên tiếp",
-        "annual_net_profit": "Lợi nhuận ròng dương đạt chuẩn tối thiểu theo quy định nội bộ"
-      },
-      "note": "Trước khi đạt các chỉ số trên, mọi chính sách lương – thưởng – phụ cấp được áp dụng theo thương lượng và điều kiện thực tế của hai bên."
-    },
-
-    "section_1_compensation_benefits": {
-      "philosophy": {
-        "description": "Ruby Wings xem tài chính – phúc lợi là sự ghi nhận giá trị con người, dựa trên công bằng, minh bạch và phát triển bền vững.",
-        "principles": [
-          "Công bằng – Minh bạch: Quyền lợi rõ ràng, công khai theo năng lực.",
-          "Phát triển – Đồng hành: Gắn thu nhập với tiến bộ và lộ trình nghề nghiệp.",
-          "Nhân văn – Bền vững: Hướng đến chăm sóc đời sống, sức khỏe và nội tâm."
-        ]
-      },
-
-      "allowances_and_salary": {
-        "apprenticeship_phase": {
-          "period": "Giai đoạn học việc (03 tháng)",
-          "components": [
-            "Phụ cấp học việc theo thỏa thuận",
-            "Hỗ trợ ăn trưa",
-            "Phụ cấp điện thoại tùy vị trí",
-            "Hỗ trợ công tác phí theo quy chế nội bộ"
-          ]
-        },
-        "official_employee": {
-          "salary": "Lương cơ bản theo vị trí và khung năng lực",
-          "performance_allowance": "Phụ cấp hiệu suất dựa trên đánh giá quý",
-          "specialized_allowances": "Phụ cấp đặc thù theo bộ phận (truyền thông, điều hành, trưởng nhóm...)",
-          "holiday_benefits": "Thưởng lễ – tết – sinh nhật theo quy chế"
-        }
-      },
-
-      "insurance_and_wellbeing": {
-        "social_insurance": "Thực hiện đầy đủ BHXH, BHYT, TNCN theo pháp luật khi đủ điều kiện",
-        "wellbeing_benefits": [
-          "Tham gia miễn phí các khóa Thiền – Khí công – Retreat chữa lành",
-          "Ngày nghỉ tái tạo năng lượng mỗi tháng (nếu báo trước)",
-          "Tham gia hoạt động thiện nguyện và bảo tồn cộng đồng"
-        ]
-      },
-
-      "salary_review": {
-        "review_cycle": "Đánh giá mỗi quý dựa trên hiệu suất – hành vi – sáng kiến",
-        "salary_adjustment": "Tăng lương định kỳ sau 6–12 tháng tùy vị trí",
-        "bonus": "Thưởng đột xuất khi có đóng góp nổi bật"
-      }
-    },
-
-    "section_2_reward_mechanisms": {
-      "philosophy": "Khen thưởng nhằm nuôi dưỡng động lực nội tâm – ghi nhận giá trị thật, không tạo so sánh.",
-      "reward_categories": {
-        "innovation_reward": {
-          "description": "Cho sáng kiến cải tiến quy trình, dịch vụ, trải nghiệm khách",
-          "recognition": "Được đưa vào bộ ‘Sáng kiến Ruby Wings’ và nhân rộng"
-        },
-        "performance_reward": {
-          "description": "Dựa trên mức hoàn thành hiệu suất theo đánh giá quý",
-          "recognition": "Thư cảm ơn và ghi nhận nội bộ"
-        },
-        "positive_behavior_reward": {
-          "description": "Ghi nhận hành vi văn hóa: trung thực, hỗ trợ, chủ động, kỷ luật, truyền năng lượng tích cực",
-          "recognition": "Vinh danh trong bản tin nội bộ"
-        }
-      },
-      "transparency_mechanism": [
-        "Tất cả đề cử và khen thưởng được cập nhật trong Notion HR Hub",
-        "Nhân sự có quyền đề xuất đồng nghiệp theo mẫu form",
-        "Ban Điều hành phê duyệt và phản hồi trong 7 ngày",
-        "Tổ chức lễ vinh danh định kỳ hàng năm"
-      ]
-    },
-
-    "section_3_official_staff_benefits": {
-      "value_proposition": "Nhân sự chính thức không chỉ có việc làm, mà bước vào hành trình phát triển Thân – Tâm – Trí cùng Ruby Wings.",
-      "rights_and_benefits": {
-        "financial_and_career": [
-          "Lương chính thức theo khung vị trí",
-          "Thưởng hiệu suất, sáng kiến, hành vi tốt",
-          "Phụ cấp chuyên môn tùy bộ phận",
-          "Thưởng doanh số/hành trình theo quy định",
-          "Hỗ trợ phát triển nghề nghiệp và học tập"
-        ],
-        "insurance": [
-          "BHXH – BHYT – BHTN",
-          "Hỗ trợ bảo hiểm sức khỏe mở rộng cho nhân sự gắn bó"
-        ],
-        "internal_benefits": [
-          "Tham gia miễn phí retreat, workshop, thiền – khí công",
-          "Nghỉ phép năm đầy đủ, tăng dần theo thâm niên",
-          "Ưu đãi 30–50% khi sử dụng dịch vụ nội bộ",
-          "Cơ hội công tác – học tập tại các điểm Ruby Stay hoặc dự án cộng đồng"
-        ],
-        "governance_participation": [
-          "Tham gia các cuộc họp định hướng chiến lược",
-          "Có thể được đề cử vào vai trò quản lý hoặc đồng sáng lập chi nhánh",
-          "Tham gia chương trình ươm mầm lãnh đạo kế thừa"
-        ]
-      },
-      "organizational_commitment": [
-        "Môi trường nhân văn – không áp lực tiêu cực",
-        "Xây dựng lộ trình phát triển cá nhân (IDP) cho từng nhân sự",
-        "Cam kết minh bạch – công bằng trong mọi chính sách",
-        "Khuyến khích cân bằng công việc – cuộc sống"
-      ]
-    },
-
-    "section_4_career_path_and_growth": {
-      "philosophy": "Ruby Wings bồi dưỡng con người toàn diện – phát triển nhân cách, năng lực và nội tâm trước khi mở rộng tổ chức.",
-      "career_stages": [
-        {
-          "stage": "Học việc – Thử việc",
-          "goal": "Làm quen môi trường – văn hóa – kỹ năng nền tảng",
-          "duration": "3–6 tháng"
-        },
-        {
-          "stage": "Nhân sự chính thức",
-          "goal": "Làm việc độc lập – ổn định chuyên môn",
-          "duration": "6–12 tháng"
-        },
-        {
-          "stage": "Chuyên viên phát triển",
-          "goal": "Dẫn dắt nhóm nhỏ – chia sẻ kinh nghiệm – rèn lãnh đạo",
-          "duration": "12–18 tháng"
-        },
-        {
-          "stage": "Trưởng nhóm / Quản lý",
-          "goal": "Điều phối dự án – lãnh đạo nhân văn – quản trị đội ngũ",
-          "duration": "18–24 tháng"
-        }
-      ],
-      "ecosystem_growth_opportunities": {
-        "ruby_travel": "Trở thành điều phối hành trình retreat, hướng dẫn viên trải nghiệm hoặc huấn luyện viên nội tâm.",
-        "ruby_learn": "Tham gia giảng dạy kỹ năng, thiền – khí công, đào tạo nội bộ.",
-        "ruby_stay": "Quản lý điểm lưu trú xanh – phát triển dịch vụ sống chậm – trị liệu.",
-        "ruby_auto": "Phát triển dịch vụ di chuyển nhân văn – an toàn – giàu trải nghiệm."
-      },
-      "development_mechanisms": {
-        "training": [
-          "Training nội bộ hằng tháng",
-          "Workshop quý về phát triển năng lực – nhận thức"
-        ],
-        "mentoring": "Mỗi nhân sự có một mentor – quản lý đóng vai trò coach",
-        "leadership_track": {
-          "description": "Chương trình đào tạo lãnh đạo kế thừa",
-          "modules": [
-            "Tự lãnh đạo bản thân",
-            "Lãnh đạo đội nhóm",
-            "Lãnh đạo bằng năng lượng tỉnh thức"
-          ]
-        }
-      },
-      "expected_outcomes": [
-        "Nhân sự có lộ trình rõ ràng – cơ hội thật – môi trường phát triển toàn diện",
-        "Xây dựng đội ngũ kế thừa vững vàng",
-        "Hình thành cộng đồng Ruby Wings – nơi phát triển gắn liền phụng sự"
-      ]
-    }
-  }
-},
-{
-"meta": {
-"title": "Ruby Wings — Tài liệu trả lời tự động & hướng dẫn truyền cảm hứng cho khách",
-"purpose": "Dự đoán câu hỏi khách hàng, chuẩn bị nội dung trả lời gọn — truyền cảm hứng, khuyến khích đặt tour và tham gia hệ sinh thái Ruby Wings.",
-"generated_for": "Đội bán hàng / CSKH / Truyền thông Ruby Wings",
-"source_doc": "/mnt/data/48ff8cce-8a5d-4336-8d74-2086adfbebfd.docx"
-},
-"predicted_questions": [
-{
-"q": "Ruby Wings là gì? Tại sao tên là Ruby Wings?",
-"short_answer": "Ruby Wings là hệ sinh thái du lịch - giáo dục - nghỉ dưỡng lấy chữa lành, kết nối và phát triển con người làm tâm điểm. Tên Ruby Wings biểu tượng trái tim (Ruby) + đôi cánh (Wings): chắp cánh cho sự sống, yêu thương, tự do và hành trình nội tâm.",
-"long_answer": "Ruby Wings sinh ra từ trải nghiệm hồi sinh của người sáng lập; nền tảng là triết lý Chuẩn mực - Chân thành - Có chiều sâu. Chúng tôi tạo hành trình chữa lành (thiền, khí công, thiên nhiên), không gian lưu trú xanh và chương trình giáo dục nội tâm (Ruby Learn). Mỗi tour không chỉ là tham quan mà là trải nghiệm thay đổi nội tại."
-},
-{
-"q": "Hành trình của bạn có phù hợp cho ai? Tôi có nên tham gia nếu chưa biết thiền/khí công?",
-"short_answer": "Phù hợp cho người tìm sự tĩnh lặng, cặp đôi, nhóm trẻ tâm hồn trẻ, và người muốn phục hồi năng lượng. Người mới bắt đầu thiền/khí công được chào đón và có chương trình cơ bản hướng dẫn từng bước.",
-"long_answer": "Các chương trình được thiết kế đa tầng: gói cơ bản cho người mới (học thiền/khí công đơn giản), gói nâng cao cho người muốn trải nghiệm sâu, và gói riêng tư retreat cá nhân. Hướng dẫn viên/giảng viên của Ruby Wings sẽ dẫn từng bước, đảm bảo an toàn và lòng tin cho người mới."
-},
-{
-"q": "An toàn và y tế khi tham gia tour chữa lành / trekking như thế nào?",
-"short_answer": "Mọi tour có đánh giá rủi ro, hướng dẫn an toàn, nhân sự sơ cứu và bảo hiểm du lịch cơ bản. Trường hợp sức khỏe đặc biệt, khách báo trước để điều chỉnh dịch vụ.",
-"bullet_points": [
-"Yêu cầu cung cấp thông tin y tế trước 5–10 ngày khi cần",
-"Hướng dẫn an toàn suối/trekking, cung cấp mũ/thiết bị cơ bản",
-"Bảo hiểm du lịch theo chương trình; khuyến nghị mang thuốc cá nhân"
-]
-},
-{
-"q": "Ruby Wings có chính sách bảo vệ môi trường và hỗ trợ cộng đồng địa phương không?",
-"short_answer": "Có — du lịch xanh, hợp tác cộng đồng, giảm nhựa dùng một lần, và các chương trình bảo tồn/giáo dục địa phương.",
-"long_answer": "Chúng tôi phối hợp với cộng đồng bản địa (ăn uống, giao lưu văn hóa), tổ chức hoạt động trồng cây/giữ rừng, thúc đẩy homestay sinh thái và truyền thông về du lịch bền vững. Mọi tour đều khuyến khích thực hành 'không xả rác' và tôn trọng bản sắc địa phương."
-},
-{
-"q": "Chi phí, hủy/đổi tour và các gói dịch vụ như thế nào?",
-"short_answer": "Chi phí tùy gói (cơ bản / nâng cao / cao cấp); chính sách hủy được thông báo rõ trong hợp đồng—ưu tiên minh bạch và nhân văn.",
-"guidance": [
-"Cung cấp mức giá cơ bản và các khoản phụ thu rõ ràng",
-"Chính sách huỷ linh hoạt tuỳ gói; báo trước để giảm phí",
-"Có hỗ trợ điều chỉnh dịch vụ khi khách có lý do sức khỏe"
-]
-},
-{
-"q": "Tôi muốn tổ chức teambuilding / retreat cho công ty — Ruby Wings hỗ trợ thế nào?",
-"short_answer": "Ruby Wings thiết kế gói teambuilding/retreat theo mục tiêu — kết nối, chữa lành, rèn luyện năng lượng hoặc phát triển kỹ năng; có thể cá nhân hoá nội dung và địa điểm.",
-"long_answer": "Quy trình: (1) Xác định mục tiêu & số lượng, (2) Đề xuất chương trình & chi phí, (3) Tinh chỉnh theo nhu cầu (thiền, khí công, lửa trại văn hóa, workshop kỹ năng), (4) Triển khai & báo cáo sau hành trình."
-},
-{
-"q": "Tôi muốn tặng/đặt quà tinh thần, voucher cho người thân — có dịch vụ không?",
-"short_answer": "Có — Ruby Wings cung cấp voucher hành trình & quà tinh thần (cá nhân hoá theo nhu cầu).",
-"details": "Voucher phù hợp làm quà sinh nhật, tri ân, hoặc cho nhóm; có thể thêm gói tư vấn nội tâm, buổi 1:1 sau tour."
 }
-],
-"conversation_snippets_for_CSKH": [
-{
-"intent": "khách hỏi tổng quan",
-"script": "Cảm ơn Anh/Chị đã quan tâm Ruby Wings! Chúng tôi là hệ sinh thái du lịch chữa lành từ Huế — nơi kết hợp thiên nhiên, văn hóa bản địa và thực hành thiền/khí công. Anh/Chị muốn hành trình nhẹ nhàng 1 ngày, hay retreat nhiều ngày để phục hồi sâu hơn?"
-},
-{
-"intent": "khách băn khoăn về sức khỏe",
-"script": "Ruby Wings luôn ưu tiên an toàn: xin quý khách cho biết tình trạng sức khỏe, chúng tôi sẽ tư vấn gói phù hợp và điều chỉnh hoạt động để đảm bảo an toàn, thoải mái."
-},
-{
-"intent": "khách hỏi giá",
-"script": "Giá phụ thuộc vào gói & số lượng. Cho em xin ngày dự kiến và số khách — em gửi bảng giá tham khảo + gợi ý tối ưu chi phí nhé."
-}
-],
-"inspirational_messages": [
-"“Thở sâu. Sống chậm. Trở về với chính mình” — mỗi hành trình Ruby Wings là một cơ hội để tái tạo nội lực.",
-"“Không phải bạn đi để trốn, mà bạn đi để trở về — trở về một phiên bản sâu sắc và an yên hơn.”",
-"Lời mời ngắn cho landing page: “Hãy để Ruby Wings chắp cánh cho trái tim bạn — một hành trình có chiều sâu, chữa lành và kết nối.”"
-],
-"itinerary_highlights_snippets": {
-"hero_lines": [
-"Tri ân lịch sử — chữa lành tự nhiên — kết nối cộng đồng.",
-"Từ Thanh âm cồng chiêng bên lửa trại đến bình minh trên mặt hồ phong hương — mỗi khoảnh khắc là một phép nhân cảm xúc."
-],
-"short_cards": [
-{
-"title": "Hành trình Phong Hương — 2N1Đ",
-"line": "Tri ân Thành cổ → rừng phong hương → du thuyền chữa lành."
-},
-{
-"title": "Tà Puồng & Fam Koi — 2N1Đ",
-"line": "Tắm thác hoang sơ, lửa trại văn hóa, homestay mộc mạc."
-},
-{
-"title": "Suối Ozo — 3N2Đ (cặp đôi)",
-"line": "Lều bungalow, sàn gỗ 999m, chèo sông Son — retreat lãng mạn."
-}
-]
-},
-"conversion_tactics_and_CTAs": {
-"homepage_CTA": "Đặt chỗ ngay — nhận tư vấn miễn phí + checklist chuẩn bị trước chuyến đi",
-"limited_offer": "Ưu đãi nhóm: Giảm giá khi đặt trước 30 ngày + 1 suất miễn phí cho nhóm trưởng",
-"micro_commitments": [
-"Đăng ký nhận brochure 1 trang (miễn phí)",
-"Đặt cọc nhẹ để giữ chỗ — thanh toán phần còn lại trước ngày khởi hành",
-"Đăng ký buổi tư vấn 15 phút miễn phí với hướng dẫn viên để cá nhân hoá hành trình"
-]
-},
-"safety_and_health_guidelines": {
-"pre_trip": [
-"Thu thập thông tin y tế tối thiểu 5 ngày trước khởi hành",
-"Khuyến nghị: mang thuốc cá nhân, kem chống nắng, đồ bơi, giày mềm"
-],
-"during_trip": [
-"Hướng dẫn an toàn suối/trekking, người dẫn đường có sơ cứu cơ bản",
-"Giờ nghỉ hợp lý, không ép lịch trình, tôn trọng nhịp cơ thể"
-],
-"covid_policies": "Cập nhật theo quy định y tế địa phương; khuyến nghị khách có triệu chứng ho/ sốt hoãn chuyến"
-},
-"sustainability_and_community_playbook": {
-"principles": [
-"Không xả rác — tuân thủ nguyên tắc 'leave no trace'",
-"Ưu tiên dịch vụ & sản phẩm của cộng đồng địa phương",
-"Hạn chế nhựa, khuyến khích tái sử dụng và phân loại rác"
-],
-"community_actions": [
-"Tổ chức workshop nhỏ cho dân bản (làm bánh, nghề thủ công)",
-"Phần trăm lợi nhuận cho quỹ cộng đồng địa phương theo dự án cụ thể",
-"Hoạt động trồng cây hoặc dọn rác sau tour"
-]
-},
-"pricing_guidance_for_CSKH": {
-"approach": "Giá minh bạch theo gói: Cơ bản — Nâng cao — Cao cấp; phụ thu cho hoạt động option; chính sách hủy nhân văn.",
-"scripts": [
-"Nếu khách cần rẻ: đề xuất giảm dịch vụ option (ví dụ: chuyển từ bungalow riêng sang homestay cộng đồng).",
-"Nếu khách muốn cao cấp: gợi ý gói private + quà tinh thần + tư vấn 1:1 sau tour."
-]
-},
-"booking_flow_recommendation": {
-"steps": [
-"1. Tiếp nhận nhu cầu qua form/ hotline/ zalo.",
-"2. Tư vấn nhanh 10–15 phút, xác định gói, ngày, số lượng, điều kiện sức khỏe.",
-"3. Gửi proposal & hợp đồng tóm tắt (kèm checklist chuẩn bị).",
-"4. Xác nhận đặt cọc, gửi thông tin chi tiết (họ tên, năm sinh, CCCD) trước 5–10 ngày.",
-"5. Thực hiện tour — thu thập feedback — gửi slideshow kỷ niệm + khảo sát hài lòng."
-],
-"automations": [
-"Email tự động: xác nhận đặt cọc, nhắc hồ sơ trước 7 ngày, checklist 3 ngày trước",
-"Sau tour: gửi album + lời cảm ơn + mã ưu đãi cho lần sau"
-]
-},
-"customization_options": [
-"Tùy theo mục tiêu: tri ân - chữa lành - teambuilding - celebration (20/10)",
-"Độ dài: 1D/2D/3D/6D; mức năng lượng: nhẹ — cân bằng — chuyên sâu",
-"Hoạt động bổ sung: workshop kỹ năng, 1:1 coaching, massage dưỡng sinh, gói dinh dưỡng đặc chế"
-],
-"testimonials_and_social_proof_playbook": {
-"ask_for_review": "Gửi form khảo sát 24–48h sau tour, yêu cầu 1 đoạn 1–2 câu cảm xúc và 3 ảnh kỷ niệm",
-"use_cases": [
-"Đăng story ngắn của khách (được phép) + trích dẫn cảm xúc",
-"Tạo video 60–90s: 'trước - trong - sau' hành trình (chữa lành)",
-"Ghi danh sách 'Câu chuyện hồi sinh' để làm landing page cảm xúc"
-]
-},
-"staff_training_quick_topics": [
-"Cách trả lời 3 câu hỏi khó thường gặp (sức khỏe, giá, hủy đổi)",
-"Kỹ năng bán hàng truyền cảm hứng: kể câu chuyện nguồn gốc người sáng lập",
-"Thực hành 5 phút 'tĩnh tâm' trước mỗi buổi tư vấn",
-"Quy trình an toàn & báo cáo sự cố"
-],
-"templates_snippets_for_marketing": {
-"email_subjects": [
-"Tái tạo năng lượng: Hành trình 2 ngày giữa rừng Bạch Mã",
-"Quà 20/10: Dòng chảy yêu thương — Hành trình tri ân Phụ nữ"
-],
-"hero_texts": [
-"Ruby Wings — Hành trình của chiều sâu cảm xúc. Chắp cánh cho trái tim bạn.",
-"Thở sâu, sống chậm, trở về với chính mình — đặt chỗ ngay hôm nay."
-],
-"short_social_posts": [
-"Một ngày giữa rừng Bạch Mã — Đã đến lúc dừng lại và thở.",
-"Tà Puồng: nước lạnh, lửa ấm, câu chuyện bản làng — book ngay nhóm bạn."
-]
-},
-"KPIs_and_FEEDBACK_loop": {
-"kpis": [
-"Tỉ lệ chuyển đổi lead → đặt cọc",
-"Điểm hài lòng khách (CSAT) sau tour",
-"Tỉ lệ khách quay lại/giới thiệu",
-"Số sáng kiến nội bộ được áp dụng mỗi quý"
-],
-"feedback_process": "Thu thập feedback ngay sau tour, họp debrief nội bộ 48–72h, điều chỉnh SOP/ chương trình nếu cần."
-},
-"final_note_for_CSKH_and_TEAM": {
-"instructions": "Sử dụng JSON này làm 'bản đồ trả lời' khi tương tác khách. Khi khách hỏi, mở mục 'predicted_questions' tìm câu gần nhất rồi dùng 'short_answer' trước, sau đó tùy phản hồi khách mà mở 'long_answer' hoặc 'itinerary_highlights_snippets'. Luôn khép lại bằng lời mời hành động (CTA) nhẹ nhàng: 'Bạn muốn em giữ chỗ giúp? Hay em gửi proposal chi tiết ngay?'"
-}
-}, 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

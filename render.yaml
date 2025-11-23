@@ -3,21 +3,23 @@ services:
     name: ruby-wings-chatbot
     env: python
     plan: free
-    buildCommand: "pip install -r requirements.txt"
+    # Cài nhanh, tránh cache không cần thiết
+    buildCommand: "pip install --no-cache-dir -r requirements.txt"
+    # Gunicorn khuyến nghị: workers = max(2, cpu_count * 2 + 1) — giữ 2 worker cho free tier
     startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
-
+    # Tùy chỉnh biến môi trường (KHÔNG ghi key thật ở đây)
     envVars:
       - key: OPENAI_API_KEY
-        sync: false   # bạn nhập trực tiếp trên Render
+        value: "<PASTE_OPENAI_KEY_HERE_IN_RENDER_ENV>"
       - key: OPENAI_BASE_URL
         value: "https://api.openai.com/v1"
-
-      # Nếu bạn dùng FAISS để load embedding từ file:
-      - key: KNOWLEDGE_PATH
-        value: "knowledge.json"
-
-      # Nếu embedding được lưu thành .faiss + .json
-      - key: FAISS_INDEX_PATH
-        value: "faiss_index.bin"
-      - key: FAISS_MAPPING_PATH
-        value: "faiss_mapping.json"
+      - key: FAISS_ENABLED
+        value: "true"
+      - key: FLASK_ENV
+        value: "production"
+    # Health check để Render biết service ổn định
+    healthCheckPath: "/"
+    # Tùy chọn để giữ logs chi tiết hơn
+    disk:
+      # giữ mặc định (Render quản lý). Nếu cần persistent storage, cấu hình ở đây.
+      sizeGb: 1
