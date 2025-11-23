@@ -5,8 +5,19 @@ services:
     plan: free
     buildCommand: "pip install -r requirements.txt"
     startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
+
     envVars:
       - key: OPENAI_API_KEY
-        value: "<PASTE_OPENAI_KEY_HERE>"
+        sync: false   # bạn nhập trực tiếp trên Render
       - key: OPENAI_BASE_URL
         value: "https://api.openai.com/v1"
+
+      # Nếu bạn dùng FAISS để load embedding từ file:
+      - key: KNOWLEDGE_PATH
+        value: "knowledge.json"
+
+      # Nếu embedding được lưu thành .faiss + .json
+      - key: FAISS_INDEX_PATH
+        value: "faiss_index.bin"
+      - key: FAISS_MAPPING_PATH
+        value: "faiss_mapping.json"

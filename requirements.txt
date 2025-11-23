@@ -2,3 +2,9 @@ flask==2.3.3
 flask-cors==4.0.0
 requests==2.31.0
 gunicorn==21.2.0
+
+# FAISS CPU (ổn định, tương thích Render)
+faiss-cpu==1.7.4
+
+# Xử lý embedding & mảng
+numpy==1.26.4
