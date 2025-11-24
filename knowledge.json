@@ -1426,8 +1426,9 @@
       "activity": "Trở về Huế",
       "note": "Kết thúc hành trình – đầy xúc cảm và bình yên"
     }
-  ],
-  "price_info": {
-    "note": "Giá từ 500.000 đến 1.2 triệu tùy theo nhu cầu nhóm, thực đơn và loại xe; thêm vào khi có dữ liệu đầy đủ."
+      ],
+    "price_info": {
+      "note": "Giá từ 500.000 đến 1.2 triệu tùy theo nhu cầu nhóm, thực đơn và loại xe; thêm vào khi có dữ liệu đầy đủ."
+    }
   }
-}
+]
