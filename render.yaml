@@ -6,9 +6,6 @@ services:
     buildCommand: "pip install --no-cache-dir -r requirements.txt"
     startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
     envVars:
-      - key: OPENAI_API_KEY
-        # Put your OpenAI key in Render's Environment settings (do NOT commit to repo)
-        value: "<PASTE_OPENAI_KEY_HERE_IN_RENDER_ENV>"
       - key: OPENAI_BASE_URL
         value: "https://api.openai.com/v1"
       - key: FAISS_ENABLED
@@ -16,7 +13,12 @@ services:
       - key: FLASK_ENV
         value: "production"
       - key: RBW_ALLOW_REINDEX
+        # Keep reindex protected by header by default (0). If you want reindex via env, set to "1".
         value: "0"
+      - key: KNOWLEDGE_PATH
+        value: "knowledge.json"
+      - key: FALLBACK_VECTORS_PATH
+        value: "vectors.npz"
     healthCheckPath: "/"
     disk:
       sizeGb: 1

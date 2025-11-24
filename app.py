@@ -1,4 +1,4 @@
-# app.py
+# app.py (patched)
 import os
 import json
 import time
@@ -11,8 +11,17 @@ from typing import List, Tuple
 from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
 import openai
-import faiss
 import numpy as np
+
+# Try to import faiss; if unavailable, we'll use a numpy fallback
+HAS_FAISS = False
+FAISS_IMPORT_ERROR = None
+try:
+    import faiss  # type: ignore
+    HAS_FAISS = True
+except Exception as e:
+    FAISS_IMPORT_ERROR = str(e)
+    HAS_FAISS = False
 
 # ---------- Logging ----------
 logging.basicConfig(level=logging.INFO)
@@ -24,19 +33,25 @@ OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1")
 KNOWLEDGE_PATH = os.environ.get("KNOWLEDGE_PATH", "knowledge.json")
 FAISS_INDEX_PATH = os.environ.get("FAISS_INDEX_PATH", "faiss_index.bin")
 FAISS_MAPPING_PATH = os.environ.get("FAISS_MAPPING_PATH", "faiss_mapping.json")
+FALLBACK_VECTORS_PATH = os.environ.get("FALLBACK_VECTORS_PATH", "vectors.npz")
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")  # 1536-dim
 CHAT_MODEL = os.environ.get("CHAT_MODEL", "gpt-4o-mini")
 TOP_K = int(os.environ.get("TOP_K", "5"))
+# Allow toggling FAISS via env var (useful on platforms lacking faiss wheels)
+FAISS_ENABLED_ENV = os.environ.get("FAISS_ENABLED", "true").lower() in ("1", "true", "yes")
 
 if OPENAI_API_KEY:
     openai.api_key = OPENAI_API_KEY
     try:
-        # set custom base if provided (some SDK versions accept this)
         openai.api_base = OPENAI_BASE_URL
     except Exception:
+        # older sdk might ignore this
         pass
 else:
     logger.warning("OPENAI_API_KEY is missing. Running in limited mode (local fallback embeddings).")
+
+if not HAS_FAISS and FAISS_ENABLED_ENV:
+    logger.warning("FAISS not available (%s). Falling back to numpy index. Set FAISS_ENABLED=0 to silence.", FAISS_IMPORT_ERROR)
 
 # ---------- Flask ----------
 app = Flask(__name__)
@@ -48,7 +63,75 @@ FLATTENED_TEXTS: List[str] = []
 # mapping: list of {"path":..., "text":...}
 MAPPING: List[dict] = []
 INDEX_LOCK = threading.Lock()
-FAISS_INDEX = None  # faiss index instance
+# Index handle: may be faiss index or our NumpyFallbackIndex instance
+INDEX = None
+
+# ---------- Simple numpy fallback index ----------
+class NumpyFallbackIndex:
+    """
+    Simple cosine-similarity index stored in memory.
+    Keeps matrix (n,d) float32 and supports add and search.
+    Persists to .npz (vectors + ids).
+    """
+    def __init__(self, mat: np.ndarray = None):
+        self.mat = mat.astype("float32") if (mat is not None and mat.size>0) else np.empty((0,0), dtype="float32")
+        if self.mat.size == 0:
+            self.dim = None
+        else:
+            self.dim = self.mat.shape[1]
+        self._ntotal = 0 if self.mat.size==0 else self.mat.shape[0]
+
+    def add(self, mat: np.ndarray):
+        if mat is None or mat.size == 0:
+            return
+        mat = mat.astype("float32")
+        if self.mat.size == 0:
+            self.mat = mat.copy()
+            self.dim = mat.shape[1]
+        else:
+            if mat.shape[1] != self.dim:
+                raise ValueError("Dimension mismatch in fallback index")
+            self.mat = np.vstack([self.mat, mat])
+        self._ntotal = self.mat.shape[0]
+
+    def search(self, qvec: np.ndarray, k: int):
+        # qvec: (1,d)
+        if self.mat is None or self.mat.size == 0:
+            return np.array([[]], dtype="float32"), np.array([[]], dtype="int64")
+        # normalize
+        q = qvec.astype("float32")
+        q_norm = np.linalg.norm(q, axis=1, keepdims=True)
+        q = q / (q_norm + 1e-12)
+        mat_norm = np.linalg.norm(self.mat, axis=1, keepdims=True)
+        mat_normed = self.mat / (mat_norm + 1e-12)
+        sims = np.dot(q, mat_normed.T)  # (1, n)
+        # argsort descending
+        idx = np.argsort(-sims, axis=1)[:, :k]
+        # gather scores and indices, pad if needed
+        k_found = idx.shape[1]
+        scores = np.take_along_axis(sims, idx, axis=1)
+        return scores.astype("float32"), idx.astype("int64")
+
+    @property
+    def ntotal(self):
+        return 0 if self.mat is None or self.mat.size==0 else self.mat.shape[0]
+
+    def save(self, path):
+        try:
+            np.savez_compressed(path, mat=self.mat)
+            logger.info("✅ Saved fallback vectors to %s", path)
+        except Exception:
+            logger.exception("Failed saving fallback vectors to %s", path)
+
+    @classmethod
+    def load(cls, path):
+        try:
+            arr = np.load(path)
+            mat = arr["mat"]
+            return cls(mat=mat)
+        except Exception:
+            logger.exception("Failed loading fallback vectors from %s", path)
+            return cls(None)
 
 # ---------- Utilities ----------
 def load_knowledge(path=KNOWLEDGE_PATH):
@@ -59,7 +142,7 @@ def load_knowledge(path=KNOWLEDGE_PATH):
     try:
         with open(path, "r", encoding="utf-8") as f:
             KNOWLEDGE = json.load(f)
-    except Exception as e:
+    except Exception:
         logger.exception("Could not open knowledge.json; continuing with empty knowledge.")
         KNOWLEDGE = {}
 
@@ -75,7 +158,6 @@ def load_knowledge(path=KNOWLEDGE_PATH):
                 scan(v, f"{prefix}[{i}]")
         elif isinstance(obj, str):
             text = obj.strip()
-            # filter tiny strings; store moderately sized passages
             if len(text) >= 20:
                 FLATTENED_TEXTS.append(text)
                 MAPPING.append({"path": prefix, "text": text})
@@ -97,7 +179,6 @@ def load_mapping(path=FAISS_MAPPING_PATH):
     try:
         with open(path, "r", encoding="utf-8") as f:
             MAPPING = json.load(f)
-        # rebuild FLATTENED_TEXTS from mapping if possible
         FLATTENED_TEXTS = [m.get("text", "") for m in MAPPING]
         logger.info("✅ Loaded mapping (%d entries).", len(MAPPING))
     except Exception:
@@ -121,10 +202,8 @@ def embed_text(text: str) -> Tuple[List[float], int]:
             # Preferred modern call: openai.Embeddings.create
             try:
                 resp = openai.Embeddings.create(model=EMBEDDING_MODEL, input=short)
-            except Exception as e1:
-                # try older style
+            except Exception:
                 resp = openai.Embedding.create(model=EMBEDDING_MODEL, input=short)
-            # Extract embedding robustly
             emb = None
             if isinstance(resp, dict) and "data" in resp and len(resp["data"]) > 0:
                 emb = resp["data"][0].get("embedding") or resp["data"][0].get("vector")
@@ -145,30 +224,43 @@ def embed_text(text: str) -> Tuple[List[float], int]:
         logger.exception("Fallback embedding generation failed")
         return [], 0
 
-def build_faiss_index(force_rebuild=False):
+# ---------- Index management ----------
+def build_index(force_rebuild=False):
     """
-    Build or load FAISS index. Persists index and mapping.
+    Build or load index. If FAISS enabled and available, use faiss IndexFlatIP,
+    otherwise use NumpyFallbackIndex.
     Returns True when index available.
     """
-    global FAISS_INDEX, MAPPING, FLATTENED_TEXTS
+    global INDEX, MAPPING, FLATTENED_TEXTS
     with INDEX_LOCK:
-        # attempt load if exists and not forcing
-        if not force_rebuild and os.path.exists(FAISS_INDEX_PATH) and os.path.exists(FAISS_MAPPING_PATH):
-            try:
-                idx = faiss.read_index(FAISS_INDEX_PATH)
-                load_mapping(FAISS_MAPPING_PATH)
-                FAISS_INDEX = idx
-                logger.info("✅ FAISS index loaded from disk.")
-                return True
-            except Exception:
-                logger.exception("Failed to load existing FAISS index; will rebuild.")
+        use_faiss = FAISS_ENABLED_ENV and HAS_FAISS
+        # Try loading persisted structures first
+        if not force_rebuild:
+            if use_faiss and os.path.exists(FAISS_INDEX_PATH) and os.path.exists(FAISS_MAPPING_PATH):
+                try:
+                    idx = faiss.read_index(FAISS_INDEX_PATH)
+                    load_mapping(FAISS_MAPPING_PATH)
+                    INDEX = idx
+                    logger.info("✅ FAISS index loaded from disk.")
+                    return True
+                except Exception:
+                    logger.exception("Failed to load existing FAISS index; will rebuild.")
+            elif (not use_faiss) and os.path.exists(FALLBACK_VECTORS_PATH) and os.path.exists(FAISS_MAPPING_PATH):
+                try:
+                    idx = NumpyFallbackIndex.load(FALLBACK_VECTORS_PATH)
+                    load_mapping(FAISS_MAPPING_PATH)
+                    INDEX = idx
+                    logger.info("✅ Fallback numpy index loaded from disk.")
+                    return True
+                except Exception:
+                    logger.exception("Failed to load existing fallback index; will rebuild.")
 
         if not FLATTENED_TEXTS:
             logger.warning("No flattened texts to index (build aborted).")
-            FAISS_INDEX = None
+            INDEX = None
             return False
 
-        logger.info("🔧 Building FAISS index for %d passages...", len(FLATTENED_TEXTS))
+        logger.info("🔧 Building index for %d passages... (faiss=%s)", len(FLATTENED_TEXTS), use_faiss)
         vectors = []
         dims = None
         for text in FLATTENED_TEXTS:
@@ -179,50 +271,68 @@ def build_faiss_index(force_rebuild=False):
                 dims = d
             vectors.append(np.array(emb, dtype="float32"))
         if not vectors or dims is None:
-            logger.warning("No vectors produced; FAISS build aborted.")
-            FAISS_INDEX = None
-            return False
-        try:
-            mat = np.vstack(vectors)
-            faiss.normalize_L2(mat)
-            index = faiss.IndexFlatIP(dims)
-            index.add(mat)
-            FAISS_INDEX = index
-            # save index and mapping
-            try:
-                faiss.write_index(FAISS_INDEX, FAISS_INDEX_PATH)
-                save_mapping()
-            except Exception:
-                logger.exception("Failed to persist FAISS index or mapping")
-            logger.info("✅ FAISS index built (dims=%d, n=%d).", dims, index.ntotal)
-            return True
-        except Exception:
-            logger.exception("Error while building FAISS index")
-            FAISS_INDEX = None
+            logger.warning("No vectors produced; index build aborted.")
+            INDEX = None
             return False
 
-def query_faiss(query: str, top_k=TOP_K) -> List[Tuple[float, dict]]:
+        try:
+            mat = np.vstack(vectors).astype("float32")
+            # normalize rows
+            row_norms = np.linalg.norm(mat, axis=1, keepdims=True)
+            mat = mat / (row_norms + 1e-12)
+
+            if use_faiss:
+                index = faiss.IndexFlatIP(dims)
+                index.add(mat)
+                INDEX = index
+                try:
+                    faiss.write_index(INDEX, FAISS_INDEX_PATH)
+                    save_mapping()
+                except Exception:
+                    logger.exception("Failed to persist FAISS index or mapping")
+                logger.info("✅ FAISS index built (dims=%d, n=%d).", dims, index.ntotal)
+                return True
+            else:
+                idx = NumpyFallbackIndex(mat)
+                INDEX = idx
+                try:
+                    idx.save(FALLBACK_VECTORS_PATH)
+                    save_mapping()
+                except Exception:
+                    logger.exception("Failed to persist fallback vectors or mapping")
+                logger.info("✅ Numpy fallback index built (dims=%d, n=%d).", dims, idx.ntotal)
+                return True
+        except Exception:
+            logger.exception("Error while building index")
+            INDEX = None
+            return False
+
+def query_index(query: str, top_k=TOP_K) -> List[Tuple[float, dict]]:
     """
-    Query FAISS and return list of (score, mapping_entry).
+    Query the current index and return list of (score, mapping_entry).
     If index not ready, attempt lazy build once.
     """
-    global FAISS_INDEX, MAPPING
+    global INDEX, MAPPING
     if not query:
         return []
-    if FAISS_INDEX is None:
-        built = build_faiss_index(force_rebuild=False)
-        if not built or FAISS_INDEX is None:
-            logger.warning("FAISS index not available; returning empty search results")
+    if INDEX is None:
+        built = build_index(force_rebuild=False)
+        if not built or INDEX is None:
+            logger.warning("Index not available; returning empty search results")
             return []
     emb, d = embed_text(query)
     if not emb:
         return []
     try:
         vec = np.array(emb, dtype="float32").reshape(1, -1)
-        faiss.normalize_L2(vec)
-        D, I = FAISS_INDEX.search(vec, top_k)
+        # normalize
+        vec = vec / (np.linalg.norm(vec, axis=1, keepdims=True) + 1e-12)
+        if HAS_FAISS and FAISS_ENABLED_ENV and isinstance(INDEX, type(faiss.IndexFlatIP(1))):
+            D, I = INDEX.search(vec, top_k)
+        else:
+            D, I = INDEX.search(vec, top_k)
     except Exception:
-        logger.exception("Error querying FAISS index")
+        logger.exception("Error querying index")
         return []
     results = []
     for score, idx in zip(D[0].tolist(), I[0].tolist()):
@@ -250,9 +360,11 @@ def compose_system_prompt(top_passages: List[Tuple[float, dict]]) -> str:
 def home():
     return jsonify({
         "status": "ok",
-        "message": "Ruby Wings FAISS backend running.",
+        "message": "Ruby Wings index backend running.",
         "knowledge_count": len(FLATTENED_TEXTS),
-        "faiss_exists": FAISS_INDEX is not None
+        "index_exists": INDEX is not None,
+        "faiss_available": HAS_FAISS,
+        "faiss_enabled_env": FAISS_ENABLED_ENV
     })
 
 @app.route("/reindex", methods=["POST"])
@@ -262,7 +374,7 @@ def reindex():
         if not secret and os.environ.get("RBW_ALLOW_REINDEX", "") != "1":
             return jsonify({"error": "reindex not allowed (set RBW_ALLOW_REINDEX=1 or provide X-RBW-ADMIN)"}), 403
         load_knowledge(KNOWLEDGE_PATH)
-        ok = build_faiss_index(force_rebuild=True)
+        ok = build_index(force_rebuild=True)
         return jsonify({"ok": ok, "count": len(FLATTENED_TEXTS)})
     except Exception as e:
         logger.exception("Unhandled error in /reindex")
@@ -280,16 +392,17 @@ def chat():
         if not user_message:
             return jsonify({"reply": "Bạn chưa nhập câu hỏi."})
         top_k = int(data.get("top_k", TOP_K))
-        top = query_faiss(user_message, top_k)
+        top = query_index(user_message, top_k)
         system_prompt = compose_system_prompt(top)
         messages = [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_message}
         ]
 
-        logger.info("CHAT: model=%s top_k=%d faiss_hits=%d", CHAT_MODEL, top_k, len(top))
+        logger.info("CHAT: model=%s top_k=%d hits=%d", CHAT_MODEL, top_k, len(top))
 
         # Try to call OpenAI chat; handle SDK variations
+        resp = None
         if OPENAI_API_KEY:
             try:
                 resp = openai.ChatCompletion.create(
@@ -302,7 +415,6 @@ def chat():
             except Exception as e1:
                 logger.warning("ChatCompletion.create failed, trying alternate patterns: %s", e1)
                 try:
-                    # new-style
                     if hasattr(openai, "chat") and hasattr(openai.chat, "completions"):
                         resp = openai.chat.completions.create(model=CHAT_MODEL, messages=messages, stream=False)
                     else:
@@ -310,13 +422,10 @@ def chat():
                 except Exception as e2:
                     logger.exception("All OpenAI chat attempts failed")
                     return jsonify({"error": "OpenAI chat request failed", "detail": str(e2)}), 500
-        else:
-            resp = None
 
-        # If no OpenAI response (no key or API failed), fall back to simple rule-based answer using top passages
+        # If no OpenAI response (no key or API failed), fall back to rule-based
         if not resp:
             if top:
-                # return concatenated top passages as answer
                 snippets = "\n\n".join([f"- {m.get('text')}" for _, m in top[:5]])
                 reply = f"Tôi tìm thấy thông tin nội bộ liên quan:\n\n{snippets}\n\nNếu bạn cần trích dẫn hoặc chi tiết, hãy hỏi cụ thể phần nào."
             else:
@@ -339,7 +448,6 @@ def chat():
                 else:
                     content = str(resp)
             else:
-                # object-like
                 choices = getattr(resp, "choices", None)
                 if choices and len(choices) > 0:
                     first = choices[0]
@@ -370,7 +478,7 @@ def stream():
         if not user_message:
             return jsonify({"error": "empty message"}), 400
         top_k = int(data.get("top_k", TOP_K))
-        top = query_faiss(user_message, top_k)
+        top = query_index(user_message, top_k)
         system_prompt = compose_system_prompt(top)
         messages = [
             {"role": "system", "content": system_prompt},
@@ -412,7 +520,6 @@ def stream():
                                 if content:
                                     yield f"data: {json.dumps({'delta': content})}\n\n"
                         else:
-                            # object-like
                             choices = getattr(chunk, "choices", None)
                             if choices and len(choices) > 0:
                                 delta = getattr(choices[0], "delta", None)
@@ -441,17 +548,26 @@ if __name__ == "__main__":
         # try loading existing mapping/index
         if os.path.exists(FAISS_MAPPING_PATH):
             load_mapping(FAISS_MAPPING_PATH)
-        if os.path.exists(FAISS_INDEX_PATH):
+        # if faiss present & enabled, try to load faiss index; else try fallback vectors
+        if FAISS_ENABLED_ENV and HAS_FAISS and os.path.exists(FAISS_INDEX_PATH):
             try:
-                FAISS_INDEX = faiss.read_index(FAISS_INDEX_PATH)
+                INDEX = faiss.read_index(FAISS_INDEX_PATH)
                 logger.info("✅ FAISS index loaded at startup.")
             except Exception:
                 logger.exception("Failed to load FAISS index at startup; will attempt rebuild in background.")
-                t = threading.Thread(target=build_faiss_index, kwargs={"force_rebuild": True}, daemon=True)
+                t = threading.Thread(target=build_index, kwargs={"force_rebuild": True}, daemon=True)
+                t.start()
+        elif (not FAISS_ENABLED_ENV or not HAS_FAISS) and os.path.exists(FALLBACK_VECTORS_PATH):
+            try:
+                INDEX = NumpyFallbackIndex.load(FALLBACK_VECTORS_PATH)
+                logger.info("✅ Fallback numpy index loaded at startup.")
+            except Exception:
+                logger.exception("Failed to load fallback index at startup; will attempt rebuild in background.")
+                t = threading.Thread(target=build_index, kwargs={"force_rebuild": True}, daemon=True)
                 t.start()
         else:
-            # build in background
-            t = threading.Thread(target=build_faiss_index, kwargs={"force_rebuild": False}, daemon=True)
+            # build in background if knowledge exists
+            t = threading.Thread(target=build_index, kwargs={"force_rebuild": False}, daemon=True)
             t.start()
     except Exception:
         logger.exception("Startup error")
