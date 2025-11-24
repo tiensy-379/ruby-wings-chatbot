@@ -1345,5 +1345,110 @@
   "price_info": {
     "note": "Giá từ 500.000 đến 1.200.000 tùy theo nhu cầu nhóm, thực đơn và loại xe; cập nhật khi có dữ liệu đầy đủ."
   }
+},
+{
+  "company": {
+    "id": "ruby_wings_travel",
+    "name": "Công ty Ruby Wings Travel",
+    "slogan": "Bay lên từ bên trong",
+    "tagline": "Hành trình của chiều sâu cảm xúc, nơi bạn không chỉ đến một nơi, mà còn có thể được trở về với chính mình.",
+    "mst": "3301743759",
+    "address": "148 Trương Gia Mô, Vỹ Dạ, TP. Huế",
+    "contact": {
+      "zalo": "0332510486 (Zalo Ruby Wings)",
+      "hotline": "0332510586 (WhatsApp/Zalo)",
+      "email": "rubywingslsa@gmail.com"
+    },
+    "community": {
+      "description": "Tham gia cộng đồng Ruby Wings để nhận những thông tin mới nhất, chia sẻ trải nghiệm và lan tỏa những thông điệp tốt đẹp."
+    }
+  },
+
+  "founder_story": {
+    "director": "Giám đốc Lương Tiến Sỹ",
+    "tagline": "Trưởng thành trong Quân đội – nghị lực – vượt khó – và một chương đặc biệt của cuộc đời.",
+    "life_event": "Năm 2015, người sáng lập Ruby Wings đối diện với cú sốc lớn: bệnh tật bất ngờ, cơ thể chỉ còn hơn 40kg, những đêm dài trong bệnh viện và các chẩn đoán mơ hồ như 'viêm không đặc hiệu', 'bệnh tự miễn'.",
+    "healing_journey": "Trong tuyệt vọng, anh tìm đến thiền, khí công, cách thở, cách lắng nghe cơ thể, nuôi dưỡng tâm trí. Nhờ sự kỷ luật và kiên trì, anh hồi phục không chỉ thể chất mà cả tinh thần.",
+    "awakening": "Trải qua biến cố, anh tự hỏi: 'Có thể nào biến những trải nghiệm hồi sinh này thành một hành trình để lan toả đến mọi người?'. Câu hỏi đó trở thành mầm ý tưởng của Ruby Wings."
+  },
+
+  "logo_philosophy": {
+    "description": "Logo Ruby Wings là tấm bản đồ thu nhỏ của triết lý sống sâu sắc.",
+    "meaning": [
+      "Bốn cánh xanh lá tượng trưng cho Thân – Tâm – Thiên nhiên – Niềm tin.",
+      "Trong hệ sinh thái thương hiệu, bốn cánh tượng trưng Ruby Wings (du lịch chữa lành), Ruby Learn (phát triển nội tâm), Ruby Auto (di chuyển cân bằng), Ruby Stay (nghỉ dưỡng xanh).",
+      "Tâm điểm logo là viên ruby hồng, biểu tượng của trái tim – nơi con người được khai mở, chữa lành, cân bằng và nuôi dưỡng.",
+      "Vòng tròn hồng tươi bao quanh tạo cảm giác kết nối, trọn vẹn và tái sinh."
+    ],
+    "colors": [
+      "Hồng tươi: tình yêu thương, niềm vui, sự chữa lành.",
+      "Xanh lá: sự sống, hy vọng, phát triển bền vững."
+    ]
+  },
+
+  "ecosystem": {
+    "vision": "Hệ sinh thái sống – không chỉ là công ty du lịch.",
+    "origin": "Ruby Wings khởi đầu ở Huế – mảnh đất của trầm mặc, ký ức và di sản.",
+    "values": [
+      "Mỗi hành trình là cơ hội chữa lành và kết nối.",
+      "Không gian nghỉ dưỡng cảm xúc – tái tạo và phục hồi.",
+      "Nuôi dưỡng phát triển nội tâm bằng trải nghiệm."
+    ],
+    "why": "Ngày càng nhiều bạn trẻ kiệt sức, mất kết nối với chính mình. Ruby Wings ra đời không chỉ để tổ chức tour, mà để đồng hành chữa lành."
+  },
+
+  "development_history": {
+    "question": "Liệu có thể tạo ra một mô hình du lịch vừa sống được – vừa đẹp – vừa có ích cho cộng đồng không?",
+    "early_days": [
+      "Khảo sát địa bàn: Hướng Hóa – Đakrông – Quảng Bình – Hội An – Bắc – Nam.",
+      "Kết nối cộng đồng bản địa – lắng nghe câu chuyện, hiểu văn hóa, tìm phương pháp đồng hành.",
+      "Xây dựng triết lý sống, quy chế nội bộ, hệ điều hành nhân sự trước cả khi có sản phẩm.",
+      "Giai đoạn 2024–2025 được gọi là thời kỳ 'gieo hạt' – gieo tư duy mới về du lịch tử tế."
+    ]
+  },
+
+  "philosophy": {
+    "life_view": [
+      "Du lịch không chỉ để đi, mà để cân bằng – chữa lành – kết nối – làm mới bản thân.",
+      "Mỗi chuyến đi mở ra một cánh cửa nội tâm – tìm thấy điều gì đó từ bên trong.",
+      "Doanh nghiệp không chỉ để kiếm lợi nhuận, mà để lan tỏa tử tế.",
+      "Triết lý sáng lập: Con người hôm nay cần hành trình có cảm xúc, có giá trị thật, có sự kết nối thật."
+    ],
+    "future": "Ruby Wings không chỉ là câu chuyện chữa lành của một cá nhân, mà là hành trình tập thể – của đội ngũ, cộng sự và du khách."
+  },
+
+  "sample_questions": [
+    "Ruby Wings là công ty gì?",
+    "Triết lý sống của Ruby Wings là gì?",
+    "Câu chuyện người sáng lập Ruby Wings?",
+    "Ruby Wings hoạt động ở lĩnh vực nào?",
+    "Logo Ruby Wings có ý nghĩa gì?",
+    "Slogan và khẩu hiệu của Ruby Wings là gì?",
+    "Tại sao Ruby Wings hướng đến du lịch chữa lành?",
+    "Hệ sinh thái Ruby gồm những mảng nào?",
+    "Tinh thần 'gieo hạt' của Ruby Wings là gì?",
+    "Vì sao nói Ruby Wings là hệ sinh thái sống, không chỉ là công ty du lịch?"
+  ],
+
+  "keywords": [
+    "du lịch chữa lành",
+    "retreat",
+    "thiền",
+    "khí công",
+    "phát triển nội tâm",
+    "nghỉ dưỡng cảm xúc",
+    "hành trình sống chậm",
+    "tái tạo năng lượng",
+    "trải nghiệm văn hoá",
+    "tử tế",
+    "kết nối nội tâm",
+    "cân bằng thân tâm",
+    "hệ sinh thái Ruby Wings",
+    "câu chuyện vượt bệnh",
+    "hồi sinh",
+    "chữa lành tự nhiên",
+    "điều chỉnh năng lượng",
+    "Ruby Wings Travel"
+  ]
 }
 ]

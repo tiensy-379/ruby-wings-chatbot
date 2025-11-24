@@ -1374,4 +1374,138 @@
     }
   ],
   "count": 31
-}
+},
+  {
+    "path": "root.company.name",
+    "text": "Công ty Ruby Wings Travel"
+
+  },
+  {
+    "path": "root.company.slogan",
+    "text": "Bay lên từ bên trong"
+  },
+  {
+    "path": "root.company.tagline",
+    "text": "Hành trình của chiều sâu cảm xúc, nơi bạn không chỉ đến một nơi, mà còn có thể được trở về với chính mình."
+  },
+  {
+    "path": "root.company.address",
+    "text": "148 Trương Gia Mô, Vỹ Dạ, TP. Huế"
+  },
+  {
+    "path": "root.company.community.description",
+    "text": "Tham gia cộng đồng Ruby Wings để nhận những thông tin mới nhất, chia sẻ trải nghiệm và lan tỏa những thông điệp tốt đẹp."
+  },
+
+  {
+    "path": "root.founder_story.tagline",
+    "text": "Trưởng thành trong Quân đội – nghị lực – vượt khó – và một chương đặc biệt của cuộc đời."
+  },
+  {
+    "path": "root.founder_story.life_event",
+    "text": "Năm 2015, người sáng lập Ruby Wings đối diện với cú sốc lớn: bệnh tật bất ngờ, cơ thể chỉ còn hơn 40kg, những đêm dài trong bệnh viện và các chẩn đoán mơ hồ như 'viêm không đặc hiệu', 'bệnh tự miễn'."
+  },
+  {
+    "path": "root.founder_story.healing_journey",
+    "text": "Trong tuyệt vọng, anh tìm đến thiền, khí công, cách thở, cách lắng nghe cơ thể, nuôi dưỡng tâm trí. Nhờ sự kỷ luật và kiên trì, anh hồi phục không chỉ thể chất mà cả tinh thần."
+  },
+  {
+    "path": "root.founder_story.awakening",
+    "text": "Trải qua biến cố, anh tự hỏi: 'Có thể nào biến những trải nghiệm hồi sinh này thành một hành trình để lan toả đến mọi người?'."
+  },
+
+  {
+    "path": "root.logo_philosophy.description",
+    "text": "Logo Ruby Wings là tấm bản đồ thu nhỏ của triết lý sống sâu sắc."
+  },
+  {
+    "path": "root.logo_philosophy.meaning[0]",
+    "text": "Bốn cánh xanh lá tượng trưng cho Thân – Tâm – Thiên nhiên – Niềm tin."
+  },
+  {
+    "path": "root.logo_philosophy.meaning[1]",
+    "text": "Trong hệ sinh thái thương hiệu, bốn cánh tượng trưng Ruby Wings (du lịch chữa lành), Ruby Learn (phát triển nội tâm), Ruby Auto (di chuyển cân bằng), Ruby Stay (nghỉ dưỡng xanh)."
+  },
+  {
+    "path": "root.logo_philosophy.meaning[2]",
+    "text": "Tâm điểm logo là viên ruby hồng, biểu tượng của trái tim – nơi con người được khai mở, chữa lành, cân bằng và nuôi dưỡng."
+  },
+  {
+    "path": "root.logo_philosophy.meaning[3]",
+    "text": "Vòng tròn hồng tươi bao quanh tạo cảm giác kết nối, trọn vẹn và tái sinh."
+  },
+  {
+    "path": "root.logo_philosophy.colors[0]",
+    "text": "Hồng tươi: tình yêu thương, niềm vui, sự chữa lành."
+  },
+  {
+    "path": "root.logo_philosophy.colors[1]",
+    "text": "Xanh lá: sự sống, hy vọng, phát triển bền vững."
+  },
+
+  {
+    "path": "root.ecosystem.vision",
+    "text": "Hệ sinh thái sống – không chỉ là công ty du lịch."
+  },
+  {
+    "path": "root.ecosystem.origin",
+    "text": "Ruby Wings khởi đầu ở Huế – mảnh đất của trầm mặc, ký ức và di sản."
+  },
+  {
+    "path": "root.ecosystem.values[0]",
+    "text": "Mỗi hành trình là cơ hội chữa lành và kết nối."
+  },
+  {
+    "path": "root.ecosystem.values[1]",
+    "text": "Không gian nghỉ dưỡng cảm xúc – tái tạo và phục hồi."
+  },
+  {
+    "path": "root.ecosystem.values[2]",
+    "text": "Nuôi dưỡng phát triển nội tâm bằng trải nghiệm."
+  },
+  {
+    "path": "root.ecosystem.why",
+    "text": "Ngày càng nhiều bạn trẻ kiệt sức, mất kết nối với chính mình. Ruby Wings ra đời không chỉ để tổ chức tour, mà để đồng hành chữa lành."
+  },
+
+  {
+    "path": "root.development_history.question",
+    "text": "Liệu có thể tạo ra một mô hình du lịch vừa sống được – vừa đẹp – vừa có ích cho cộng đồng không?"
+  },
+  {
+    "path": "root.development_history.early_days[0]",
+    "text": "Khảo sát địa bàn: Hướng Hóa – Đakrông – Quảng Bình – Hội An – Bắc – Nam."
+  },
+  {
+    "path": "root.development_history.early_days[1]",
+    "text": "Kết nối cộng đồng bản địa – lắng nghe câu chuyện, hiểu văn hóa, tìm phương pháp đồng hành."
+  },
+  {
+    "path": "root.development_history.early_days[2]",
+    "text": "Xây dựng triết lý sống, quy chế nội bộ, hệ điều hành nhân sự trước cả khi có sản phẩm."
+  },
+  {
+    "path": "root.development_history.early_days[3]",
+    "text": "Giai đoạn 2024–2025 được gọi là thời kỳ 'gieo hạt' – gieo tư duy mới về du lịch tử tế."
+  },
+
+  {
+    "path": "root.philosophy.life_view[0]",
+    "text": "Du lịch không chỉ để đi, mà để cân bằng – chữa lành – kết nối – làm mới bản thân."
+  },
+  {
+    "path": "root.philosophy.life_view[1]",
+    "text": "Mỗi chuyến đi mở ra một cánh cửa nội tâm – tìm thấy điều gì đó từ bên trong."
+  },
+  {
+    "path": "root.philosophy.life_view[2]",
+    "text": "Doanh nghiệp không chỉ để kiếm lợi nhuận, mà để lan tỏa tử tế."
+  },
+  {
+    "path": "root.philosophy.life_view[3]",
+    "text": "Con người hôm nay cần hành trình có cảm xúc, có giá trị thật và có sự kết nối thật."
+  },
+  {
+    "path": "root.philosophy.future",
+    "text": "Ruby Wings không chỉ là câu chuyện chữa lành của một cá nhân, mà là hành trình tập thể – của đội ngũ, cộng sự và du khách."
+  }
