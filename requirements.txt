@@ -1,18 +1,10 @@
-# requirements.txt
 flask==2.3.3
 flask-cors==4.0.0
 requests==2.31.0
 gunicorn==21.2.0
-
-# OpenAI SDK (0.x series supports older call patterns)
 openai==0.28.0
-
-# numerical & helpers
+faiss-cpu==1.11.0
 numpy>=1.26.0
 tqdm>=4.65.0
 scikit-learn>=1.3.2
-
-# Optional (commented): If your environment supports faiss wheels and you want FAISS,
-# uncomment the following line. On many PaaS this causes build failures.
-# faiss-cpu==1.13.0
-faiss-cpu==1.13.0
+scipy>=1.10.0
