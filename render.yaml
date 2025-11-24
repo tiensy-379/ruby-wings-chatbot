@@ -6,26 +6,19 @@ services:
     buildCommand: "pip install --no-cache-dir -r requirements.txt"
     startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
     envVars:
-      - key: OPENAI_API_KEY
-        value: "<PASTE_OPENAI_KEY_HERE_IN_RENDER_ENV>"
       - key: OPENAI_BASE_URL
         value: "https://api.openai.com/v1"
       - key: FAISS_ENABLED
         value: "true"
+      - key: FLASK_ENV
+        value: "production"
+      - key: RBW_ALLOW_REINDEX
+        # Keep reindex protected by header by default (0). If you want reindex via env, set to "1".
+        value: "0"
       - key: KNOWLEDGE_PATH
         value: "knowledge.json"
-      - key: FAISS_INDEX_PATH
-        value: "index.faiss"
-      - key: FAISS_MAPPING_PATH
-        value: "index_metadata.json"
-      - key: EMBEDDING_MODEL
-        value: "text-embedding-3-large"
-      - key: CHAT_MODEL
-        value: "gpt-4o-mini"
-      - key: TOP_K
-        value: "5"
-      - key: RBW_ALLOW_REINDEX
-        value: "0"
+      - key: FALLBACK_VECTORS_PATH
+        value: "vectors.npz"
     healthCheckPath: "/"
     disk:
       sizeGb: 1
