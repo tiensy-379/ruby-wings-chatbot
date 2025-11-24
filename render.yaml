@@ -7,6 +7,7 @@ services:
     startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers 2 --timeout 120"
     envVars:
       - key: OPENAI_API_KEY
+        # Put your OpenAI key in Render's Environment settings (do NOT commit to repo)
         value: "<PASTE_OPENAI_KEY_HERE_IN_RENDER_ENV>"
       - key: OPENAI_BASE_URL
         value: "https://api.openai.com/v1"
@@ -15,7 +16,7 @@ services:
       - key: FLASK_ENV
         value: "production"
       - key: RBW_ALLOW_REINDEX
-        value: "0"   # set to "1" only temporarily to allow /reindex POST without X-RBW-ADMIN header
+        value: "0"
     healthCheckPath: "/"
     disk:
       sizeGb: 1
