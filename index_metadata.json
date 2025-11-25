@@ -1,3 +1,4 @@
+[
 {
   "ids": [
     "tour_dau_an_vi_tuyen",
@@ -1508,4 +1509,116 @@
   {
     "path": "root.philosophy.future",
     "text": "Ruby Wings không chỉ là câu chuyện chữa lành của một cá nhân, mà là hành trình tập thể – của đội ngũ, cộng sự và du khách."
+  },
+  {
+    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.name",
+    "text": "10 điểm du lịch tâm linh – văn hoá – lịch sử nổi bật tại Huế"
+  },
+  {
+    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.description",
+    "text": "Mười địa điểm tiêu biểu của Huế mang đầy đủ chiều sâu văn hoá, kiến trúc và tâm linh. Đây là những nơi kết nối ký ức, trải nghiệm thiền tịnh và cảm xúc – phù hợp với hành trình retreat và du lịch trải nghiệm theo tinh thần Ruby Wings."
+  },
+  {
+    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[0]",
+    "text": "Chùa Giác Lâm Huế nổi bật với kiến trúc cổ kính và không gian thiền tĩnh lặng, là nơi nhiều người tìm đến để cân bằng tâm hồn."
+  },
+  {
+    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[1]",
+    "text": "Điện Voi Ré gắn với văn hoá thờ tự dân gian, lưu giữ nhiều câu chuyện lịch sử về triều Nguyễn và tín ngưỡng bảo hộ quốc gia."
+  },
+  {
+    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[2]",
+    "text": "Chùa Thiền Lâm – còn gọi là Chùa Phật Đứng – thu hút bởi không gian thoáng rộng, kiến trúc pha trộn hiện đại và tinh thần thiền định."
+  },
+  {
+    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[3]",
+    "text": "Lăng Gia Long mang vẻ đẹp hùng vĩ và tự nhiên, thể hiện triết lý con người hòa cùng trời đất đặc trưng của vương triều Nguyễn."
+  },
+  {
+    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[4]",
+    "text": "Chùa Quốc Ân là tổ đình lớn của thiền phái Lâm Tế tại Huế, nơi gắn với truyền thống tu học và văn hoá Phật giáo lâu đời."
+  },
+  {
+    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[5]",
+    "text": "Lăng Đồng Khánh mang phong cách giao thoa Đông – Tây, thể hiện thời kỳ chuyển giao văn hoá đặc biệt của triều Nguyễn."
+  },
+  {
+    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[6]",
+    "text": "Đàn Âm Hồn là di tích quan trọng ghi dấu biến cố lịch sử bi thương, gợi nhắc tinh thần kiên trung của người dân Huế."
+  },
+  {
+    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[7]",
+    "text": "Chùa Diệu Đế – quốc tự triều Nguyễn – mang giá trị lớn về lịch sử, kiến trúc và truyền thống Phật giáo xứ Huế."
+  },
+  {
+    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[8]",
+    "text": "Lăng Thiệu Trị mang nét giản dị nhưng uy nghi, hòa mình giữa thiên nhiên thanh bình."
+  },
+  {
+    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[9]",
+    "text": "Chùa Linh Mụ Thượng mang không gian thiền tịnh giữa đồi thông xanh, gợi mở cảm giác bình an và thuần khiết."
+  },
+
+  {
+    "path": "root.khe_sanh_huong_hoa_gioi_thieu_chuyen_sau.name",
+    "text": "Khe Sanh – Hướng Hoá"
+  },
+  {
+    "path": "root.khe_sanh_huong_hoa_gioi_thieu_chuyen_sau.description",
+    "text": "Khe Sanh là trung tâm của huyện Hướng Hoá thuộc Tây Trường Sơn, nơi hội tụ chiều sâu lịch sử, thiên nhiên hùng vĩ và văn hoá Vân Kiều – Pa Kô. Đây là điểm đến lý tưởng cho hành trình tri ân, khám phá và retreat."
+  },
+  {
+    "path": "root.khe_sanh_huong_hoa_gioi_thieu_chuyen_sau.highlights[0]",
+    "text": "Sân bay Tà Cơn – Khe Sanh là di tích lịch sử quan trọng của chiến dịch Khe Sanh 1968, lưu giữ nhiều dấu tích chiến tranh."
+  },
+  {
+    "path": "root.khe_sanh_huong_hoa_gioi_thieu_chuyen_sau.highlights[1]",
+    "text": "Rừng Phong Hương nổi bật với mùa lá phong đỏ hiếm có tại miền Trung, tạo nên khung cảnh lãng mạn giữa núi rừng."
+  },
+  {
+    "path": "root.khe_sanh_huong_hoa_gioi_thieu_chuyen_sau.highlights[2]",
+    "text": "Điểm săn mây Cù Vơ mang đến cảnh biển mây huyền ảo vào mỗi bình minh trên cao nguyên Hướng Hoá."
+  },
+  {
+    "path": "root.khe_sanh_huong_hoa_gioi_thieu_chuyen_sau.highlights[3]",
+    "text": "Thác Tà Puồng cùng hệ thống hang động là nơi lý tưởng cho trekking và khám phá thiên nhiên hoang dã."
+  },
+  {
+    "path": "root.khe_sanh_huong_hoa_gioi_thieu_chuyen_sau.experiences[0]",
+    "text": "Trải nghiệm đêm lửa trại Tây Trường Sơn với tiếng cồng chiêng, ánh lửa bập bùng và câu chuyện bản làng Vân Kiều – Pa Kô đầy cảm xúc."
+  },
+  {
+    "path": "root.khe_sanh_huong_hoa_gioi_thieu_chuyen_sau.experiences[1]",
+    "text": "Giao lưu văn hoá với đồng bào Vân Kiều – Pa Kô qua điệu múa truyền thống và tiếng đàn Ta Lư réo rắt."
+  },
+  {
+    "path": "root.khe_sanh_huong_hoa_gioi_thieu_chuyen_sau.experiences[2]",
+    "text": "Thưởng thức bánh Ayot – đặc sản truyền thống từ nếp rẫy và lá rừng, gói trọn hương vị mộc mạc của Trường Sơn."
+  },
+
+  {
+    "path": "root.hue_5_diem_tam_linh_lich_su.name",
+    "text": "5 điểm du lịch văn hoá – tâm linh – lịch sử tại Huế"
+  },
+  {
+    "path": "root.hue_5_diem_tam_linh_lich_su.descriptions[0]",
+    "text": "Chùa Thiên Mụ – biểu tượng tâm linh của Huế với tháp Phước Duyên và không gian thiền tịnh nhìn ra sông Hương."
+  },
+  {
+    "path": "root.hue_5_diem_tam_linh_lich_su.descriptions[1]",
+    "text": "Đại Nội Huế là trung tâm quyền lực triều Nguyễn, sở hữu hệ thống cung điện và kiến trúc mang chiều sâu văn hoá – lịch sử."
+  },
+  {
+    "path": "root.hue_5_diem_tam_linh_lich_su.descriptions[2]",
+    "text": "Chùa Từ Hiếu là nơi gắn với thiền sư Thích Nhất Hạnh, nổi tiếng nhờ không gian tĩnh lặng và triết lý sống chánh niệm."
+  },
+  {
+    "path": "root.hue_5_diem_tam_linh_lich_su.descriptions[3]",
+    "text": "Lăng Minh Mạng mang vẻ đẹp hài hòa giữa kiến trúc và thiên nhiên, thể hiện triết lý quân vương uy nghiêm."
+  },
+  {
+    "path": "root.hue_5_diem_tam_linh_lich_su.descriptions[4]",
+    "text": "Lăng Tự Đức là công trình thơ mộng, phản ánh tâm hồn nghệ sĩ và triết lý sống an nhiên của vị vua tài hoa."
   }
+]
+
