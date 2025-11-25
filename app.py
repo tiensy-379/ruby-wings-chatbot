@@ -344,15 +344,15 @@ def query_index(query: str, top_k=TOP_K) -> List[Tuple[float, dict]]:
 # ---------- Prompt composition ----------
 def compose_system_prompt(top_passages: List[Tuple[float, dict]]) -> str:
     header = (
-        "Bạn là trợ lý AI của Ruby Wings — chuyên tư vấn du lịch trải nghiệm, retreat, "
-        "thiền, khí công và các hành trình chữa lành. Trả lời ngắn gọn, chính xác, tử tế.\n\n"
+        "Bạn là trợ lý AI của Ruby Wings — chuyên tư vấn nghành du lịch trải nghiệm, retreat, "
+        "thiền, khí công, hành trình chữa lành - Hành trình tham quan linh hoạt theo nhhu cầu. Trả lời ngắn gọn, chính xác, tử tế.\n\n"
     )
     if not top_passages:
         return header + "Không tìm thấy dữ liệu nội bộ phù hợp."
     content = header + "Dữ liệu nội bộ (theo độ liên quan):\n"
     for i, (score, m) in enumerate(top_passages, start=1):
         content += f"\n[{i}] (score={score:.3f}) nguồn: {m.get('path','?')}\n{m.get('text','')}\n"
-    content += "\n---\nLưu ý: Ưu tiên sử dụng trích dẫn thông tin từ dữ liệu nội bộ ở trên. Nếu phải bổ sung, chỉ dùng kiến thức chuẩn xác."
+    content += "\n---\nLưu ý: Ưu tiên sử dụng trích dẫn thông tin từ dữ liệu nội bộ ở trên. Nếu phải bổ sung, chỉ dùng kiến thức chuẩn xác, không được tự ý bịa ra khi chưa rõ đúng sai; sử dụng ngôn ngữ lịch sự, thân thiện, thông minh; khi khách gõ lời tạm biệt hoặc lời chúc thì chân thành cám ơn khách, chúc khách sức khoẻ tốt, may mắn, thành công..."
     return content
 
 # ---------- Endpoints ----------
