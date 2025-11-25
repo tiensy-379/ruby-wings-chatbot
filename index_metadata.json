@@ -1,4 +1,3 @@
-[
 {
   "ids": [
     "tour_dau_an_vi_tuyen",
@@ -31,7 +30,13 @@
     "tour_binh_dinh_phu_yen_4n3d",
     "tour_tet_dong_ha_ha_noi_sapa_phu_tho_5n4d",
     "tour_non_nuoc_bach_ma_1_ngay",
-    "tour_hue_dam_chuon_1n"
+    "tour_hue_dam_chuon_1n",
+    "31",
+    "hue_van_hoa_tam_linh_lich_su",
+    "hue_5_diem_tam_linh_lich_su_noi_bat",
+    "hue_10_diem_tam_linh_lich_su_chuyen_sau",
+    "khe_sanh_huong_hoa_gioi_thieu_chuyen_sau",
+    "vietnam-lao-thai-camp_tour_xuyen_a_7n6d"
   ],
   "docs_meta": [
     {
@@ -88,8 +93,7 @@
         "Trải nghiệm văn hóa Vân Kiều – Pa Kô",
         "Hoạt động tri ân và phát triển bền vững",
         "Thực hành thiền – khí công cơ bản",
-        "Khơi dậy tinh thần sống đẹp và biết ơn",
-        "Trải nghiệm quân sự – rèn luyện bản lĩnh"
+        "Khơi dậy tinh thần sống đẹp và biết ơn"
       ],
       "target_audience": "Đoàn viên thanh niên, học sinh, sinh viên, giới trẻ",
       "itinerary": {
@@ -678,7 +682,7 @@
       "id": "tour_con_co_cua_viet",
       "name": "Cảng Cửa Việt – Đảo Cồn Cỏ Anh Hùng",
       "duration": "2 ngày 1 đêm",
-      "type": "Du lịch biển đảo – lịch sử – trải nghiệm thiên nhiên",
+      "type": "Tour tham quan trải nghiệm linh hoạt - Du lịch biển đảo – lịch sử – trải nghiệm thiên nhiên",
       "style": "Hành trình khám phá pháo đài tiền tiêu Cồn Cỏ, kết hợp trải nghiệm biển đảo – tìm hiểu lịch sử – khám phá kinh tế biển và thiên nhiên đặc sắc.",
       "description": "Hành trình 2N1Đ đưa du khách khám phá Cửa Việt – Cồn Cỏ, hòn đảo rộng chỉ 2,3km² nhưng mang vị thế chiến lược đặc biệt, từng là pháo đài tiền tiêu án ngữ biển Đông. Cồn Cỏ không chỉ giữ vai trò quan trọng trong hệ thống phòng thủ biển đảo của Tổ quốc mà còn là điểm kết nối kinh tế – du lịch quan trọng của tam giác Cửa Tùng – Cửa Việt – Cồn Cỏ. Du khách sẽ được trải nghiệm không khí trong lành, bãi biển xanh, hệ sinh thái phong phú và những câu chuyện lịch sử hào hùng.",
       "highlights": [
@@ -712,9 +716,9 @@
     },
     {
       "id": "tour_tam_linh_nghi_duong_quang_tri",
-      "name": "Hành trình Tâm linh & Nghỉ dưỡng – Hà Nội – Đông Hà – Cổ Thành – Cồn Cỏ – Cửa Việt",
+      "name": "Hành trình trải nghiệm linh hoạt & Nghỉ dưỡng – Hà Nội – Đông Hà – Cổ Thành – Cồn Cỏ – Cửa Việt",
       "duration": "3 ngày 2 đêm",
-      "type": "Tâm linh – lịch sử – biển đảo – nghỉ dưỡng",
+      "type": "Tour tham quan trải nghiệm linh hoạt - – lịch sử – biển đảo – nghỉ dưỡng",
       "style": "Hành trình retreat nhẹ nhàng kết hợp tâm linh, tri ân lịch sử, thư giãn biển đảo và trải nghiệm văn hóa Quảng Trị.",
       "description": "Một hành trình 3N2Đ đưa du khách đến Quảng Trị – vùng đất linh thiêng, giao hòa giữa thiên nhiên hùng vĩ và chiều sâu lịch sử – tâm linh. Từ Nghĩa trang Liệt sĩ Trường Sơn, Thánh địa La Vang đến Cổ thành Quảng Trị, sông Bến Hải, Hiền Lương… du khách được sống chậm lại, tri ân, cảm nhận sự bình an và sự nâng đỡ của đức tin. Bên cạnh đó là trải nghiệm nghỉ dưỡng tại biển Cửa Việt và khám phá đảo Cồn Cỏ – pháo đài tiền tiêu giữa biển Đông.",
       "highlights": [
@@ -751,7 +755,7 @@
       "id": "tour_khe_sanh_tieu_da_lat",
       "name": "Khám phá Khe Sanh – Tiểu Đà Lạt giữa đại ngàn Trường Sơn",
       "duration": "2 ngày 1 đêm",
-      "type": "Khám phá – văn hóa bản địa – thiên nhiên – lịch sử",
+      "type": "Tour tham quan trải nghiệm linh hoạt - Khám phá – văn hóa bản địa – thiên nhiên – lịch sử",
       "style": "Hành trình khám phá thiên nhiên mát lạnh của Khe Sanh, tìm hiểu đời sống Pa Cô – Vân Kiều, trải nghiệm khí hậu đại ngàn và văn hóa miền núi đặc sắc.",
       "description": "Khe Sanh – vùng đất từng là tâm điểm lịch sử, nay mang vẻ đẹp của một 'tiểu Đà Lạt' giữa đại ngàn Trường Sơn. Khí hậu mát mẻ quanh năm, những đồi cà phê – hồ tiêu bạt ngàn, bản làng Pa Cô – Vân Kiều trầm mặc và những dự án điện gió tạo nên một bức tranh vừa hùng vĩ vừa thơ mộng. Hành trình đưa du khách từ dấu ấn chiến trường xưa đến nhịp sống mới tràn đầy năng lượng của miền Tây Quảng Trị.",
       "highlights": [
@@ -784,7 +788,7 @@
       "id": "tour_phuong_nam_tru_phu",
       "name": "Khám phá miền đất trù phú Phương Nam",
       "duration": "6 ngày 5 đêm",
-      "type": "Hành trình liên vùng – văn hóa – sinh thái – ẩm thực",
+      "type": "Tour tham quan trải nghiệm linh hoạt - – văn hóa – sinh thái – ẩm thực",
       "style": "Hành trình kết hợp khám phá đô thị năng động, văn hóa sông nước Miền Tây và sinh thái mũi Cà Mau — trải nghiệm đa chiều, nhịp độ vừa phải phù hợp đa dạng khách.",
       "description": "Từ TP. Hồ Chí Minh năng động đến miền sông nước Miền Tây và mũi Cà Mau tận cùng Tổ quốc, tour đưa bạn trải nghiệm ẩm thực, văn hóa, lịch sử và hệ sinh thái độc đáo. Ghé Bình Dương (Đại Nam), Dinh Độc Lập, du thuyền trên kênh rạch Cần Thơ, khám phá rừng ngập mặn Cà Mau và thưởng ngoạn cánh đồng sen Đồng Tháp.",
       "highlights": [
@@ -820,9 +824,9 @@
     },
     {
       "id": "tour_dong_ha_ninh_binh_ha_long",
-      "name": "Đông Hà – Ninh Bình – Hạ Long – Đông Hà (4 ngày)",
+      "name": "Tour trải nghiệm linh hoạt - Đông Hà – Ninh Bình – Hạ Long – Đông Hà (4 ngày)",
       "duration": "4 ngày 3 đêm",
-      "type": "Liên vùng – văn hóa – di sản – giải trí",
+      "type": "Tour tham quan trải nghiệm linh hoạt - Liên vùng – văn hóa – di sản – giải trí",
       "style": "Hành trình kết hợp di sản văn hóa (Ninh Bình), du lịch biển Hạ Long, vui chơi Sun World và trải nghiệm tiện nghi xe giường nằm + xe du lịch cao cấp.",
       "description": "Khởi hành từ Đông Hà, chuyến đi đưa đoàn thăm Chùa Bái Đính, Tràng An, Tam Cốc (Ninh Bình), tiếp tục đến Hạ Long trải nghiệm bãi biển Bãi Cháy và Sun World, rồi về Hà Nội và trở lại Đông Hà bằng xe giường nằm. Kết hợp di tích lịch sử, sinh thái và vui chơi giải trí hiện đại.",
       "highlights": [
@@ -896,7 +900,7 @@
       "id": "tour_nha_trang_da_lat_tet_4n3d",
       "name": "Đông Hà – Nha Trang – Đà Lạt – Đông Hà (Tết Nguyên Đán)",
       "duration": "4 ngày 3 đêm",
-      "type": "Du lịch biển – nghỉ dưỡng – văn hóa – tâm linh – trải nghiệm thành phố",
+      "type": "Tour tham quan trải nghiệm linh hoạt - Du lịch biển – nghỉ dưỡng – văn hóa – tâm linh – trải nghiệm thành phố",
       "style": "Kết hợp biển Nha Trang, khu vui chơi Vinpearl Land, văn hóa Champa, cao nguyên Đà Lạt, tâm linh – khám phá – trải nghiệm thiên nhiên.",
       "description": "Hành trình Tết Nguyên Đán 4N3Đ đưa du khách từ Đông Hà đến Nha Trang – thiên đường biển nổi tiếng, tiếp tục đến Đà Lạt – thành phố ngàn hoa với khí hậu trong lành và cảnh quan thơ mộng. Du khách được trải nghiệm Vinpearl Land, khám phá Tháp Bà Ponagar, đi qua đèo, thác, chùa, dinh thự và thưởng thức ẩm thực đặc sản của từng địa phương.",
       "highlights": [
@@ -946,9 +950,9 @@
     },
     {
       "id": "tour_tet_dong_ha_nha_trang_da_lat_4n3d",
-      "name": "Đông Hà – Nha Trang – Đà Lạt – Huế (Tết Nguyên Đán)",
+      "name": "Tour trải nghiệm linh hoạt - Đông Hà – Nha Trang – Đà Lạt – Huế (Tết Nguyên Đán)",
       "duration": "4 ngày 3 đêm",
-      "type": "Du lịch Tết – Biển – Núi – Văn hóa – Tâm linh",
+      "type": "Tour tham quan trải nghiệm linh hoạt - Du lịch Tết – Biển – Núi – Văn hóa – Tâm linh",
       "style": "Kết hợp di chuyển tàu – xe – máy bay; tham quan cảnh quan biển Nha Trang, cao nguyên Đà Lạt, chùa – thác – công trình cổ; chương trình nhẹ nhàng, phù hợp gia đình – cơ quan dịp Tết.",
       "description": "Hành trình Tết 4N3Đ đưa du khách từ Đông Hà đến Nha Trang bằng tàu SE7, tham quan các biểu tượng nổi tiếng như Tháp Bà Ponagar, Viện Hải Dương Học, Chùa Long Sơn. Tiếp tục đến Đà Lạt – thành phố ngàn hoa – với thác Datanla, Thiền viện Trúc Lâm, Hồ Tuyền Lâm, Vườn hoa thành phố, Nhà thờ Con Gà, Ga Đà Lạt và các điểm tâm linh – thiên nhiên. Kết thúc bằng chuyến bay Đà Lạt – Đà Nẵng, ăn tối tại Huế và trở về Đông Hà.",
       "highlights": [
@@ -1017,7 +1021,7 @@
       "id": "tour_tet_dong_ha_nha_trang_da_lat_bmt_4n3d",
       "name": "Đông Hà – Nha Trang – Đà Lạt – Buôn Ma Thuột – Đông Hà (Tết Nguyên Đán)",
       "duration": "4 ngày 3 đêm",
-      "type": "Du lịch Tết – tham quan – nghỉ dưỡng – khám phá",
+      "type": "Tour trải nghiệm linh hoạt - Du lịch Tết – tham quan – nghỉ dưỡng – khám phá",
       "style": "Hành trình kết hợp biển – núi – văn hoá – tâm linh; trải nghiệm Tết Nguyên Đán đặc sắc tại các thành phố du lịch lớn.",
       "description": "Hành trình 4N3Đ đưa du khách khám phá Nha Trang, Đà Lạt và Buôn Ma Thuột trong không khí Tết. Trải nghiệm biển xanh, cáp treo Vinpearl, cảnh sắc núi rừng Đà Lạt và văn hóa Tây Nguyên, kết hợp ẩm thực địa phương và tham quan các điểm nổi bật.",
       "highlights": [
@@ -1046,7 +1050,7 @@
       "id": "tour_phu_quoc_4n3d_nam_bac_dao",
       "name": "Phú Quốc 4N3Đ – Khám phá Nam đảo & Bắc đảo",
       "duration": "4 ngày 3 đêm",
-      "type": "Du lịch biển – khám phá – nghỉ dưỡng – trải nghiệm",
+      "type": "Tour tham quan trải nghiệm linh hoạt - Du lịch biển – khám phá – nghỉ dưỡng – trải nghiệm",
       "style": "Kết hợp tham quan thiên nhiên, văn hóa, vui chơi giải trí cao cấp, show trình diễn, safari và khám phá rừng nguyên sinh.",
       "description": "Hành trình 4N3Đ khám phá trọn vẹn Phú Quốc: Nam đảo – Địa Trung Hải – Cầu Hôn – Chùa Hộ Quốc và show Awaken Sea, đến Bắc đảo với Safari, Grand World, bảo tàng gấu và show Tinh Hoa Việt Nam. Trải nghiệm rừng nguyên sinh, Nhà tù Phú Quốc, Bãi Kem và thưởng thức ẩm thực đảo ngọc.",
       "highlights": [
@@ -1075,7 +1079,7 @@
       "id": "tour_nha_trang_quy_nhon_5n4d_tau_va_xe",
       "name": "Đông Hà – Nha Trang – Quy Nhơn – Đông Hà (5 ngày 4 đêm)",
       "duration": "5 ngày 4 đêm",
-      "type": "Du lịch biển – nghỉ dưỡng – văn hóa – vui chơi giải trí",
+      "type": "Tour tham quan trải nghiệm linh hoạt - Du lịch biển – nghỉ dưỡng – văn hóa – vui chơi giải trí",
       "style": "Hành trình kết hợp tham quan di tích văn hóa – lịch sử, vui chơi giải trí Vinpearl, khám phá biển đảo và thắng cảnh nổi tiếng miền Trung.",
       "description": "Hành trình 5N4Đ đưa du khách đến Nha Trang và Quy Nhơn qua cả đường tàu và xe du lịch. Trải nghiệm Tháp Bà Ponagar, Viện Hải Dương Học, Vinpearl Land, các điểm biểu tượng của Quy Nhơn như Eo Gió, Ghềnh Ráng – Tiên Sa, Tháp Đôi và Bảo tàng Quang Trung.",
       "highlights": [
@@ -1104,7 +1108,7 @@
       "id": "tour_dong_ha_quy_nhon_nha_trang_4n3d",
       "name": "Đông Hà – Quy Nhơn – Nha Trang – Đông Hà (4 ngày 3 đêm)",
       "duration": "4 ngày 3 đêm",
-      "type": "Du lịch biển – văn hóa – giải trí",
+      "type": "Tour tham quan trải nghiệm linh hoạt - Du lịch biển – văn hóa – giải trí",
       "style": "Hành trình khám phá Quy Nhơn – Nha Trang với Eo Gió, Ghềnh Ráng, Tháp Đôi, Bảo tàng Quang Trung và trải nghiệm Vinpearl Land.",
       "description": "Hành trình 4N3Đ đưa du khách từ Đông Hà vào Quy Nhơn và Nha Trang. Khám phá các thắng cảnh biển nổi tiếng, di sản Chăm Pa, khu vui chơi Vinpearl và các điểm check-in đặc sắc miền Trung.",
       "highlights": [
@@ -1133,7 +1137,7 @@
       "id": "tour_binh_dinh_phu_yen_4n3d",
       "name": "Bình Định – Phú Yên (4 ngày 3 đêm)",
       "duration": "4 ngày 3 đêm",
-      "type": "Vùng duyên hải – văn hóa – thiên nhiên",
+      "type": "Tour tham quan trải nghiệm linh hoạt -Vùng duyên hải – văn hóa – thiên nhiên",
       "style": "Khám phá Quy Nhơn – Tuy Hòa: kết hợp di tích Chăm Pa, thắng cảnh biển, Gành Đá Đĩa và trải nghiệm văn hóa địa phương; phù hợp đoàn gia đình, cơ quan.",
       "description": "Hành trình đưa đoàn từ Đông Hà đến Quy Nhơn – khám phá Eo Gió, Tháp Đôi, Bảo tàng Quang Trung; tiếp tục về Tuy Hòa – tham quan Tháp Nhạn, Nhà thờ Mằng Lăng, Bãi Xép, Gành Đá Đĩa và Mũi Đại Lãnh trước khi về lại Đông Hà.",
       "highlights": [
@@ -1188,7 +1192,7 @@
       "id": "tour_tet_dong_ha_ha_noi_sapa_phu_tho_5n4d",
       "name": "Đông Hà – Hà Nội – Sa Pa – Phú Thọ – Hà Nội (Tết Nguyên Đán)",
       "duration": "5 ngày 4 đêm",
-      "type": "Du xuân – văn hóa – tâm linh – trải nghiệm vùng cao",
+      "type": "Tour tham quan trải nghiệm linh hoạt - Du xuân – văn hóa – tâm linh – trải nghiệm vùng cao",
       "style": "Hành trình kết hợp trải nghiệm mùa xuân miền Bắc, khám phá văn hóa vùng cao Sa Pa, không khí lễ hội đầu năm và các điểm đến lịch sử – tâm linh.",
       "description": "Chuyến đi đưa đoàn từ Đông Hà ra Thủ đô Hà Nội bằng tàu hỏa, tiếp tục lên Sa Pa ngắm cảnh núi rừng Tây Bắc, tham quan các điểm nổi bật như nhà thờ đá, Fansipan, bản Cát Cát. Ngày 4 di chuyển về Phú Thọ viếng Đền Hùng, sau đó quay lại Hà Nội trước khi trở về Đông Hà.",
       "highlights": [
@@ -1323,7 +1327,7 @@
       "id": "tour_hue_dam_chuon_1n",
       "name": "Di sản Huế & Đầm Chuồn – Hoàng hôn phá Tam Giang",
       "duration": "1 ngày",
-      "type": "Văn hóa – Tâm linh – Thiên nhiên – Trải nghiệm chậm",
+      "type": "Tour tham quan trải nghiệm linh hoạt - Văn hóa – Tâm linh – Thiên nhiên – Trải nghiệm chậm",
       "slogan": "Chạm vào chiều sâu văn hóa và sự bình yên từ thiên nhiên sông nước.",
       "style": "Trải nghiệm chậm, sâu – hòa quyện giữa giá trị văn hóa lịch sử và thiên nhiên đầm phá. Không chạy số lượng điểm đến mà tập trung cảm nhận, tĩnh lặng và kết nối.",
       "description": "Hành trình chạm vào hồn cố đô qua Đại Nội uy nghi, chùa Từ Hiếu tĩnh lặng, nhà lưu niệm Bác Hồ mộc mạc. Buổi chiều đắm mình giữa thiên nhiên nguyên sơ Rú Chá, kết thúc bằng bữa tối hải sản trên đầm Chuồn – giữa khoảnh khắc hoàng hôn buông xuống phá Tam Giang.",
@@ -1340,7 +1344,7 @@
         },
         {
           "time": "10:30 – 12:00",
-          "activity": "Tham quan Chùa Từ Hiếu",
+          "activity": "Tham quan Chùa Từ Hiếu hoặc chùa Thiên Mụ",
           "note": "Không gian thiền tịnh – nơi tìm lại sự tĩnh lặng từ bên trong"
         },
         {
@@ -1372,253 +1376,394 @@
       "price_info": {
         "note": "Giá từ 500.000 đến 1.200.000 tùy theo nhu cầu nhóm, thực đơn và loại xe; cập nhật khi có dữ liệu đầy đủ."
       }
+    },
+    {
+      "company": {
+        "id": "ruby_wings_travel",
+        "name": "Công ty Ruby Wings Travel",
+        "slogan": "Sologan: Bay lên từ bên trong ",
+        "tagline": "Hành trình của chiều sâu cảm xúc, nơi bạn không chỉ đến một nơi, mà còn có thể được trở về với chính mình.",
+        "mst": "3301743759",
+        "address": "148 Trương Gia Mô, Vỹ Dạ, TP. Huế",
+        "contact": {
+          "zalo": "0332510486 (Zalo Ruby Wings)",
+          "hotline": "0332510586 (WhatsApp/Zalo)",
+          "email": "rubywingslsa@gmail.com"
+        },
+        "community": {
+          "description": "Tham gia cộng đồng Ruby Wings để nhận những thông tin mới nhất, chia sẻ trải nghiệm và lan tỏa những thông điệp tốt đẹp."
+        }
+      },
+      "founder_story": {
+        "director": "Giám đốc Lương Tiến Sỹ",
+        "tagline": "Trưởng thành trong Quân đội – nghị lực – vượt khó – và một chương đặc biệt của cuộc đời.",
+        "life_event": "Năm 2015, người sáng lập Ruby Wings đối diện với cú sốc lớn: bệnh tật bất ngờ, cơ thể chỉ còn hơn 40kg, những đêm dài trong bệnh viện và các chẩn đoán mơ hồ như 'viêm không đặc hiệu', 'bệnh tự miễn'.",
+        "healing_journey": "Trong tuyệt vọng, anh tìm đến thiền, khí công, cách thở, cách lắng nghe cơ thể, nuôi dưỡng tâm trí. Nhờ sự kỷ luật và kiên trì, anh hồi phục không chỉ thể chất mà cả tinh thần.",
+        "awakening": "Trải qua biến cố, anh tự hỏi: 'Có thể nào biến những trải nghiệm hồi sinh này thành một hành trình để lan toả đến mọi người?'. Câu hỏi đó trở thành mầm ý tưởng của Ruby Wings."
+      },
+      "logo_philosophy": {
+        "description": "Logo Ruby Wings là tấm bản đồ thu nhỏ của triết lý sống sâu sắc.",
+        "meaning": [
+          "Bốn cánh xanh lá tượng trưng cho Thân – Tâm – Thiên nhiên – Niềm tin.",
+          "Trong hệ sinh thái thương hiệu, bốn cánh tượng trưng Ruby Wings (du lịch chữa lành), Ruby Learn (phát triển nội tâm), Ruby Auto (di chuyển cân bằng), Ruby Stay (nghỉ dưỡng xanh).",
+          "Tâm điểm logo là viên ruby hồng, biểu tượng của trái tim – nơi con người được khai mở, chữa lành, cân bằng và nuôi dưỡng.",
+          "Vòng tròn hồng tươi bao quanh tạo cảm giác kết nối, trọn vẹn và tái sinh."
+        ],
+        "colors": [
+          "Hồng tươi: tình yêu thương, niềm vui, sự chữa lành.",
+          "Xanh lá: sự sống, hy vọng, phát triển bền vững."
+        ]
+      },
+      "ecosystem": {
+        "vision": "Hệ sinh thái sống – không chỉ là công ty du lịch.",
+        "origin": "Ruby Wings khởi đầu ở Huế – mảnh đất của trầm mặc, ký ức và di sản.",
+        "values": [
+          "Mỗi hành trình là cơ hội chữa lành và kết nối.",
+          "Không gian nghỉ dưỡng cảm xúc – tái tạo và phục hồi.",
+          "Nuôi dưỡng phát triển nội tâm bằng trải nghiệm."
+        ],
+        "why": "Ngày càng nhiều bạn trẻ kiệt sức, mất kết nối với chính mình. Ruby Wings ra đời không chỉ để tổ chức tour, mà để đồng hành chữa lành."
+      },
+      "development_history": {
+        "question": "Liệu có thể tạo ra một mô hình du lịch vừa sống được – vừa đẹp – vừa có ích cho cộng đồng không?",
+        "early_days": [
+          "Khảo sát địa bàn: Hướng Hóa – Đakrông – Quảng Bình – Hội An – Bắc – Nam.",
+          "Kết nối cộng đồng bản địa – lắng nghe câu chuyện, hiểu văn hóa, tìm phương pháp đồng hành.",
+          "Xây dựng triết lý sống, quy chế nội bộ, hệ điều hành nhân sự trước cả khi có sản phẩm.",
+          "Giai đoạn 2024–2025 được gọi là thời kỳ 'gieo hạt' – gieo tư duy mới về du lịch tử tế."
+        ]
+      },
+      "philosophy": {
+        "life_view": [
+          "Du lịch không chỉ để đi, mà để cân bằng – chữa lành – kết nối – làm mới bản thân.",
+          "Mỗi chuyến đi mở ra một cánh cửa nội tâm – tìm thấy điều gì đó từ bên trong.",
+          "Doanh nghiệp không chỉ để kiếm lợi nhuận, mà để lan tỏa tử tế.",
+          "Triết lý sáng lập: Con người hôm nay cần hành trình có cảm xúc, có giá trị thật, có sự kết nối thật."
+        ],
+        "future": "Ruby Wings không chỉ là câu chuyện chữa lành của một cá nhân, mà là hành trình tập thể – của đội ngũ, cộng sự và du khách."
+      },
+      "sample_questions": [
+        "Ruby Wings là công ty gì?",
+        "Triết lý sống của Ruby Wings là gì?",
+        "Câu chuyện người sáng lập Ruby Wings?",
+        "Ruby Wings hoạt động ở lĩnh vực nào?",
+        "Logo Ruby Wings có ý nghĩa gì?",
+        "Slogan và khẩu hiệu của Ruby Wings là gì?",
+        "Tại sao Ruby Wings hướng đến du lịch chữa lành?",
+        "Hệ sinh thái Ruby gồm những mảng nào?",
+        "Tinh thần 'gieo hạt' của Ruby Wings là gì?",
+        "Vì sao nói Ruby Wings là hệ sinh thái sống, không chỉ là công ty du lịch?"
+      ],
+      "keywords": [
+        "du lịch chữa lành",
+        "retreat",
+        "thiền",
+        "khí công",
+        "phát triển nội tâm",
+        "nghỉ dưỡng cảm xúc",
+        "hành trình sống chậm",
+        "tái tạo năng lượng",
+        "trải nghiệm văn hoá",
+        "tử tế",
+        "kết nối nội tâm",
+        "cân bằng thân tâm",
+        "hệ sinh thái Ruby Wings",
+        "câu chuyện vượt bệnh",
+        "hồi sinh",
+        "chữa lành tự nhiên",
+        "điều chỉnh năng lượng",
+        "Ruby Wings Travel"
+      ]
+    },
+    {
+      "id": "hue_van_hoa_tam_linh_lich_su",
+      "category": "Điểm đến Huế",
+      "type": "Văn hoá - Tâm linh - Lịch sử",
+      "highlights": [
+        "Chùa Thiên Mụ – biểu tượng tâm linh cổ kính bên sông Hương, gắn với truyền thuyết và đời sống Phật giáo Huế.",
+        "Đại Nội – Hoàng Thành Huế – trung tâm quyền lực triều Nguyễn, lưu giữ kiến trúc và nghi lễ cung đình độc nhất.",
+        "Lăng Minh Mạng – kiệt tác phong thủy – kiến trúc phương Đông, hài hòa giữa thiên nhiên và triết lý Nho – Phật.",
+        "Đền Huyền Trân Công Chúa – không gian tâm linh bình yên, tri ân người mở cõi Thuận Hóa.",
+        "Điện Thái Hòa – Cửu Đỉnh – biểu tượng lịch sử triều Nguyễn và nghệ thuật điêu khắc, thờ tự đầy tính tâm linh."
+      ],
+      "keywords": [
+        "Chùa Thiên Mụ",
+        "Đại Nội",
+        "Hoàng Thành",
+        "Lăng Minh Mạng",
+        "Đền Huyền Trân",
+        "Điện Thái Hòa",
+        "Cửu Đỉnh",
+        "tâm linh Huế",
+        "di sản Huế",
+        "văn hoá Huế"
+      ],
+      "description": "Những điểm đến tiêu biểu của Huế mang chiều sâu văn hoá – lịch sử – tâm linh, phản ánh bản sắc cố đô qua kiến trúc, truyền thuyết và không gian tĩnh tại.",
+      "detail": {
+        "thien_mu_pagoda": "Chùa Thiên Mụ – biểu tượng tâm linh lâu đời, nổi bật với tháp Phước Duyên và cảnh quan thanh tịnh bên dòng Hương.",
+        "imperial_city": "Đại Nội – Hoàng Thành Huế – trung tâm triều Nguyễn với kiến trúc cung đình, sân rồng, nghi lễ và di tích hoàng gia.",
+        "minh_mang_tomb": "Lăng Minh Mạng – sự kết hợp hoàn mỹ giữa thiên nhiên – phong thủy – triết học Á Đông, mang vẻ uy nghi trầm mặc.",
+        "huyen_tran_temple": "Đền Huyền Trân Công Chúa – nơi tưởng niệm người mở cõi, yên bình giữa rừng thông và không gian thiền tịnh.",
+        "thai_hoa_hall_cuu_dinh": "Điện Thái Hòa cùng Cửu Đỉnh – biểu tượng của quyền lực triều Nguyễn, nơi lưu giữ tinh hoa văn hóa – điêu khắc – lịch sử."
+      }
+    },
+    {
+      "id": "hue_5_diem_tam_linh_lich_su_noi_bat",
+      "category": "Điểm đến Huế",
+      "type": "Văn hoá - Tâm linh - Lịch sử",
+      "highlights": [
+        "Chùa Thiên Mụ là một trong những biểu tượng tâm linh linh thiêng nhất của Huế, nổi bật với tháp Phước Duyên, cảnh quan cổ kính và chiều sâu văn hoá Phật giáo bên dòng sông Hương.",
+        "Đại Nội – Hoàng Thành Huế lưu giữ toàn bộ tinh hoa kiến trúc, nghi lễ và đời sống cung đình triều Nguyễn, là nơi kết tinh quyền lực và văn hoá của Cố đô suốt hàng trăm năm.",
+        "Lăng Minh Mạng được xem là đỉnh cao của sự hài hoà giữa thiên nhiên, triết học phương Đông và nghệ thuật phong thủy, mang đến không gian trầm tĩnh và chiều sâu nội tâm.",
+        "Đền Huyền Trân Công Chúa là điểm đến tâm linh yên bình, nơi tưởng niệm người mở cõi Thuận Hóa; không gian rừng thông và kiến trúc tĩnh tại mang lại cảm giác thanh lọc và biết ơn.",
+        "Điện Thái Hòa và Cửu Đỉnh là biểu tượng quyền uy và nghệ thuật của triều Nguyễn, tái hiện tinh thần văn hoá, lịch sử và triết lý của dân tộc qua từng hoa văn và lớp kiến trúc."
+      ],
+      "keywords": [
+        "Chùa Thiên Mụ",
+        "Đại Nội",
+        "Lăng Minh Mạng",
+        "Đền Huyền Trân",
+        "Điện Thái Hòa",
+        "Cửu Đỉnh",
+        "Huế tâm linh",
+        "di sản Huế",
+        "tour văn hoá Huế",
+        "retreat Huế"
+      ],
+      "description": "Năm điểm đến tiêu biểu của Huế mang chiều sâu văn hoá, tâm linh và lịch sử, phù hợp với các hành trình trải nghiệm, retreat và du lịch chữa lành theo phong cách Ruby Wings."
+    },
+    {
+      "id": "hue_10_diem_tam_linh_lich_su_chuyen_sau",
+      "category": "Điểm đến Huế",
+      "type": "Văn hoá - Tâm linh - Lịch sử",
+      "seo_title": "10 điểm du lịch tâm linh – văn hoá – lịch sử nổi bật tại Huế",
+      "seo_description": "Danh sách mười điểm đến mang giá trị văn hoá, tâm linh và lịch sử sâu sắc tại Huế, phù hợp cho tour retreat, du lịch chậm và hành trình chữa lành.",
+      "summary": "Mười địa điểm tiêu biểu của Huế mang đầy đủ chiều sâu văn hoá, kiến trúc và tâm linh. Đây là những nơi kết nối ký ức, trải nghiệm thiền tịnh và cảm xúc – phù hợp với hành trình retreat và du lịch trải nghiệm theo tinh thần Ruby Wings.",
+      "highlights": [
+        "Chùa Giác Lâm Huế nổi bật với kiến trúc cổ kính và không gian thiền tĩnh lặng, là nơi nhiều người tìm đến để cân bằng tâm hồn.",
+        "Điện Voi Ré gắn với văn hoá thờ tự dân gian, lưu giữ nhiều câu chuyện lịch sử về triều Nguyễn và tín ngưỡng bảo hộ quốc gia.",
+        "Chùa Thiền Lâm – còn gọi là Chùa Phật Đứng – thu hút bởi không gian thoáng rộng, kiến trúc pha trộn hiện đại và tinh thần thiền định.",
+        "Lăng Gia Long mang vẻ đẹp hùng vĩ và tự nhiên, thể hiện triết lý “con người hòa cùng trời đất” trong phong thủy vương triều Nguyễn.",
+        "Chùa Quốc Ân – tổ đình lớn của thiền phái Lâm Tế tại Huế, nơi gắn với truyền thống tu học và văn hoá Phật giáo đặc sắc.",
+        "Lăng Đồng Khánh mang phong cách giao thoa Đông – Tây, thể hiện thời kỳ chuyển giao văn hoá đặc biệt của lịch sử triều Nguyễn.",
+        "Đàn Âm Hồn là di tích quan trọng ghi dấu biến cố lịch sử bi thương của Huế, gợi nhắc về tinh thần kiên trung và ký ức cộng đồng.",
+        "Chùa Diệu Đế – quốc tự triều Nguyễn – mang giá trị lớn về lịch sử, kiến trúc và truyền thống Phật giáo xứ Huế.",
+        "Lăng Thiệu Trị mang nét giản dị nhưng uy nghi, nằm giữa thiên nhiên thanh bình, đại diện cho tinh thần sống hòa nhã và sâu lắng.",
+        "Chùa Linh Mụ Thượng – một không gian tâm linh thanh tĩnh giữa đồi thông xanh, gợi mở cảm giác bình an và thuần khiết cho người hành hương."
+      ],
+      "detailed_descriptions": {
+        "giac_lam_pagoda": "Chùa Giác Lâm Huế là nơi nhiều phật tử và du khách tìm đến để thiền định, thắp hương và trải nghiệm chiều sâu tĩnh lặng. Không gian chùa mang đậm nét cổ truyền đặc trưng của xứ Huế.",
+        "dien_voi_re": "Điện Voi Ré là nơi thờ tự linh thiêng gắn với tín ngưỡng dân gian và lịch sử triều Nguyễn. Các nghi lễ tại đây thể hiện tinh thần tôn kính và văn hoá bản địa đặc sắc.",
+        "thien_lam_pagoda": "Chùa Thiền Lâm được biết đến với pho tượng Phật đứng uy nghi và cảnh quan rộng mở, phù hợp cho hành trình thiền – khí công và tìm lại sự cân bằng.",
+        "gia_long_tomb": "Lăng Gia Long là một quần thể rộng lớn, hài hòa cùng núi sông, phản ánh tư tưởng thiên địa – nhân của vị vua khai sáng triều Nguyễn.",
+        "quoc_an_pagoda": "Chùa Quốc Ân là tổ đình thiền phái Lâm Tế, đóng vai trò quan trọng trong lịch sử phát triển Phật giáo Huế và văn hoá tu hành.",
+        "dong_khanh_tomb": "Lăng Đồng Khánh mang phong cách kiến trúc giao thoa độc đáo, phản ánh bối cảnh lịch sử nhiều biến động cuối thế kỷ XIX.",
+        "dan_am_hon": "Đàn Âm Hồn là nơi tưởng niệm biến cố bi thương Mậu Thân, gợi nhắc về sự hy sinh, tinh thần kiên cường và ký ức của người dân Huế.",
+        "dieu_de_pagoda": "Chùa Diệu Đế – một trong những quốc tự triều Nguyễn – mang ý nghĩa lịch sử to lớn, là nơi diễn ra nhiều sự kiện quan trọng của Phật giáo Huế.",
+        "thieu_tri_tomb": "Lăng Thiệu Trị có kiến trúc thanh thoát, mang vẻ đẹp khiêm nhường nhưng sâu lắng, hòa cùng thiên nhiên yên bình của vùng quê Huế.",
+        "linh_mu_thuong_pagoda": "Chùa Linh Mụ Thượng nằm giữa không gian đồi thông yên bình, là điểm đến lý tưởng cho những ai muốn lắng nghe cơ thể, tìm sự an tịnh và chữa lành nội tâm."
+      },
+      "keywords": [
+        "du lịch Huế",
+        "chùa Huế",
+        "Huế tâm linh",
+        "lăng tẩm Huế",
+        "di sản Huế",
+        "hành trình văn hoá Huế",
+        "tour retreat Huế",
+        "thiền – khí công Huế",
+        "điểm đến lịch sử Huế",
+        "kiến trúc triều Nguyễn",
+        "du lịch chậm",
+        "du lịch chữa lành"
+      ]
+    },
+    {
+      "id": "khe_sanh_huong_hoa_gioi_thieu_chuyen_sau",
+      "category": "Điểm đến Hướng Hoá",
+      "type": "Văn hoá - Lịch sử - Trải nghiệm",
+      "name": "Khe Sanh – Hướng Hoá",
+      "description": "Khe Sanh là trung tâm của huyện Hướng Hoá thuộc vùng đất Tây Trường Sơn, nơi hội tụ chiều sâu lịch sử, thiên nhiên hùng vĩ và bản sắc văn hoá độc đáo của đồng bào Vân Kiều – Pa Kô. Đây là điểm đến lý tưởng cho những hành trình tri ân, khám phá, retreat và tìm lại sự cân bằng từ thiên nhiên.",
+      "highlights": [
+        "Sân bay Tà Cơn – Khe Sanh là một trong những di tích lịch sử quan trọng nhất của chiến dịch Khe Sanh 1968, nơi lưu giữ nhiều chứng tích chiến tranh và câu chuyện bi tráng của vùng đất lửa Quảng Trị.",
+        "Rừng Phong Hương mang vẻ đẹp lãng mạn và hiếm có tại miền Trung, nổi bật với mùa lá phong đỏ tạo nên khung cảnh đầy chất thơ giữa núi rừng Hướng Hoá.",
+        "Điểm săn mây Cù Vơ là nơi du khách có thể ngắm biển mây huyền ảo vào mỗi bình minh, cảm nhận sự tĩnh lặng và vẻ đẹp nguyên sơ của cao nguyên.",
+        "Thác Tà Puồng và hệ thống hang động kỳ vĩ là địa điểm trekking hấp dẫn, mang đến trải nghiệm phiêu lưu giữa thiên nhiên hoang dã của Tây Trường Sơn.",
+        "Cà phê Homy nổi tiếng với không gian mây núi, view panorama ôm trọn cao nguyên Khe Sanh, là điểm dừng chân thư giãn được yêu thích của du khách trẻ.",
+        "Đèo Sa Mù có khí hậu mát lạnh quanh năm, mây phủ trắng đỉnh núi, tạo cảm giác như bước vào một vùng đất khác biệt và đầy kỳ bí.",
+        "Không gian văn hoá Vân Kiều – Pa Kô thể hiện bản sắc bản địa đậm nét thông qua kiến trúc nhà sàn, nhạc cụ truyền thống và cách sinh hoạt cộng đồng lâu đời."
+      ],
+      "experiences": [
+        "Trải nghiệm đêm lửa trại Tây Trường Sơn với tiếng cồng chiêng ngân vang, ánh lửa bập bùng và câu chuyện về bản làng Vân Kiều – Pa Kô mang đến cảm xúc sâu sắc và sự kết nối mạnh mẽ.",
+        "Giao lưu văn hoá bản địa với đồng bào Vân Kiều – Pa Kô qua các điệu múa truyền thống, tiếng đàn Ta Lư réo rắt và bài hát dân gian mang đậm tinh thần núi rừng.",
+        "Thưởng thức bánh Ayot – món đặc sản truyền thống được làm từ nếp rẫy, lá rừng và củi lửa, gói trọn hương vị mộc mạc của núi rừng Trường Sơn.",
+        "Khám phá nghệ thuật nhạc cụ bản địa như cồng chiêng, khèn, đàn Ta Lư góp phần hiểu hơn về nhịp sống, tâm linh và văn hoá cộng đồng Vân Kiều – Pa Kô."
+      ],
+      "keywords": [
+        "Khe Sanh",
+        "Hướng Hoá",
+        "Tây Trường Sơn",
+        "Sân bay Tà Cơn",
+        "Rừng Phong Hương",
+        "Săn mây Cù Vơ",
+        "Thác Tà Puồng",
+        "Đèo Sa Mù",
+        "Vân Kiều Pa Kô",
+        "cồng chiêng",
+        "đàn Ta Lư",
+        "bánh Ayot",
+        "tour văn hóa Hướng Hoá",
+        "du lịch Tây Trường Sơn"
+      ]
+    },
+    {
+      "id": "vietnam-lao-thai-camp_tour_xuyen_a_7n6d",
+      "category": "Tour liên quốc gia",
+      "type": "Du lịch đường bộ - Văn hoá - Lịch sử - Trải nghiệm",
+      "name": "Hành trình xuyên Á: Việt Nam - Lào - Thái Lan - Campuchia (7N6Đ)",
+      "summary": "Hành trình 7 ngày 6 đêm bằng ô tô từ Đà Nẵng/Huế qua Lao Bảo sang Lào, tiếp Thái Lan, khám phá Angkor ở Campuchia và kết thúc tại TP.HCM; tập trung trải nghiệm văn hoá, ẩm thực, di tích lịch sử và đêm lửa trại bản địa.",
+      "description": "Du lịch đường bộ mang đến cảm xúc rong ruổi qua những vùng đất và văn hoá khác nhau; tuyến xuyên Á nối nhiều nền văn minh, với phong tục Lễ Tết Té nước, buộc chỉ cổ tay, điệu lăm vông cùng tiếng chiêng, tiếng khèn và ẩm thực địa phương. Hành trình này kết hợp tham quan di tích lịch sử, trải nghiệm văn hoá bản địa và thưởng thức đặc sản sông Mekong.",
+      "highlights": [
+        "Hành trình xuyên biên giới Việt Nam – Lào – Thái Lan – Campuchia bằng ô tô, trải nghiệm văn hóa đa dạng dọc Hành lang Xuyên Á.",
+        "Tham quan di tích lịch sử Khe Sanh, Savannakhet, Viêng Chăn, Udon Thani, Siêm Riệp và Phnom Penh.",
+        "Khám phá kỳ quan Angkor Wat & Angkor Thom, tham dự chương trình múa Apsara truyền thống tại Siêm Riệp.",
+        "Trải nghiệm văn hoá Lào: lễ Té nước, buộc chỉ cổ tay, thưởng thức điệu Lam Vông và ẩm thực Mekong.",
+        "Cơ hội thưởng thức ẩm thực đặc sản Lào như xôi gà nướng, cá nướng muối, tép nhảy, lạp cá sông Mekong."
+      ],
+      "itinerary": {
+        "day_1": {
+          "route": "Đà Nẵng - Huế - Đông Hà – Lao Bảo – Savannakhet",
+          "distance": "≈500 km",
+          "meals": "trưa, tối",
+          "schedule": [
+            "06:30: Xe và HDV đón đoàn, xuất phát đi Lao Bảo qua Cố đô Huế, Thành cổ Quảng Trị, Thánh địa La Vang, Khe Sanh.",
+            "11:30: Dừng ăn trưa ở Lao Bảo, làm thủ tục xuất cảnh sang Lào qua cửa khẩu Deuan Savannakhet.",
+            "Chiều: Hành trình qua các địa danh lịch sử, đến Savannakhet; viếng That Inghang, làm lễ Phật tại thánh địa Nam truyền.",
+            "Tối: Nhận phòng, ăn tối, tự do khám phá chợ đêm hoặc khu vực Savan Resort/Casino."
+          ]
+        },
+        "day_2": {
+          "route": "Savannakhet – Viêng Chăn",
+          "distance": "≈450 km",
+          "meals": "sáng, trưa, tối",
+          "schedule": [
+            "07:30: City tour Savannakhet: công viên Bác Hồ, công viên Caysone Phomvihan.",
+            "Trên đường: Qua cảnh làng quê yên bình, dừng trưa tại Pakading, thưởng thức đặc sản sông Mekong.",
+            "14:00: Tham quan Wat Prabath (Chùa Dấu chân Phật) và các công trình tâm linh tại khu đồi Wat.",
+            "19:30: Buổi tối thưởng thức chương trình văn hoá dân tộc Lào với điệu Lam Vông."
+          ]
+        },
+        "day_3": {
+          "route": "Viêng Chăn – Noongkhai – Udon Thani (Thái Lan)",
+          "distance": "≈80 km + nhập cảnh",
+          "meals": "sáng, trưa, tối",
+          "schedule": [
+            "Sáng: Hành lễ Phật và lễ buộc chỉ tay tại chùa Mẹ Xi Mương.",
+            "09:00: Tham quan Phủ Chủ tịch Ho Khăm và tượng đài Pattuxay, Thạt Luống.",
+            "11:30: Đi cửa khẩu Hữu Nghị I, làm thủ tục xuất cảnh, nhập cảnh Thái Lan.",
+            "16:00: Tham quan Công viên tượng Phật Sala Keoku bên bờ Mekong, đến Udon Thani, nhận phòng."
+          ]
+        },
+        "day_4": {
+          "route": "Udon Thani – Cửa khẩu Sangam – Siêm Riệp (Campuchia)",
+          "distance": "≈550 km",
+          "meals": "sáng, trưa, tối",
+          "schedule": [
+            "07:00: Khởi hành qua các tỉnh Đông Bắc Thái, dừng trưa tại Surin.",
+            "15:00: Làm thủ tục tại cửa khẩu Sangam, nhập cảnh Campuchia.",
+            "17:30: Đến Siêm Riệp, nhận phòng, tối tự do khám phá khu phố đi bộ."
+          ]
+        },
+        "day_5": {
+          "route": "Siêm Riệp (Angkor Wat & Angkor Thom)",
+          "meals": "sáng, trưa, tối",
+          "schedule": [
+            "07:30: Tham quan Angkor Wat, Ta Prohm, cổng Nam Angkor Thom, Đền Bayon, Quảng Trường Đấu Voi và Cung điện Vua.",
+            "Chiều: Tham quan Biển Hồ Tonle Sap (chi phí tự túc) hoặc nghỉ ngơi, mua sắm.",
+            "Tối: Thưởng thức múa Apsara truyền thống và ẩm thực Khmer."
+          ]
+        },
+        "day_6": {
+          "route": "Siêm Riệp – Phnom Penh",
+          "distance": "≈320 km",
+          "meals": "sáng, trưa, tối",
+          "schedule": [
+            "07:00: Khởi hành đi Phnom Penh, dừng chân tham quan cây cầu Kom Pong Kdey cổ, chợ đặc sản địa phương.",
+            "12:00: Đến Phnom Penh, nhận phòng, tham quan Hoàng Cung, Chùa Vàng, Chùa Bạc, Tượng Độc Lập.",
+            "Tối: Tự do khám phá thủ đô, có thể ghé casino nếu muốn."
+          ]
+        },
+        "day_7": {
+          "route": "Phnom Penh – TP. Hồ Chí Minh",
+          "distance": "≈225 km",
+          "meals": "sáng, trưa",
+          "schedule": [
+            "07:00: Thăm chùa Wat Phanom, hành lễ Phật và mua sắm tại chợ Mới.",
+            "08:00–14:30: Khởi hành về TP.HCM, làm thủ tục nhập cảnh tại Mộc Bài.",
+            "17:00: Về đến TP.HCM, kết thúc chương trình, chia tay đoàn."
+          ]
+        }
+      },
+      "price_range": {
+        "land_price_usd": "400 - 600",
+        "currency": "USD",
+        "note": "Giá land thay đổi theo số lượng khách, hạng khách sạn và lựa chọn nâng cấp."
+      },
+      "price_includes": [
+        "Vận chuyển bằng ô tô chất lượng tốt suốt hành trình theo chương trình",
+        "Khách sạn tiêu chuẩn 2 người/phòng (phụ thu phòng đơn nếu yêu cầu)",
+        "Ăn theo chương trình 13 bữa chính theo tiêu chuẩn địa phương",
+        "Hướng dẫn viên tiếng Việt suốt tuyến và HDV địa phương tại các nước",
+        "Chi phí tham quan theo chương trình (trừ các mục tự chọn)",
+        "Nước uống trên xe: 2 chai 0.5l/khách/ngày",
+        "Chi phí xuất nhập cảnh và phí địa phương theo chương trình"
+      ],
+      "price_excludes": [
+        "Hộ chiếu phải còn hạn trên 6 tháng",
+        "Chi phí cá nhân (điện thoại, giặt là, đồ uống tự gọi)",
+        "Phí ngủ phòng đơn (nếu yêu cầu)",
+        "Tip HDV và lái xe 5 USD/khách/ngày",
+        "Chi phí tham quan tự chọn như Biển Hồ (Tonle Sap) 27 USD/pax nếu tham gia",
+        "Chi phí visa tùy quốc tịch (Campuchia, Lào, Thái nếu áp dụng)"
+      ],
+      "accommodations": {
+        "savannakhet": "Savan Vegas Resort (VIP từ đối tác) hoặc tương đương",
+        "viengchan": "Golden Sun*** (upgrade options available)",
+        "udon_thani": "Chalern*** hoặc Siam Grand**** (tùy lựa chọn upgrade)",
+        "siem_reap": "Darareangsey*** hoặc Kingdom Angkor**** (tùy chọn upgrade)",
+        "phnom_penh": "Relax*** hoặc Silver Mount*** (tùy chọn upgrade)"
+      },
+      "child_policy": {
+        ">=11": "Mua 01 vé người lớn",
+        "8-10": "75% vé, suất ăn người lớn, ngủ cùng bố mẹ",
+        "4-7": "50% vé, suất ăn trẻ em, ngủ cùng bố mẹ",
+        "<4": "Miễn phí (gia đình tự lo, 2 người lớn kèm 1 trẻ miễn phí, trẻ thứ 2 tính 50% vé)"
+      },
+      "cancellation_policy": {
+        ">=14_days": "Không thu phí",
+        "7-13_days": "Thu 30% giá tour",
+        "5-6_days": "Thu 50% giá tour",
+        "3-4_days": "Thu 75% giá tour",
+        "1-2_days": "Thu 90% giá tour",
+        "day_of_departure": "Thu 100% giá tour"
+      },
+      "visa_and_notes": [
+        "Khách quốc tế phải kiểm tra yêu cầu visa: Campuchia, Lào có phí visa tùy quốc tịch (Campuchia ~35 USD, Lào ~45–47 USD), Thái Lan miễn thị thực cho nhiều quốc gia nhưng cần kiểm tra trước khi khởi hành.",
+        "Việt Kiều/Quốc tế cần có visa tái nhập Việt Nam hoặc làm giấy tờ tại cửa khẩu (có phí và yêu cầu ảnh 4x6).",
+        "Cung cấp danh sách đoàn đầy đủ để chuẩn bị hồ sơ xuất nhập cảnh: họ tên, ngày sinh, quốc tịch, số hộ chiếu, ngày cấp/hết hạn."
+      ],
+      "notes": "Chương trình có thể hoán đổi thứ tự điểm tham quan do điều kiện địa phương hoặc lịch trình HDV nhưng vẫn đảm bảo các điểm chính trong chương trình.",
+      "keywords": [
+        "tour xuyên Á",
+        "Việt Nam Lào Thái Campuchia",
+        "Đà Nẵng Savannakhet Viêng Chăn Udon Thani Siêm Riệp Phnom Penh",
+        "Angkor Wat tour",
+        "du lịch đường bộ",
+        "tour văn hoá lịch sử",
+        "ẩm thực Mekong",
+        "retreat & trải nghiệm"
+      ]
     }
   ],
-  "count": 31
-},
-  {
-    "path": "root.company.name",
-    "text": "Công ty Ruby Wings Travel"
-
-  },
-  {
-    "path": "root.company.slogan",
-    "text": "Bay lên từ bên trong"
-  },
-  {
-    "path": "root.company.tagline",
-    "text": "Hành trình của chiều sâu cảm xúc, nơi bạn không chỉ đến một nơi, mà còn có thể được trở về với chính mình."
-  },
-  {
-    "path": "root.company.address",
-    "text": "148 Trương Gia Mô, Vỹ Dạ, TP. Huế"
-  },
-  {
-    "path": "root.company.community.description",
-    "text": "Tham gia cộng đồng Ruby Wings để nhận những thông tin mới nhất, chia sẻ trải nghiệm và lan tỏa những thông điệp tốt đẹp."
-  },
-
-  {
-    "path": "root.founder_story.tagline",
-    "text": "Trưởng thành trong Quân đội – nghị lực – vượt khó – và một chương đặc biệt của cuộc đời."
-  },
-  {
-    "path": "root.founder_story.life_event",
-    "text": "Năm 2015, người sáng lập Ruby Wings đối diện với cú sốc lớn: bệnh tật bất ngờ, cơ thể chỉ còn hơn 40kg, những đêm dài trong bệnh viện và các chẩn đoán mơ hồ như 'viêm không đặc hiệu', 'bệnh tự miễn'."
-  },
-  {
-    "path": "root.founder_story.healing_journey",
-    "text": "Trong tuyệt vọng, anh tìm đến thiền, khí công, cách thở, cách lắng nghe cơ thể, nuôi dưỡng tâm trí. Nhờ sự kỷ luật và kiên trì, anh hồi phục không chỉ thể chất mà cả tinh thần."
-  },
-  {
-    "path": "root.founder_story.awakening",
-    "text": "Trải qua biến cố, anh tự hỏi: 'Có thể nào biến những trải nghiệm hồi sinh này thành một hành trình để lan toả đến mọi người?'."
-  },
-
-  {
-    "path": "root.logo_philosophy.description",
-    "text": "Logo Ruby Wings là tấm bản đồ thu nhỏ của triết lý sống sâu sắc."
-  },
-  {
-    "path": "root.logo_philosophy.meaning[0]",
-    "text": "Bốn cánh xanh lá tượng trưng cho Thân – Tâm – Thiên nhiên – Niềm tin."
-  },
-  {
-    "path": "root.logo_philosophy.meaning[1]",
-    "text": "Trong hệ sinh thái thương hiệu, bốn cánh tượng trưng Ruby Wings (du lịch chữa lành), Ruby Learn (phát triển nội tâm), Ruby Auto (di chuyển cân bằng), Ruby Stay (nghỉ dưỡng xanh)."
-  },
-  {
-    "path": "root.logo_philosophy.meaning[2]",
-    "text": "Tâm điểm logo là viên ruby hồng, biểu tượng của trái tim – nơi con người được khai mở, chữa lành, cân bằng và nuôi dưỡng."
-  },
-  {
-    "path": "root.logo_philosophy.meaning[3]",
-    "text": "Vòng tròn hồng tươi bao quanh tạo cảm giác kết nối, trọn vẹn và tái sinh."
-  },
-  {
-    "path": "root.logo_philosophy.colors[0]",
-    "text": "Hồng tươi: tình yêu thương, niềm vui, sự chữa lành."
-  },
-  {
-    "path": "root.logo_philosophy.colors[1]",
-    "text": "Xanh lá: sự sống, hy vọng, phát triển bền vững."
-  },
-
-  {
-    "path": "root.ecosystem.vision",
-    "text": "Hệ sinh thái sống – không chỉ là công ty du lịch."
-  },
-  {
-    "path": "root.ecosystem.origin",
-    "text": "Ruby Wings khởi đầu ở Huế – mảnh đất của trầm mặc, ký ức và di sản."
-  },
-  {
-    "path": "root.ecosystem.values[0]",
-    "text": "Mỗi hành trình là cơ hội chữa lành và kết nối."
-  },
-  {
-    "path": "root.ecosystem.values[1]",
-    "text": "Không gian nghỉ dưỡng cảm xúc – tái tạo và phục hồi."
-  },
-  {
-    "path": "root.ecosystem.values[2]",
-    "text": "Nuôi dưỡng phát triển nội tâm bằng trải nghiệm."
-  },
-  {
-    "path": "root.ecosystem.why",
-    "text": "Ngày càng nhiều bạn trẻ kiệt sức, mất kết nối với chính mình. Ruby Wings ra đời không chỉ để tổ chức tour, mà để đồng hành chữa lành."
-  },
-
-  {
-    "path": "root.development_history.question",
-    "text": "Liệu có thể tạo ra một mô hình du lịch vừa sống được – vừa đẹp – vừa có ích cho cộng đồng không?"
-  },
-  {
-    "path": "root.development_history.early_days[0]",
-    "text": "Khảo sát địa bàn: Hướng Hóa – Đakrông – Quảng Bình – Hội An – Bắc – Nam."
-  },
-  {
-    "path": "root.development_history.early_days[1]",
-    "text": "Kết nối cộng đồng bản địa – lắng nghe câu chuyện, hiểu văn hóa, tìm phương pháp đồng hành."
-  },
-  {
-    "path": "root.development_history.early_days[2]",
-    "text": "Xây dựng triết lý sống, quy chế nội bộ, hệ điều hành nhân sự trước cả khi có sản phẩm."
-  },
-  {
-    "path": "root.development_history.early_days[3]",
-    "text": "Giai đoạn 2024–2025 được gọi là thời kỳ 'gieo hạt' – gieo tư duy mới về du lịch tử tế."
-  },
-
-  {
-    "path": "root.philosophy.life_view[0]",
-    "text": "Du lịch không chỉ để đi, mà để cân bằng – chữa lành – kết nối – làm mới bản thân."
-  },
-  {
-    "path": "root.philosophy.life_view[1]",
-    "text": "Mỗi chuyến đi mở ra một cánh cửa nội tâm – tìm thấy điều gì đó từ bên trong."
-  },
-  {
-    "path": "root.philosophy.life_view[2]",
-    "text": "Doanh nghiệp không chỉ để kiếm lợi nhuận, mà để lan tỏa tử tế."
-  },
-  {
-    "path": "root.philosophy.life_view[3]",
-    "text": "Con người hôm nay cần hành trình có cảm xúc, có giá trị thật và có sự kết nối thật."
-  },
-  {
-    "path": "root.philosophy.future",
-    "text": "Ruby Wings không chỉ là câu chuyện chữa lành của một cá nhân, mà là hành trình tập thể – của đội ngũ, cộng sự và du khách."
-  },
-  {
-    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.name",
-    "text": "10 điểm du lịch tâm linh – văn hoá – lịch sử nổi bật tại Huế"
-  },
-  {
-    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.description",
-    "text": "Mười địa điểm tiêu biểu của Huế mang đầy đủ chiều sâu văn hoá, kiến trúc và tâm linh. Đây là những nơi kết nối ký ức, trải nghiệm thiền tịnh và cảm xúc – phù hợp với hành trình retreat và du lịch trải nghiệm theo tinh thần Ruby Wings."
-  },
-  {
-    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[0]",
-    "text": "Chùa Giác Lâm Huế nổi bật với kiến trúc cổ kính và không gian thiền tĩnh lặng, là nơi nhiều người tìm đến để cân bằng tâm hồn."
-  },
-  {
-    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[1]",
-    "text": "Điện Voi Ré gắn với văn hoá thờ tự dân gian, lưu giữ nhiều câu chuyện lịch sử về triều Nguyễn và tín ngưỡng bảo hộ quốc gia."
-  },
-  {
-    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[2]",
-    "text": "Chùa Thiền Lâm – còn gọi là Chùa Phật Đứng – thu hút bởi không gian thoáng rộng, kiến trúc pha trộn hiện đại và tinh thần thiền định."
-  },
-  {
-    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[3]",
-    "text": "Lăng Gia Long mang vẻ đẹp hùng vĩ và tự nhiên, thể hiện triết lý con người hòa cùng trời đất đặc trưng của vương triều Nguyễn."
-  },
-  {
-    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[4]",
-    "text": "Chùa Quốc Ân là tổ đình lớn của thiền phái Lâm Tế tại Huế, nơi gắn với truyền thống tu học và văn hoá Phật giáo lâu đời."
-  },
-  {
-    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[5]",
-    "text": "Lăng Đồng Khánh mang phong cách giao thoa Đông – Tây, thể hiện thời kỳ chuyển giao văn hoá đặc biệt của triều Nguyễn."
-  },
-  {
-    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[6]",
-    "text": "Đàn Âm Hồn là di tích quan trọng ghi dấu biến cố lịch sử bi thương, gợi nhắc tinh thần kiên trung của người dân Huế."
-  },
-  {
-    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[7]",
-    "text": "Chùa Diệu Đế – quốc tự triều Nguyễn – mang giá trị lớn về lịch sử, kiến trúc và truyền thống Phật giáo xứ Huế."
-  },
-  {
-    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[8]",
-    "text": "Lăng Thiệu Trị mang nét giản dị nhưng uy nghi, hòa mình giữa thiên nhiên thanh bình."
-  },
-  {
-    "path": "root.hue_10_diem_tam_linh_lich_su_chuyen_sau.highlights[9]",
-    "text": "Chùa Linh Mụ Thượng mang không gian thiền tịnh giữa đồi thông xanh, gợi mở cảm giác bình an và thuần khiết."
-  },
-
-  {
-    "path": "root.khe_sanh_huong_hoa_gioi_thieu_chuyen_sau.name",
-    "text": "Khe Sanh – Hướng Hoá"
-  },
-  {
-    "path": "root.khe_sanh_huong_hoa_gioi_thieu_chuyen_sau.description",
-    "text": "Khe Sanh là trung tâm của huyện Hướng Hoá thuộc Tây Trường Sơn, nơi hội tụ chiều sâu lịch sử, thiên nhiên hùng vĩ và văn hoá Vân Kiều – Pa Kô. Đây là điểm đến lý tưởng cho hành trình tri ân, khám phá và retreat."
-  },
-  {
-    "path": "root.khe_sanh_huong_hoa_gioi_thieu_chuyen_sau.highlights[0]",
-    "text": "Sân bay Tà Cơn – Khe Sanh là di tích lịch sử quan trọng của chiến dịch Khe Sanh 1968, lưu giữ nhiều dấu tích chiến tranh."
-  },
-  {
-    "path": "root.khe_sanh_huong_hoa_gioi_thieu_chuyen_sau.highlights[1]",
-    "text": "Rừng Phong Hương nổi bật với mùa lá phong đỏ hiếm có tại miền Trung, tạo nên khung cảnh lãng mạn giữa núi rừng."
-  },
-  {
-    "path": "root.khe_sanh_huong_hoa_gioi_thieu_chuyen_sau.highlights[2]",
-    "text": "Điểm săn mây Cù Vơ mang đến cảnh biển mây huyền ảo vào mỗi bình minh trên cao nguyên Hướng Hoá."
-  },
-  {
-    "path": "root.khe_sanh_huong_hoa_gioi_thieu_chuyen_sau.highlights[3]",
-    "text": "Thác Tà Puồng cùng hệ thống hang động là nơi lý tưởng cho trekking và khám phá thiên nhiên hoang dã."
-  },
-  {
-    "path": "root.khe_sanh_huong_hoa_gioi_thieu_chuyen_sau.experiences[0]",
-    "text": "Trải nghiệm đêm lửa trại Tây Trường Sơn với tiếng cồng chiêng, ánh lửa bập bùng và câu chuyện bản làng Vân Kiều – Pa Kô đầy cảm xúc."
-  },
-  {
-    "path": "root.khe_sanh_huong_hoa_gioi_thieu_chuyen_sau.experiences[1]",
-    "text": "Giao lưu văn hoá với đồng bào Vân Kiều – Pa Kô qua điệu múa truyền thống và tiếng đàn Ta Lư réo rắt."
-  },
-  {
-    "path": "root.khe_sanh_huong_hoa_gioi_thieu_chuyen_sau.experiences[2]",
-    "text": "Thưởng thức bánh Ayot – đặc sản truyền thống từ nếp rẫy và lá rừng, gói trọn hương vị mộc mạc của Trường Sơn."
-  },
-
-  {
-    "path": "root.hue_5_diem_tam_linh_lich_su.name",
-    "text": "5 điểm du lịch văn hoá – tâm linh – lịch sử tại Huế"
-  },
-  {
-    "path": "root.hue_5_diem_tam_linh_lich_su.descriptions[0]",
-    "text": "Chùa Thiên Mụ – biểu tượng tâm linh của Huế với tháp Phước Duyên và không gian thiền tịnh nhìn ra sông Hương."
-  },
-  {
-    "path": "root.hue_5_diem_tam_linh_lich_su.descriptions[1]",
-    "text": "Đại Nội Huế là trung tâm quyền lực triều Nguyễn, sở hữu hệ thống cung điện và kiến trúc mang chiều sâu văn hoá – lịch sử."
-  },
-  {
-    "path": "root.hue_5_diem_tam_linh_lich_su.descriptions[2]",
-    "text": "Chùa Từ Hiếu là nơi gắn với thiền sư Thích Nhất Hạnh, nổi tiếng nhờ không gian tĩnh lặng và triết lý sống chánh niệm."
-  },
-  {
-    "path": "root.hue_5_diem_tam_linh_lich_su.descriptions[3]",
-    "text": "Lăng Minh Mạng mang vẻ đẹp hài hòa giữa kiến trúc và thiên nhiên, thể hiện triết lý quân vương uy nghiêm."
-  },
-  {
-    "path": "root.hue_5_diem_tam_linh_lich_su.descriptions[4]",
-    "text": "Lăng Tự Đức là công trình thơ mộng, phản ánh tâm hồn nghệ sĩ và triết lý sống an nhiên của vị vua tài hoa."
-  }
-]
-
+  "count": 37
+}
