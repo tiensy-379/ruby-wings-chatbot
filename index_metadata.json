@@ -36,7 +36,9 @@
     "hue_5_diem_tam_linh_lich_su_noi_bat",
     "hue_10_diem_tam_linh_lich_su_chuyen_sau",
     "khe_sanh_huong_hoa_gioi_thieu_chuyen_sau",
-    "vietnam-lao-thai-camp_tour_xuyen_a_7n6d"
+    "vietnam-lao-thai-camp_tour_xuyen_a_7n6d",
+    "tour_vietnam_lao_luongphrabang_thakhek_6n5d",
+    "rubywings_core_values_vision_mission"
   ],
   "docs_meta": [
     {
@@ -1387,7 +1389,7 @@
         "address": "148 Trương Gia Mô, Vỹ Dạ, TP. Huế",
         "contact": {
           "zalo": "0332510486 (Zalo Ruby Wings)",
-          "hotline": "0332510586 (WhatsApp/Zalo)",
+          "hotline": "0332510486 (WhatsApp/Zalo)",
           "email": "rubywingslsa@gmail.com"
         },
         "community": {
@@ -1763,7 +1765,140 @@
         "ẩm thực Mekong",
         "retreat & trải nghiệm"
       ]
+    },
+    {
+      "id": "tour_vietnam_lao_luongphrabang_thakhek_6n5d",
+      "name": "Hành trình Việt Nam – Lào – Luông Phrabang – Thakhek",
+      "duration": "6 ngày 5 đêm",
+      "type": "Tour liên quốc gia – đường bộ – văn hoá – tâm linh – lịch sử",
+      "style": "Trải nghiệm văn hoá bản địa, hành hương Phật giáo Nam truyền, khám phá thắng cảnh",
+      "description": "Du lịch đường bộ xuyên Á qua Việt Nam – Lào – Luông Phrabang – Thakhek. Hành trình cảm xúc khám phá văn hoá Lào – Thái, lễ buộc chỉ tay, Tết Té nước, điệu Lăm Vông, thuyết Phật giáo Tiểu Thừa, tàu cao tốc Lào, thác Kuang Si, hành lễ tại That Inghang, trải nghiệm đời sống cư dân bản địa.",
+      "highlights": [
+        "Khám phá tuyến đường xuyên Á – tinh hoa văn hoá 17 quốc gia",
+        "Trải nghiệm lễ buộc chỉ cổ tay, văn hoá Phật giáo Nam truyền",
+        "Đi tàu cao tốc Lào đến Luông Phrabang – thủ đô Phật giáo Thượng Tọa Bộ",
+        "Check-in That Inghang, Pattuxay, Thạt Luống, Wat Xiêng Thoong",
+        "Khám phá thác Kuang Si, dãy núi Luông Phrabang và chợ đêm người H’Mong",
+        "Thưởng thức đặc sản Lào: xôi gà nướng, cá nướng muối, tép nhảy, lạp cá Mekong"
+      ],
+      "itinerary": {
+        "day_1": "Đà Nẵng – Huế – Lao Bảo – Savannakhet: qua Thành cổ Quảng Trị, La Vang, Dakrong, Khe Sanh, Làng Vây. Dùng trưa tại Lao Bảo. Làm thủ tục sang Lào. Viếng That Inghang thế kỷ XVI. Ăn tối bên sông Mekong, tự do khám phá chợ đêm hoặc casino Savan Vegas.",
+        "day_2": "Savannakhet – Viêng Chăn: city tour công viên thành phố có linh vật Naga, đi quốc lộ 13 ngắm làng quê Lào. Ăn trưa Pakading với cá Mekong. Check-in Wat Prabath – dấu chân Phật. Tối dạo phố Tây & chợ đêm Viêng Chăn.",
+        "day_3": "Viêng Chăn – Luông Phrabang (tàu cao tốc): lễ buộc chỉ tại chùa Mẹ Si Mương, tham quan Pattuxay, Thạt Luống. Ăn trưa đặc sản Lào. Tàu cao tốc đến Luông Phrabang. Tham quan thác Kuang Si, ruộng bậc thang, trại voi.",
+        "day_4": "Luông Phrabang – Viêng Chăn: trải nghiệm khất thực, ngắm bình minh tại núi Phousi, tham quan Cung điện Hoàng Gia, Wat Xiêng Thoong – chùa cổ nhất. Ăn trưa và đi tàu cao tốc về Viêng Chăn. Tối tham quan chợ Sáng & phố đêm.",
+        "day_5": "Viêng Chăn – Thakhek: hành lễ tại chùa Mẹ Xì Mương, mua sắm bạc Lào Chinary, di chuyển đến Thakhek – thị xã ven sông Mekong. Ăn tối đặc sản Mekong.",
+        "day_6": "Thakhek – Lao Bảo – Huế – Đà Nẵng: xuất phát về Việt Nam qua đường 9 Nam Lào. Ăn trưa Mường Phìn. Nhập cảnh Lao Bảo, mua đặc sản Quảng Trị – Huế. Trở về Huế – Đà Nẵng, kết thúc tour."
+      },
+      "price_range": {
+        "amount": "9.000.000 – 10.000.000",
+        "unit": "VNĐ/người",
+        "note": "Tùy lựa chọn dịch vụ và số lượng khách"
+      },
+      "includes": [
+        "Xe du lịch chất lượng cao liên tuyến Việt Nam – Lào",
+        "Vé tàu cao tốc Viêng Chăn – Luông Phrabang",
+        "Khách sạn 3–5 sao tùy chặng: Savan Vegas, Duong Praseuth, Saisamphanh, Riveria",
+        "11 bữa chính tiêu chuẩn 7–8 USD/bữa",
+        "Hướng dẫn viên tiếng Việt & HDV địa phương",
+        "Vé tham quan theo chương trình",
+        "Nước suối 2 chai/ngày/khách",
+        "Chi phí XNC, phí ANDL theo quy định"
+      ],
+      "excludes": [
+        "Hộ chiếu còn hạn 6 tháng",
+        "Chi phí cá nhân, đồ uống, giặt ủi",
+        "Phòng đơn: phụ thu 75 USD",
+        "Tip HDV + lái xe: 3 USD/khách/ngày",
+        "Vé tham quan thêm Biển Hồ (nếu có)"
+      ],
+      "child_policy": "Trẻ từ 11 tuổi vé người lớn; 8–10 tuổi 75% vé; 4–7 tuổi 50%; dưới 4 tuổi miễn phí nhưng ngủ chung gia đình.",
+      "cancellation_policy": "Hủy 14 ngày: không phí; 7–13 ngày: 30%; 5–6 ngày: 50%; 3–4 ngày: 75%; 1–2 ngày: 90%; ngày khởi hành: 100%.",
+      "visa_notes": "Khách Việt Kiều/Quốc tế cần visa Lào 45–47 USD; visa tái nhập Việt Nam nếu không có sẽ làm tại cửa khẩu; cần ảnh 4x6.",
+      "keywords": [
+        "tour Lào",
+        "tour Luông Phrabang",
+        "tour Thakhek",
+        "tàu cao tốc Lào",
+        "Thạt Luống",
+        "Pattuxay",
+        "thác Kuang Si",
+        "du lịch đường bộ xuyên Á",
+        "Savan Vegas",
+        "Mekong",
+        "tour hành hương Lào"
+      ]
+    },
+    {
+      "id": "rubywings_core_values_vision_mission",
+      "name": "Giới thiệu – Tầm nhìn – Sứ mệnh – Giá trị cốt lõi Ruby Wings",
+      "category": "company_profile",
+      "description": "Khối dữ liệu tổng hợp đầy đủ về lịch sử hình thành, sứ mệnh, tầm nhìn, giá trị cốt lõi, triết lý nhân văn, tư duy khởi nghiệp và hệ sinh thái phát triển Ruby Wings.",
+      "history": {
+        "formation": "Ruby Wings được khởi nguồn tại Huế – mảnh đất giao hòa giữa di sản và thiên nhiên. Hơn 10 năm trước, Ruby Wings được định hình không chỉ để làm du lịch mà để tạo ra các hành trình nhân văn – có chiều sâu, nơi mỗi chuyến đi là cơ hội trở về với chính mình, cộng đồng và thiên nhiên. Các hành trình mang tính chia sẻ, trải nghiệm thiền – khí công – thiên nhiên nhằm giúp cân bằng và chữa lành.",
+        "early_strategy": "Từ những ngày đầu khởi nghiệp tinh gọn, Ruby Wings chọn hướng đi 'Du lịch có chiều sâu – cảm xúc – kết nối cộng đồng – xanh – bền vững', xây dựng hệ sinh thái du lịch – giáo dục – văn hóa dựa trên sự tử tế, minh bạch và có chiều sâu."
+      },
+      "mission": "Lan tỏa giá trị sống chuẩn mực – chân thành – có chiều sâu thông qua hoạt động du lịch, bồi dưỡng nội tâm và truyền thông tích cực. Tạo ra giá trị thật cho con người – cộng đồng – thiên nhiên; biến du lịch thành một hành trình chữa lành và trưởng thành.",
+      "vision": {
+        "goal_2030": "Trở thành một trong những đơn vị hàng đầu về du lịch cảm xúc và phát triển con người toàn diện tại miền Trung Việt Nam, được cộng đồng trong nước và một bộ phận du khách quốc tế biết đến.",
+        "ecosystem_orientation": "Mở rộng hệ sinh thái gồm: Ruby Wings Travel – du lịch trải nghiệm, thiền – khí công; Ruby Learn – giáo dục kỹ năng và phát triển nội tâm, đặc biệt dành cho thanh thiếu niên; Ruby Stay – lưu trú xanh – cộng đồng; Ruby Auto – không gian di chuyển cân bằng."
+      },
+      "core_values": {
+        "statement": "Chuẩn mực – Chân thành – Có chiều sâu",
+        "details": {
+          "chuan_muc": "Làm đúng – làm đủ – làm thật. Tuân thủ quy trình, tôn trọng sự thật, giữ kỷ luật và nguyên tắc trong mọi công việc.",
+          "chan_thanh": "Trung thực – tử tế – biết lắng nghe. Chân thành với đồng đội, với khách hàng và chính bản thân mình.",
+          "co_chieu_sau": "Làm việc bằng nhận thức, không làm hời hợt. Hiểu rõ giá trị thật, cảm được người khác, mỗi hành trình là cơ hội để lớn lên."
+        },
+        "meaning": "Ba giá trị này được áp dụng xuyên suốt trong thiết kế sản phẩm du lịch, hoạt động bồi dưỡng nội tâm, văn hóa nội bộ và tương tác cộng đồng."
+      },
+      "entrepreneurship_mindset": {
+        "overview": "Ruby Wings không khởi nghiệp chỉ để kinh doanh du lịch mà để xây dựng một mô hình sống – làm việc – cống hiến có ý nghĩa, đặt trọng tâm vào con người và giá trị thật.",
+        "key_points": [
+          "Khởi nghiệp từ bên trong – rèn bản lĩnh, kỷ luật và thái độ trước thành công bên ngoài.",
+          "Phát triển bền vững – lấy sự tử tế và giá trị thật làm gốc.",
+          "Làm việc có chiều sâu – làm ít nhưng chất lượng, có ý nghĩa.",
+          "Học suốt đời – vừa học nghề, vừa học cách sống và làm người."
+        ]
+      },
+      "humanistic_philosophy": {
+        "summary": "Triết lý nhân văn của Ruby Wings bắt nguồn từ tinh thần Chuẩn mực – Chân thành – Có chiều sâu. Mỗi trải nghiệm được thiết kế để giúp con người trở về với chính mình qua thiền, khí công, thiên nhiên và niềm tin.",
+        "principles": [
+          "Phát triển tổ chức gắn liền với phát triển con người.",
+          "Khởi nghiệp bên trong – chuyển hóa nhận thức, nuôi dưỡng phẩm chất và hành vi tử tế.",
+          "Mỗi thành viên trở thành người tự do – có trách nhiệm – làm việc trong hạnh phúc."
+        ]
+      },
+      "ecosystem": {
+        "overview": "Hệ sinh thái Ruby Wings xoay quanh ba trụ chính: Du lịch – Giáo dục – Cộng đồng, được xây dựng theo định hướng nhân văn – bền vững – có chiều sâu.",
+        "branches": {
+          "ruby_travel": "Du lịch trải nghiệm – chữa lành retreat thiền – khí công, hành trình gắn với thiên nhiên, văn hóa bản địa, cảm xúc và nhận thức.",
+          "ruby_learn": "Giáo dục nội tâm, kỹ năng sống, thiền – khí công, phát triển con người. Tập trung cho thanh thiếu niên, xây dựng con người trước khi mở rộng tổ chức.",
+          "ruby_stay": "Không gian lưu trú xanh – văn hóa – bền vững. Mỗi điểm lưu trú là trải nghiệm sống chậm, tái tạo và cân bằng.",
+          "ruby_auto": "Không gian di chuyển an toàn – cân bằng – tiêu chuẩn Ruby Wings."
+        },
+        "future": "Các nhánh hoạt động độc lập nhưng tương hỗ, hướng tới triết lý Ruby Mind – dưỡng sinh – cân bằng – chữa lành."
+      },
+      "culture_spirit": {
+        "statement": "Chuẩn mực – Chân thành – Có chiều sâu là sợi chỉ đỏ xuyên suốt văn hóa Ruby Wings.",
+        "chuan_muc": "Tuân thủ quy trình, chuyên nghiệp, minh bạch, đáng tin cậy. Làm việc có kế hoạch, đúng giờ, có trách nhiệm.",
+        "chan_thanh": "Nói thật – làm thật. Không phô trương. Giao tiếp chân thành với đồng nghiệp và khách hàng.",
+        "co_chieu_sau": "Nhìn sâu – hiểu sâu – làm có ý nghĩa. Mỗi công việc đều gắn với giá trị thật, dựa trên thiền – khí công – lối sống tỉnh thức.",
+        "integration": "Ba yếu tố này bổ trợ lẫn nhau tạo thành nền văn hoá bền vững: Chuẩn mực nâng đỡ Chân thành, Chân thành nuôi dưỡng Chiều sâu, Chiều sâu củng cố Chuẩn mực.",
+        "expected_outcome": "Nhân sự Ruby Wings trở thành người tử tế, có trí tuệ, có tâm hồn; làm việc chuẩn mực, giao tiếp chân thành, suy nghĩ sâu sắc và hành động vì giá trị thật."
+      },
+      "keywords": [
+        "tầm nhìn Ruby Wings",
+        "sứ mệnh Ruby Wings",
+        "giá trị cốt lõi Ruby Wings",
+        "triết lý nhân văn",
+        "du lịch chữa lành",
+        "thiền khí công",
+        "du lịch có chiều sâu",
+        "hệ sinh thái Ruby Wings",
+        "văn hoá doanh nghiệp Ruby Wings",
+        "chuẩn mực chân thành có chiều sâu"
+      ]
     }
   ],
-  "count": 37
+  "count": 39
 }
