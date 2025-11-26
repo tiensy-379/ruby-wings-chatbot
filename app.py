@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Optimized app.py for Ruby Wings — synchronized with build_index.py created earlier.
-
-Features / guarantees:
-- Uses same env vars / paths as build_index.py (EMBEDDING_MODEL, FAISS_INDEX_PATH, FAISS_MAPPING_PATH,
-  FALLBACK_VECTORS_PATH, KNOWLEDGE_PATH, OPENAI_API_KEY, FAISS_ENABLED)
-- UTF-8 everywhere and creates .bak before overwriting mapping files
-- Index building is deterministic with the same fallback method as build_index.py
-- /home, /reindex, /chat, /stream endpoints implemented; /chat returns `sources` array with mapping paths
-- Graceful fallback to local numpy index when OpenAI or faiss unavailable
-- Clear logging and health checks
-
+Rewritten app.py for Ruby Wings — drop-in replacement.
+- Reads same env vars as build_index.py
+- Loads mapping + faiss index or fallback vectors.npz
+- Robust OpenAI embedding calls (supports different SDK versions)
+- Deterministic fallback embeddings that match existing vectors.npz dim
+- Endpoints: /, /reindex, /chat, /stream
+- Atomic writes and .bak backups for mapping/vectors
 Run: gunicorn -w 1 -b 0.0.0.0:10000 app:app
 """
 
@@ -19,15 +15,14 @@ import os
 import json
 import logging
 import threading
-import time
 import hashlib
 from functools import lru_cache
-from typing import List, Tuple, Dict, Any
+from typing import List, Tuple, Any, Dict
 
 from flask import Flask, request, jsonify, Response, stream_with_context
 from flask_cors import CORS
 
-# Optional imports
+# optional imports
 try:
     import openai
 except Exception:
@@ -38,19 +33,20 @@ try:
 except Exception:
     raise
 
+# try faiss
+HAS_FAISS = False
 try:
-    import faiss
+    import faiss  # type: ignore
     HAS_FAISS = True
-except Exception as e:
+except Exception:
     faiss = None
     HAS_FAISS = False
-    FAISS_IMPORT_ERROR = str(e)
 
-# ---------- Logging ----------
+# logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("rbw.app")
 
-# ---------- Configuration (use same names as build_index.py) ----------
+# ----- config (environment) -----
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
 OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
 KNOWLEDGE_PATH = os.environ.get("KNOWLEDGE_PATH", "/mnt/data/knowledge_fixed.json")
@@ -64,38 +60,35 @@ FAISS_ENABLED_ENV = os.environ.get("FAISS_ENABLED", "true").lower() in ("1", "tr
 RBW_ALLOW_REINDEX = os.environ.get("RBW_ALLOW_REINDEX", "0")
 RBW_ADMIN_TOKEN = os.environ.get("RBW_ADMIN_TOKEN")
 
+# openai config if available
 if OPENAI_API_KEY and openai is not None:
     try:
         openai.api_key = OPENAI_API_KEY
-        # some SDKs support api_base; if not, ignore
-        try:
-            openai.api_base = OPENAI_BASE_URL
-        except Exception:
-            pass
+        openai.api_base = OPENAI_BASE_URL
     except Exception:
         pass
 
 if not OPENAI_API_KEY:
-    logger.warning("OPENAI_API_KEY not set — falling back to deterministic embeddings")
+    logger.warning("OPENAI_API_KEY not set — will use deterministic fallback embeddings when needed")
 if FAISS_ENABLED_ENV and not HAS_FAISS:
-    logger.warning("FAISS requested but not available: %s", FAISS_IMPORT_ERROR if 'FAISS_IMPORT_ERROR' in globals() else 'unknown')
+    logger.warning("FAISS requested but not available")
 
-# ---------- Flask ----------
+# flask
 app = Flask(__name__)
 CORS(app)
 
-# ---------- Global state ----------
+# global state
 KNOWLEDGE: Any = {}
 MAPPING: List[Dict[str, str]] = []  # list of {path, text}
 FLATTENED_TEXTS: List[str] = []
 INDEX_LOCK = threading.Lock()
-INDEX = None  # faiss index or NumpyFallbackIndex
+INDEX = None
 
-# ---------- Fallback index (kept compatible with build_index.py) ----------
+# ------- fallback index -------
 class NumpyFallbackIndex:
     def __init__(self, mat: np.ndarray = None):
         self.mat = mat.astype("float32") if (mat is not None and getattr(mat, 'size', 0) > 0) else np.empty((0,0), dtype="float32")
-        self.dim = None if self.mat.size == 0 else self.mat.shape[1]
+        self.dim = None if self.mat.size == 0 else int(self.mat.shape[1])
 
     def add(self, mat: np.ndarray):
         if mat is None or mat.size == 0:
@@ -103,7 +96,7 @@ class NumpyFallbackIndex:
         mat = mat.astype("float32")
         if self.mat.size == 0:
             self.mat = mat.copy()
-            self.dim = mat.shape[1]
+            self.dim = int(mat.shape[1])
         else:
             if mat.shape[1] != self.dim:
                 raise ValueError("Dimension mismatch in fallback index")
@@ -122,11 +115,11 @@ class NumpyFallbackIndex:
 
     @property
     def ntotal(self):
-        return 0 if self.mat is None or self.mat.size == 0 else self.mat.shape[0]
+        return 0 if self.mat is None or self.mat.size == 0 else int(self.mat.shape[0])
 
     def save(self, path: str):
         try:
-            np.savez_compressed(path, mat=self.mat)
+            np.savez_compressed(path, vectors=self.mat)
             logger.info("Saved fallback vectors to %s", path)
         except Exception:
             logger.exception("Failed saving fallback vectors")
@@ -135,21 +128,22 @@ class NumpyFallbackIndex:
     def load(cls, path: str):
         try:
             arr = np.load(path, allow_pickle=False)
-            mat = arr["mat"]
+            key = arr.files[0]
+            mat = arr[key]
             return cls(mat=mat)
         except Exception:
             logger.exception("Failed loading fallback vectors from %s", path)
             return cls(None)
 
-# ---------- Utilities ----------
+# ------- utils -------
 
 def backup_if_exists(path: str):
     try:
         if os.path.exists(path):
             bak = f"{path}.bak"
-            logger.info("Backing up %s -> %s", path, bak)
             with open(path, 'rb') as src, open(bak, 'wb') as dst:
                 dst.write(src.read())
+            logger.info("Backed up %s -> %s", path, bak)
     except Exception:
         logger.exception("Backup failed for %s", path)
 
@@ -162,14 +156,15 @@ def write_json_atomic(path: str, data: Any):
     os.replace(tmp, path)
     logger.info("Wrote JSON to %s", path)
 
+# ------- load knowledge / mapping -------
 
 def load_mapping(path: str = FAISS_MAPPING_PATH):
     global MAPPING, FLATTENED_TEXTS
     try:
         with open(path, 'r', encoding='utf-8') as f:
             MAPPING = json.load(f)
-        FLATTENED_TEXTS = [m.get('text', '') for m in MAPPING]
-        logger.info("Loaded mapping %s entries", len(MAPPING))
+        FLATTENED_TEXTS = [m.get('text','') for m in MAPPING]
+        logger.info("Loaded mapping %d entries", len(MAPPING))
     except Exception:
         logger.exception("Failed to load mapping; resetting")
         MAPPING = []
@@ -184,16 +179,13 @@ def load_knowledge(path: str = KNOWLEDGE_PATH) -> int:
     except Exception:
         logger.exception("Could not open knowledge file: %s", path)
         KNOWLEDGE = {}
-    # If a mapping already exists on disk, prefer loading it (mapping points to passages)
     if os.path.exists(FAISS_MAPPING_PATH):
         load_mapping(FAISS_MAPPING_PATH)
         return len(FLATTENED_TEXTS)
-
-    # Otherwise flatten knowledge similar to build_index.py extraction rules
     MAPPING = []
     FLATTENED_TEXTS = []
 
-    def scan(obj, prefix: str = 'root'):
+    def scan(obj, prefix='root'):
         if isinstance(obj, dict):
             for k, v in obj.items():
                 scan(v, f"{prefix}.{k}")
@@ -210,22 +202,45 @@ def load_knowledge(path: str = KNOWLEDGE_PATH) -> int:
     logger.info("Flattened %d passages from knowledge", len(FLATTENED_TEXTS))
     return len(FLATTENED_TEXTS)
 
-# ---------- Embeddings (must be compatible with build_index.py fallback) ----------
+# ------- embeddings -------
 
-def _call_openai_embeddings(input_text: str):
-    """
-    Robust call wrapper: use new-style openai.Embeddings if available,
-    otherwise fallback to openai.Embedding for older SDKs.
-    """
+def _call_openai_embeddings(text: str):
+    """Try to call OpenAI embeddings with several SDK variants."""
     if openai is None:
-        raise RuntimeError("openai package not available")
-    # prefer modern API
-    if hasattr(openai, "Embeddings"):
-        return openai.Embeddings.create(model=EMBEDDING_MODEL, input=input_text)
-    if hasattr(openai, "Embedding"):
-        return openai.Embedding.create(model=EMBEDDING_MODEL, input=input_text)
-    # older SDKs may use different shapes; if none available, raise
-    raise RuntimeError("OpenAI SDK missing Embeddings/Embedding API")
+        raise RuntimeError("openai not installed")
+    # prefer modern attribute names when available
+    try:
+        # new style
+        if hasattr(openai, 'Embeddings'):
+            return openai.Embeddings.create(model=EMBEDDING_MODEL, input=text)
+    except Exception:
+        logger.debug("openai.Embeddings call failed, will try alternatives")
+    try:
+        # older style
+        if hasattr(openai, 'Embedding'):
+            return openai.Embedding.create(model=EMBEDDING_MODEL, input=text)
+    except Exception:
+        logger.debug("openai.Embedding call failed")
+    # attempt client.chat or others may be present; raise for outer fallback
+    raise RuntimeError("OpenAI embedding call not available in this SDK")
+
+
+def _determine_embedding_dim() -> int:
+    # If vectors.npz exists, use its dim
+    try:
+        if os.path.exists(FALLBACK_VECTORS_PATH):
+            arr = np.load(FALLBACK_VECTORS_PATH, allow_pickle=False)
+            first = arr[arr.files[0]]
+            if hasattr(first, 'shape') and len(first.shape) == 2:
+                return int(first.shape[1])
+    except Exception:
+        logger.debug("Could not read vectors.npz to determine dim")
+    # model defaults
+    model_dims = {
+        'text-embedding-3-large': 3072,
+        'text-embedding-3-small': 1536,
+    }
+    return int(model_dims.get(EMBEDDING_MODEL, 1536))
 
 
 @lru_cache(maxsize=8192)
@@ -233,52 +248,48 @@ def embed_text(text: str) -> Tuple[List[float], int]:
     if not text:
         return [], 0
     short = text if len(text) <= 2000 else text[:2000]
-    # try OpenAI embeddings when key available
+    # try OpenAI
     if OPENAI_API_KEY and openai is not None:
         try:
             resp = _call_openai_embeddings(short)
             emb = None
-            # support dict-style and object-style responses
-            if isinstance(resp, dict) and "data" in resp and len(resp["data"]) > 0:
-                emb = resp["data"][0].get("embedding") or resp["data"][0].get("vector")
-            elif hasattr(resp, "data") and len(resp.data) > 0:
-                # object-like (older/newer SDKs)
+            if isinstance(resp, dict) and 'data' in resp and len(resp['data'])>0:
+                emb = resp['data'][0].get('embedding') or resp['data'][0].get('vector')
+            elif hasattr(resp, 'data') and len(resp.data) > 0:
                 first = resp.data[0]
-                emb = getattr(first, "embedding", None) or getattr(first, "vector", None)
+                emb = getattr(first, 'embedding', None) or getattr(first, 'vector', None)
             if emb:
                 return emb, len(emb)
-            logger.warning("Embedding API returned no embedding field; resp type=%s", type(resp))
+            logger.warning("Embedding API returned no embedding; falling back")
         except Exception as e:
-            # log once with message; do not spam full stack for each call
-            logger.warning("OpenAI embedding error; falling back to deterministic embeddings (%s)", e)
-
-    # deterministic fallback — sha256 expansion (compatible with build_index.py)
+            logger.warning("OpenAI embedding error; falling back (%s)", e)
+    # deterministic fallback, dimension chosen to match vectors.npz when present
     try:
+        dim = _determine_embedding_dim()
         h = hashlib.sha256(short.encode('utf-8')).digest()
-        needed = 1536 * 4
+        needed = dim * 4
         rep = (h * ((needed // len(h)) + 1))[:needed]
         arr = np.frombuffer(rep, dtype=np.uint8).astype(np.float32)
         arr = arr.reshape(-1, 4)
         ints = (arr[:,0]*256**3 + arr[:,1]*256**2 + arr[:,2]*256 + arr[:,3]).astype(np.float64)
         floats = (ints % 1000000) / 1000000.0
-        vec = np.resize(floats, 1536).astype(np.float32)
+        vec = np.resize(floats, dim).astype(np.float32)
         norm = np.linalg.norm(vec)
         if norm == 0:
-            return vec.tolist(), len(vec)
+            return vec.tolist(), dim
         vec = (vec / norm).astype(np.float32)
-        return vec.tolist(), len(vec)
+        return vec.tolist(), dim
     except Exception:
         logger.exception("Fallback embedding generation failed")
         return [], 0
 
-# ---------- Index build / management ----------
+# ------- index management -------
 
 def build_index(force_rebuild: bool = False) -> bool:
-    """Build or load index. Returns True on success."""
     global INDEX, MAPPING, FLATTENED_TEXTS
     with INDEX_LOCK:
         use_faiss = FAISS_ENABLED_ENV and HAS_FAISS
-        # try quick load
+        # try loading persisted structures first
         if not force_rebuild:
             try:
                 if use_faiss and os.path.exists(FAISS_INDEX_PATH) and os.path.exists(FAISS_MAPPING_PATH):
@@ -294,12 +305,11 @@ def build_index(force_rebuild: bool = False) -> bool:
                     logger.info("Loaded fallback vectors from disk")
                     return True
             except Exception:
-                logger.exception("Failed to load persisted index; rebuilding")
+                logger.exception("Failed to load persisted index; will rebuild")
         if not FLATTENED_TEXTS:
-            logger.warning("No passages to build index")
+            logger.warning("No passages to index")
             INDEX = None
             return False
-        # compute embeddings
         vectors = []
         dims = None
         for t in FLATTENED_TEXTS:
@@ -310,11 +320,10 @@ def build_index(force_rebuild: bool = False) -> bool:
                 dims = d
             vectors.append(np.array(emb, dtype='float32'))
         if not vectors or dims is None:
-            logger.warning("No vectors produced")
+            logger.warning("No vectors produced; abort")
             INDEX = None
             return False
         mat = np.vstack(vectors).astype('float32')
-        # normalize
         norms = np.linalg.norm(mat, axis=1, keepdims=True)
         mat = mat / (norms + 1e-12)
         try:
@@ -344,8 +353,7 @@ def build_index(force_rebuild: bool = False) -> bool:
             INDEX = None
             return False
 
-
-# ---------- Querying ----------
+# ------- querying -------
 
 def query_index(query: str, top_k: int = TOP_K) -> List[Tuple[float, Dict[str,Any]]]:
     global INDEX, MAPPING
@@ -353,8 +361,8 @@ def query_index(query: str, top_k: int = TOP_K) -> List[Tuple[float, Dict[str,An
         return []
     if INDEX is None:
         built = build_index(force_rebuild=False)
-        if not built:
-            logger.warning("Index not ready")
+        if not built or INDEX is None:
+            logger.warning("Index not available")
             return []
     emb, d = embed_text(query)
     if not emb:
@@ -376,22 +384,22 @@ def query_index(query: str, top_k: int = TOP_K) -> List[Tuple[float, Dict[str,An
         results.append((float(score), MAPPING[idx]))
     return results
 
-# ---------- Prompt composition ----------
+# ------- prompt composition -------
 
 def compose_system_prompt(top_passages: List[Tuple[float, dict]]) -> str:
     header = (
         "Bạn là trợ lý AI của Ruby Wings — chuyên tư vấn du lịch trải nghiệm, retreat, hành trình chữa lành. "
-        "Trả lời ngắn gọn, lịch sự, mang tone Ruby Wings.\n\n"
+        "Trả lời ngắn gọn, lịch sự, tone Ruby Wings.\n\n"
     )
     if not top_passages:
         return header + "Không tìm thấy dữ liệu nội bộ thích hợp."
     content = header + "Dữ liệu nội bộ (theo độ liên quan):\n"
     for i, (score, m) in enumerate(top_passages, start=1):
         content += f"\n[{i}] (score={score:.3f}) nguồn: {m.get('path','?')}\n{m.get('text','')}\n"
-    content += "\n---\nƯu tiên trích dẫn thông tin từ dữ liệu nội bộ ở trên. Không được bịa thông tin. Trả lời ngắn, lịch sự."
+    content += "\n---\nƯu tiên trích dẫn thông tin từ dữ liệu nội bộ ở trên. Không được bịa thông tin. Trả lời ngắn, lịch sự." 
     return content
 
-# ---------- Endpoints ----------
+# ------- endpoints -------
 @app.route('/')
 def home():
     return jsonify({
@@ -403,21 +411,22 @@ def home():
         'faiss_enabled_env': FAISS_ENABLED_ENV,
     })
 
+
 @app.route('/reindex', methods=['POST'])
 def reindex():
     try:
         secret = request.headers.get('X-RBW-ADMIN', '')
         if not secret and RBW_ALLOW_REINDEX != '1' and os.environ.get('RBW_ALLOW_REINDEX','0') != '1':
-            return jsonify({'error': 'reindex not allowed'}), 403
+            return jsonify({'error': 'reindex not allowed (set RBW_ALLOW_REINDEX=1 or provide X-RBW-ADMIN)'}), 403
         if secret and RBW_ADMIN_TOKEN and secret != RBW_ADMIN_TOKEN:
             return jsonify({'error': 'invalid admin token'}), 403
-        # reload knowledge and mapping
         load_knowledge(KNOWLEDGE_PATH)
         ok = build_index(force_rebuild=True)
         return jsonify({'ok': ok, 'count': len(FLATTENED_TEXTS)})
     except Exception as e:
         logger.exception('Unhandled error in /reindex')
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -434,60 +443,47 @@ def chat():
             {'role': 'user', 'content': user_message}
         ]
         logger.info('CHAT request: hits=%d model=%s', len(top), CHAT_MODEL)
-        # call OpenAI chat if available
         resp_text = ''
         if OPENAI_API_KEY and openai is not None:
             try:
-                res = None
-                # try common patterns for various SDKs
-                try:
-                    res = openai.ChatCompletion.create(
-                        model=CHAT_MODEL,
-                        messages=messages,
-                        temperature=float(data.get('temperature', 0.2)),
-                        max_tokens=int(data.get('max_tokens', 700)),
-                        top_p=0.95
-                    )
-                except Exception:
-                    try:
-                        if hasattr(openai, "chat") and hasattr(openai.chat, "completions"):
-                            res = openai.chat.completions.create(model=CHAT_MODEL, messages=messages, stream=False)
-                    except Exception:
-                        res = None
-                # robust parsing
-                if res:
-                    if isinstance(res, dict):
-                        choices = res.get('choices', [])
-                        if choices:
-                            first = choices[0]
-                            if isinstance(first.get('message'), dict):
-                                resp_text = first['message'].get('content','') or ''
-                            else:
-                                resp_text = first.get('text','') or ''
-                    else:
-                        choices = getattr(res, 'choices', None)
-                        if choices and len(choices) > 0:
-                            first = choices[0]
-                            msg = getattr(first, 'message', None)
-                            if isinstance(msg, dict):
-                                resp_text = msg.get('content','') or ''
-                            else:
-                                resp_text = str(first)
+                res = openai.ChatCompletion.create(
+                    model=CHAT_MODEL,
+                    messages=messages,
+                    temperature=float(data.get('temperature', 0.2)),
+                    max_tokens=int(data.get('max_tokens', 700)),
+                    top_p=0.95
+                )
+                if isinstance(res, dict):
+                    choices = res.get('choices', [])
+                    if choices:
+                        first = choices[0]
+                        if isinstance(first.get('message'), dict):
+                            resp_text = first['message'].get('content','') or ''
+                        else:
+                            resp_text = first.get('text','') or ''
+                else:
+                    choices = getattr(res, 'choices', None)
+                    if choices and len(choices) > 0:
+                        first = choices[0]
+                        msg = getattr(first, 'message', None)
+                        if isinstance(msg, dict):
+                            resp_text = msg.get('content','') or ''
+                        else:
+                            resp_text = str(first)
             except Exception:
                 logger.exception('OpenAI chat failed; falling back to snippet reply')
-        # fallback reply
         if not resp_text:
             if top:
                 snippets = "\n\n".join([f"- ({m.get('path')}) {m.get('text')[:300]}" for _, m in top[:5]])
                 resp_text = f"Tôi tìm thấy thông tin nội bộ liên quan:\n\n{snippets}\n\nNếu bạn cần trích dẫn hoặc chi tiết, hãy chỉ rõ phần cần biết."
             else:
                 resp_text = "Xin lỗi — hiện không có dữ liệu nội bộ phù hợp và API OpenAI chưa sẵn sàng."
-        # return reply plus sources (list of mapping entries)
         sources = [m for _, m in top]
         return jsonify({'reply': resp_text, 'sources': sources})
     except Exception as e:
         logger.exception('Unhandled error in /chat')
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/stream', methods=['POST'])
 def stream():
@@ -509,7 +505,6 @@ def stream():
                 if not OPENAI_API_KEY or openai is None:
                     yield f"data: {json.dumps({'error':'openai_key_missing'})}\n\n"
                     return
-                # attempt streaming API
                 try:
                     stream_iter = openai.ChatCompletion.create(model=CHAT_MODEL, messages=messages, stream=True)
                 except Exception:
@@ -538,7 +533,6 @@ def stream():
                     except Exception:
                         logger.exception('stream chunk parse error')
                         continue
-                # final
                 yield f"data: {json.dumps({'done': True, 'sources': [m for _, m in top]})}\n\n"
             except Exception as ex:
                 logger.exception('stream generator error')
@@ -548,13 +542,11 @@ def stream():
         logger.exception('Unhandled error in /stream')
         return jsonify({'error': str(e)}), 500
 
-# ---------- Initialization on import ----------
+# ------- startup -------
 try:
-    # load knowledge and mapping
     load_knowledge(KNOWLEDGE_PATH)
     if os.path.exists(FAISS_MAPPING_PATH):
         load_mapping(FAISS_MAPPING_PATH)
-    # try loading persisted index
     if FAISS_ENABLED_ENV and HAS_FAISS and os.path.exists(FAISS_INDEX_PATH) and os.path.exists(FAISS_MAPPING_PATH):
         try:
             INDEX = faiss.read_index(FAISS_INDEX_PATH)
@@ -572,13 +564,11 @@ try:
             t = threading.Thread(target=build_index, kwargs={'force_rebuild': True}, daemon=True)
             t.start()
     else:
-        # build lazily in background
         t = threading.Thread(target=build_index, kwargs={'force_rebuild': False}, daemon=True)
         t.start()
 except Exception:
     logger.exception('Initialization error')
 
-# ---------- Run (use gunicorn for production) ----------
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', '10000'))
     logger.info('Starting app on port %d', port)
