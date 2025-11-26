@@ -1,0 +1,7 @@
+{
+  "created_at": "2025-11-26T14:00:28.226442Z",
+  "num_documents": 1351,
+  "embedding_model": "text-embedding-3-small",
+  "dimension": 1536,
+  "faiss_version": "1.13.0"
+}

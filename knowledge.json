@@ -1343,7 +1343,9 @@
   ],
   "price_info": {
     "note": "Giá từ 500.000 đến 1.200.000 tùy theo nhu cầu nhóm, thực đơn và loại xe; cập nhật khi có dữ liệu đầy đủ."
-  },
+  }
+},
+{
   "company": {
     "id": "ruby_wings_travel",
     "name": "Công ty Ruby Wings Travel",
@@ -1360,6 +1362,7 @@
       "description": "Tham gia cộng đồng Ruby Wings để nhận những thông tin mới nhất, chia sẻ trải nghiệm và lan tỏa những thông điệp tốt đẹp."
     }
   },
+
   "founder_story": {
     "director": "Giám đốc Lương Tiến Sỹ",
     "tagline": "Trưởng thành trong Quân đội – nghị lực – vượt khó – và một chương đặc biệt của cuộc đời.",
@@ -1367,6 +1370,7 @@
     "healing_journey": "Trong tuyệt vọng, anh tìm đến thiền, khí công, cách thở, cách lắng nghe cơ thể, nuôi dưỡng tâm trí. Nhờ sự kỷ luật và kiên trì, anh hồi phục không chỉ thể chất mà cả tinh thần.",
     "awakening": "Trải qua biến cố, anh tự hỏi: 'Có thể nào biến những trải nghiệm hồi sinh này thành một hành trình để lan toả đến mọi người?'. Câu hỏi đó trở thành mầm ý tưởng của Ruby Wings."
   },
+
   "logo_philosophy": {
     "description": "Logo Ruby Wings là tấm bản đồ thu nhỏ của triết lý sống sâu sắc.",
     "meaning": [
@@ -1380,6 +1384,7 @@
       "Xanh lá: sự sống, hy vọng, phát triển bền vững."
     ]
   },
+
   "ecosystem": {
     "vision": "Hệ sinh thái sống – không chỉ là công ty du lịch.",
     "origin": "Ruby Wings khởi đầu ở Huế – mảnh đất của trầm mặc, ký ức và di sản.",
@@ -1390,6 +1395,7 @@
     ],
     "why": "Ngày càng nhiều bạn trẻ kiệt sức, mất kết nối với chính mình. Ruby Wings ra đời không chỉ để tổ chức tour, mà để đồng hành chữa lành."
   },
+
   "development_history": {
     "question": "Liệu có thể tạo ra một mô hình du lịch vừa sống được – vừa đẹp – vừa có ích cho cộng đồng không?",
     "early_days": [
@@ -1399,6 +1405,7 @@
       "Giai đoạn 2024–2025 được gọi là thời kỳ 'gieo hạt' – gieo tư duy mới về du lịch tử tế."
     ]
   },
+
   "philosophy": {
     "life_view": [
       "Du lịch không chỉ để đi, mà để cân bằng – chữa lành – kết nối – làm mới bản thân.",

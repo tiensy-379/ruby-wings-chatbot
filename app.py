@@ -1,4 +1,4 @@
-# app.py (patched)
+# app.py (fixed)
 import os
 import json
 import time
@@ -34,7 +34,7 @@ KNOWLEDGE_PATH = os.environ.get("KNOWLEDGE_PATH", "knowledge.json")
 FAISS_INDEX_PATH = os.environ.get("FAISS_INDEX_PATH", "faiss_index.bin")
 FAISS_MAPPING_PATH = os.environ.get("FAISS_MAPPING_PATH", "faiss_mapping.json")
 FALLBACK_VECTORS_PATH = os.environ.get("FALLBACK_VECTORS_PATH", "vectors.npz")
-EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-large")  # 1536-dim
+EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", " text-embedding-3-small")  # 1536-dim default
 CHAT_MODEL = os.environ.get("CHAT_MODEL", "gpt-4o-mini")
 TOP_K = int(os.environ.get("TOP_K", "5"))
 # Allow toggling FAISS via env var (useful on platforms lacking faiss wheels)
@@ -74,7 +74,7 @@ class NumpyFallbackIndex:
     Persists to .npz (vectors + ids).
     """
     def __init__(self, mat: np.ndarray = None):
-        self.mat = mat.astype("float32") if (mat is not None and mat.size>0) else np.empty((0,0), dtype="float32")
+        self.mat = mat.astype("float32") if (mat is not None and getattr(mat, 'size', 0) > 0) else np.empty((0,0), dtype="float32")
         if self.mat.size == 0:
             self.dim = None
         else:
@@ -82,7 +82,7 @@ class NumpyFallbackIndex:
         self._ntotal = 0 if self.mat.size==0 else self.mat.shape[0]
 
     def add(self, mat: np.ndarray):
-        if mat is None or mat.size == 0:
+        if mat is None or getattr(mat, 'size', 0) == 0:
             return
         mat = mat.astype("float32")
         if self.mat.size == 0:
@@ -108,7 +108,6 @@ class NumpyFallbackIndex:
         # argsort descending
         idx = np.argsort(-sims, axis=1)[:, :k]
         # gather scores and indices, pad if needed
-        k_found = idx.shape[1]
         scores = np.take_along_axis(sims, idx, axis=1)
         return scores.astype("float32"), idx.astype("int64")
 
@@ -217,14 +216,34 @@ def embed_text(text: str) -> Tuple[List[float], int]:
     # deterministic synthetic fallback (stable across runs on same machine)
     try:
         h = abs(hash(short)) % (10 ** 12)
-        dim = 1536
-        vec = [(float((h >> (i % 32)) & 0xFF) + (i % 7)) / 255.0 for i in range(dim)]
-        return vec, dim
+        # Keep fallback dimension consistent with EMBEDDING_MODEL common dims if possible
+        fallback_dim = 1536
+        vec = [(float((h >> (i % 32)) & 0xFF) + (i % 7)) / 255.0 for i in range(fallback_dim)]
+        return vec, fallback_dim
     except Exception:
         logger.exception("Fallback embedding generation failed")
         return [], 0
 
 # ---------- Index management ----------
+def _index_dim(idx) -> int:
+    """Return the dim of an index-like object if available, otherwise None."""
+    try:
+        # faiss indexes typically expose .d
+        d = getattr(idx, "d", None)
+        if isinstance(d, int) and d > 0:
+            return d
+    except Exception:
+        pass
+    # fallback for our numpy index
+    try:
+        d = getattr(idx, "dim", None)
+        if isinstance(d, int) and d > 0:
+            return d
+    except Exception:
+        pass
+    return None
+
+
 def build_index(force_rebuild=False):
     """
     Build or load index. If FAISS enabled and available, use faiss IndexFlatIP,
@@ -240,15 +259,27 @@ def build_index(force_rebuild=False):
                 try:
                     idx = faiss.read_index(FAISS_INDEX_PATH)
                     load_mapping(FAISS_MAPPING_PATH)
-                    INDEX = idx
-                    logger.info("✅ FAISS index loaded from disk.")
-                    return True
+                    # validate dims against a sample embedding if possible
+                    sample_dim = None
+                    if FLATTENED_TEXTS:
+                        _, sample_dim = embed_text(FLATTENED_TEXTS[0])
+                    idx_dim = _index_dim(idx)
+                    logger.info("Loaded FAISS index from disk (dims=%s, sample_emb_dim=%s)", idx_dim, sample_dim)
+                    if sample_dim and idx_dim and sample_dim != idx_dim:
+                        logger.warning("Dimension mismatch between saved FAISS index (%s) and current embedding model (%s). Will rebuild.", idx_dim, sample_dim)
+                        # fallthrough to rebuild
+                    else:
+                        INDEX = idx
+                        logger.info("✅ FAISS index loaded from disk.")
+                        return True
                 except Exception:
                     logger.exception("Failed to load existing FAISS index; will rebuild.")
             elif (not use_faiss) and os.path.exists(FALLBACK_VECTORS_PATH) and os.path.exists(FAISS_MAPPING_PATH):
                 try:
                     idx = NumpyFallbackIndex.load(FALLBACK_VECTORS_PATH)
                     load_mapping(FAISS_MAPPING_PATH)
+                    idx_dim = _index_dim(idx)
+                    logger.info("Loaded fallback index from disk (dims=%s)", idx_dim)
                     INDEX = idx
                     logger.info("✅ Fallback numpy index loaded from disk.")
                     return True
@@ -307,10 +338,13 @@ def build_index(force_rebuild=False):
             INDEX = None
             return False
 
+
 def query_index(query: str, top_k=TOP_K) -> List[Tuple[float, dict]]:
     """
     Query the current index and return list of (score, mapping_entry).
     If index not ready, attempt lazy build once.
+    This function now performs explicit dimension checks and will attempt a rebuild
+    if dimension mismatch is detected.
     """
     global INDEX, MAPPING
     if not query:
@@ -323,22 +357,53 @@ def query_index(query: str, top_k=TOP_K) -> List[Tuple[float, dict]]:
     emb, d = embed_text(query)
     if not emb:
         return []
+
     try:
         vec = np.array(emb, dtype="float32").reshape(1, -1)
         # normalize
         vec = vec / (np.linalg.norm(vec, axis=1, keepdims=True) + 1e-12)
-        if HAS_FAISS and FAISS_ENABLED_ENV and isinstance(INDEX, type(faiss.IndexFlatIP(1))):
+
+        # check index dimension vs query vector
+        idx_dim = _index_dim(INDEX)
+        if idx_dim is None:
+            logger.warning("Could not determine index dimension; proceeding but may fail.")
+        else:
+            if vec.shape[1] != idx_dim:
+                logger.error("Dimension mismatch before search: index.d=%s but query dim=%s", idx_dim, vec.shape[1])
+                # attempt to rebuild index once (likely embedding model changed)
+                rebuilt = build_index(force_rebuild=True)
+                if rebuilt and INDEX is not None:
+                    idx_dim2 = _index_dim(INDEX)
+                    if idx_dim2 and vec.shape[1] == idx_dim2:
+                        logger.info("Rebuilt index matched query dimension -> proceeding to search")
+                        # continue to search with rebuilt index
+                    else:
+                        logger.error("After rebuild dimension still mismatched: index.d=%s query_dim=%s", idx_dim2, vec.shape[1])
+                        return []
+                else:
+                    logger.error("Rebuild failed; cannot perform search due to dimension mismatch")
+                    return []
+
+        if HAS_FAISS and FAISS_ENABLED_ENV and HAS_FAISS and hasattr(INDEX, 'search') and getattr(INDEX, 'ntotal', 0) >= 0:
+            # safe call to faiss search or any index with .search
             D, I = INDEX.search(vec, top_k)
         else:
             D, I = INDEX.search(vec, top_k)
     except Exception:
         logger.exception("Error querying index")
         return []
+
     results = []
-    for score, idx in zip(D[0].tolist(), I[0].tolist()):
-        if idx < 0 or idx >= len(MAPPING):
-            continue
-        results.append((float(score), MAPPING[idx]))
+    # D and I are expected shapes (1,k)
+    try:
+        scores = D[0].tolist() if getattr(D, 'shape', None) else []
+        idxs = I[0].tolist() if getattr(I, 'shape', None) else []
+        for score, idx in zip(scores, idxs):
+            if idx < 0 or idx >= len(MAPPING):
+                continue
+            results.append((float(score), MAPPING[idx]))
+    except Exception:
+        logger.exception("Failed to parse search results")
     return results
 
 # ---------- Prompt composition ----------
@@ -363,6 +428,7 @@ def home():
         "message": "Ruby Wings index backend running.",
         "knowledge_count": len(FLATTENED_TEXTS),
         "index_exists": INDEX is not None,
+        "index_dim": _index_dim(INDEX),
         "faiss_available": HAS_FAISS,
         "faiss_enabled_env": FAISS_ENABLED_ENV
     })
@@ -553,7 +619,16 @@ try:
     if FAISS_ENABLED_ENV and HAS_FAISS and os.path.exists(FAISS_INDEX_PATH):
         try:
             INDEX = faiss.read_index(FAISS_INDEX_PATH)
-            logger.info("✅ FAISS index loaded at import time.")
+            logger.info("✅ FAISS index loaded at import time. dim=%s", _index_dim(INDEX))
+            # verify index dimension against a sample embedding; if mismatch, rebuild
+            if FLATTENED_TEXTS:
+                _, sample_dim = embed_text(FLATTENED_TEXTS[0])
+                idx_dim = _index_dim(INDEX)
+                if sample_dim and idx_dim and sample_dim != idx_dim:
+                    logger.warning("Initial FAISS index dim (%s) != sample emb dim (%s). Scheduling rebuild.", idx_dim, sample_dim)
+                    INDEX = None
+                    t = threading.Thread(target=build_index, kwargs={"force_rebuild": True}, daemon=True)
+                    t.start()
         except Exception:
             logger.exception("Failed to load FAISS index at import; will rebuild in background.")
             t = threading.Thread(target=build_index, kwargs={"force_rebuild": True}, daemon=True)
@@ -561,7 +636,7 @@ try:
     elif (not FAISS_ENABLED_ENV or not HAS_FAISS) and os.path.exists(FALLBACK_VECTORS_PATH):
         try:
             INDEX = NumpyFallbackIndex.load(FALLBACK_VECTORS_PATH)
-            logger.info("✅ Fallback numpy index loaded at import time.")
+            logger.info("✅ Fallback numpy index loaded at import time. dim=%s", _index_dim(INDEX))
         except Exception:
             logger.exception("Failed to load fallback index at import; will rebuild in background.")
             t = threading.Thread(target=build_index, kwargs={"force_rebuild": True}, daemon=True)
