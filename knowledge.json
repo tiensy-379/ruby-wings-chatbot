@@ -3,7 +3,6 @@
     "overview": "Ruby Wings tổ chức du lịch trải nghiệm, retreat, thiền, khí công và hành trình chữa lành.",
     "mission": "Mang đến trải nghiệm ý nghĩa, an toàn, kết nối lịch sử – văn hoá – thiên nhiên và phát triển bản thân."
   },
-
   "tours": [
     {
       "tour_name": "Dấu ấn Vĩ tuyến – Kết nối thế hệ từ quá khứ đến tương lai",
@@ -29,7 +28,6 @@
         ]
       }
     },
-
     {
       "tour_name": "Mưa Đỏ và Trường Sơn – Hành Trình Khát Vọng",
       "summary": "Hành trình 2 ngày tri ân lịch sử, trải nghiệm văn hoá Vân Kiều – Pa Kô, rèn luyện tinh thần và kết nối nội tâm.",
@@ -49,7 +47,6 @@
         "remark": "Hành trình đánh thức sức trẻ & tinh thần sống đẹp."
       }
     },
-
     {
       "tour_name": "Theo dấu chân Anh – Thanh niên thắp sáng hành trình xanh",
       "summary": "Hành trình 3 ngày tri ân lịch sử, khám phá thiên nhiên, giao lưu cộng đồng và thực hành giá trị sống đẹp.",
@@ -82,13 +79,11 @@
       }
     }
   ],
-
   "faq": {
     "cancellation_policy": "Hoàn 100% khi hủy trước 7 ngày. Hoàn 50% khi hủy trước 3 ngày.",
     "booking_method": "Đặt chỗ qua website, fanpage hoặc hotline.",
     "who_can_join": "Người trưởng thành, sức khỏe ổn định."
   },
-
   "contact": {
     "hotline": "TODO – 0332510486",
     "email": "TODO – rubywingslsa@gmail.com",
