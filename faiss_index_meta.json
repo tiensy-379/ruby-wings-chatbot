@@ -1,6 +1,6 @@
 {
-  "created_at": "2025-11-27T15:06:56.204255Z",
-  "num_passages": 648,
+  "created_at": "2025-11-28T08:49:12.656148Z",
+  "num_passages": 730,
   "embedding_model": "text-embedding-3-small",
   "dimension": 1536,
   "faiss_available": true,
