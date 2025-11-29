@@ -171,24 +171,39 @@ def find_tour_indices_from_message(message: str) -> List[int]:
 def get_passages_by_field(field_name: str, limit: int = 50, tour_indices: Optional[List[int]] = None) -> List[Tuple[float, dict]]:
     """
     Return passages whose path ends with field_name.
-    If tour_indices provided, restrict to entries matching those tour index brackets.
-    Returned score is 1.0 (for priority).
+    If tour_indices provided, RESTRICT and PRIORITIZE entries matching those tour index brackets.
+    Returned score is 2.0 for exact tour match, 1.0 for global match.
     """
-    out: List[Tuple[float, dict]] = []
+    exact_matches: List[Tuple[float, dict]] = []
+    global_matches: List[Tuple[float, dict]] = []
+    
     for m in MAPPING:
         path = m.get("path", "")
         # match exact field location (ending with .field) or field somewhere in path
         if path.endswith(f".{field_name}") or f".{field_name}" in path:
+            
+            # Check if this passage belongs to any of the mentioned tours
+            is_exact_match = False
             if tour_indices:
-                matched = False
                 for ti in tour_indices:
                     if f"[{ti}]" in path:
-                        matched = True
+                        is_exact_match = True
                         break
-                if not matched:
-                    continue
-            out.append((1.0, m))
-    return out[:limit]
+            
+            if is_exact_match:
+                # ✅ ƯU TIÊN CAO: exact tour match
+                exact_matches.append((2.0, m))
+            elif not tour_indices:
+                # ✅ Global match (no specific tour mentioned)
+                global_matches.append((1.0, m))
+    
+    # ✅ COMBINE: Exact matches first, then global matches
+    all_results = exact_matches + global_matches
+    
+    # ✅ SORT by score (exact matches will come first)
+    all_results.sort(key=lambda x: x[0], reverse=True)
+    
+    return all_results[:limit]
 
 # ---------- Embeddings (robust) ----------
 @lru_cache(maxsize=8192)
@@ -483,13 +498,21 @@ def compose_system_prompt(top_passages: List[Tuple[float, dict]]) -> str:
     header = (
         "Bạn là trợ lý AI của Ruby Wings — chuyên tư vấn ngành du lịch trải nghiệm, retreat, thiền, khí công, hành trình chữa lành.\n"
         "Trả lời ngắn gọn, chính xác, tử tế.\n\n"
+        "⚠️ QUY TẮC QUAN TRỌNG:\n"
+        "1. CHỈ sử dụng thông tin từ các đoạn dữ liệu được cung cấp bên dưới\n"
+        "2. KHÔNG suy diễn, bịa đặt hoặc dùng thông tin từ tour khác\n"
+        "3. Nếu không có thông tin chính xác cho câu hỏi, hãy nói: 'Hiện chưa có thông tin chi tiết về nội dung này. Vui lòng liên hệ hotline để được tư vấn thêm.'\n"
+        "4. Khi user hỏi về tour cụ thể, CHỈ trả lời dựa trên thông tin của đúng tour đó\n"
+        "5. Phân biệt rõ tour 1 ngày (không có chỗ ở) vs tour nhiều ngày (có chỗ ở)\n\n"
     )
     if not top_passages:
         return header + "Không tìm thấy dữ liệu nội bộ phù hợp."
-    content = header + "Dữ liệu nội bộ (theo độ liên quan):\n"
+    
+    content = header + "DỮ LIỆU NỘI BỘ (theo độ liên quan):\n"
     for i, (score, m) in enumerate(top_passages, start=1):
         content += f"\n[{i}] (score={score:.3f}) nguồn: {m.get('path','?')}\n{m.get('text','')}\n"
-    content += "\n---\nƯu tiên trích dẫn dữ liệu nội bộ; không bịa; văn phong lịch sự."
+    
+    content += "\n---\nTUÂN THỦ: Chỉ dùng dữ liệu trên; không bịa; văn phong lịch sự."
     return content
 
 # ---------- Routes ----------
