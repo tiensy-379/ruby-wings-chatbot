@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# build_index.py — optimized for low RAM, compatible with app.py (openai==0.28.0)
+# build_index.py — optimized for low RAM, compatible with app.py (openai>=1.0.0)
 # Outputs: faiss_index.bin, faiss_mapping.json, vectors.npz, faiss_index_meta.json
 
 import os
@@ -18,16 +18,14 @@ except Exception:
     HAS_FAISS = False
 
 try:
-    import openai
-    from openai.error import OpenAIError
+    from openai import OpenAI
+    from openai import OpenAIError
 except Exception:
-    openai = None
+    OpenAI = None
     OpenAIError = Exception
 
 # ---------- Config (match app.py defaults) ----------
 OPENAI_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
-if OPENAI_KEY and openai is not None:
-    openai.api_key = OPENAI_KEY
 
 KNOW_PATH = os.environ.get("KNOWLEDGE_PATH", "knowledge.json")
 FAISS_INDEX_PATH = os.environ.get("FAISS_INDEX_PATH", "faiss_index.bin")
@@ -77,45 +75,32 @@ def flatten_json(path: str) -> List[dict]:
 
 def call_embeddings_with_retry(inputs: List[str], model: str):
     """Call OpenAI embeddings with retries; returns list of vectors (lists)."""
+    if not OPENAI_KEY or OpenAI is None:
+        return [synthetic_embedding(text) for text in inputs]
+    
+    client = OpenAI(api_key=OPENAI_KEY)
     attempt = 0
     while True:
         try:
-            # prefer modern name if available; for openai==0.28.0 use Embedding.create or Embeddings.create
-            try:
-                # many older SDKs expose Embedding.create
-                resp = openai.Embedding.create(model=model, input=inputs)
-            except Exception:
-                # try plural
-                resp = openai.Embeddings.create(model=model, input=inputs)
-            # normalize extraction
-            out = []
-            if isinstance(resp, dict) and "data" in resp:
-                for item in resp["data"]:
-                    if isinstance(item, dict):
-                        emb = item.get("embedding") or item.get("vector")
-                        out.append(emb)
-                    else:
-                        out.append(getattr(item, "embedding", None))
-            else:
-                data_attr = getattr(resp, "data", None)
-                if data_attr:
-                    for item in data_attr:
-                        emb = getattr(item, "embedding", None) or (item.get("embedding") if isinstance(item, dict) else None)
-                        out.append(emb)
+            # ✅ SỬ DỤNG OPENAI API MỚI
+            resp = client.embeddings.create(
+                model=model, 
+                input=inputs
+            )
+            
+            # ✅ TRÍCH XUẤT EMBEDDING TỪ RESPONSE MỚI
+            out = [r.embedding for r in resp.data]
             return out
-        except OpenAIError as e:
+            
+        except Exception as e:  # ✅ BẮT TẤT CẢ LỖI
             attempt += 1
             if attempt > RETRY_LIMIT:
-                raise
+                print(f"ERROR: Embedding API failed after {RETRY_LIMIT} attempts: {e}", file=sys.stderr)
+                # Fallback to synthetic embeddings
+                return [synthetic_embedding(text) for text in inputs]
+                
             delay = RETRY_BASE * (2 ** (attempt - 1))
             print(f"Warning: embedding API error (attempt {attempt}/{RETRY_LIMIT}): {e}. Retrying in {delay:.1f}s...", file=sys.stderr)
-            time.sleep(delay)
-        except Exception as e:
-            attempt += 1
-            if attempt > RETRY_LIMIT:
-                raise
-            delay = RETRY_BASE * (2 ** (attempt - 1))
-            print(f"Warning: unexpected error (attempt {attempt}/{RETRY_LIMIT}): {e}. Retrying in {delay:.1f}s...", file=sys.stderr)
             time.sleep(delay)
 
 def synthetic_embedding(text: str, dim: int = 1536):
@@ -147,23 +132,18 @@ def build_index():
         batch = texts[i:i+BATCH_SIZE]
         # ensure non-empty input
         inputs = [t if (t and str(t).strip()) else " " for t in batch]
-        print(f"Embedding batch {i//BATCH_SIZE + 1} ...", flush=True)
+        print(f"Embedding batch {i//BATCH_SIZE + 1}/{(n-1)//BATCH_SIZE + 1}...", flush=True)
 
-        if openai is None or not OPENAI_KEY:
-            # fallback to synthetic
-            vecs = [synthetic_embedding(t) for t in inputs]
-            # decide dim from first
-            if dim is None:
-                dim = len(vecs[0])
-        else:
-            vecs = call_embeddings_with_retry(inputs, EMBEDDING_MODEL)
-            if not vecs or any(v is None for v in vecs):
-                # if API returned some None, fall back elementwise
-                for j, v in enumerate(vecs):
-                    if v is None:
-                        vecs[j] = synthetic_embedding(inputs[j])
-            if dim is None:
-                dim = len(vecs[0])
+        # ✅ GỌI HÀM MỚI ĐÃ UPDATE
+        vecs = call_embeddings_with_retry(inputs, EMBEDDING_MODEL)
+        
+        if not vecs or any(v is None for v in vecs):
+            # if API returned some None, fall back elementwise
+            for j, v in enumerate(vecs):
+                if v is None:
+                    vecs[j] = synthetic_embedding(inputs[j])
+        if dim is None and vecs:
+            dim = len(vecs[0])
 
         arr = np.array(vecs, dtype="float32")
         # normalize rows (unit norm) for cosine via inner product in FAISS

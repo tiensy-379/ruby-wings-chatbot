@@ -1,7 +1,5 @@
-# app.py — "HOÀN HẢO NHẤT" phiên bản tối ưu cho openai==0.28.0, FAISS fallback, ưu tiên lấy FIELD trong cùng TOUR
+# app.py — "HOÀN HẢO NHẤT" phiên bản tối ưu cho openai>=1.0.0, FAISS fallback, ưu tiên lấy FIELD trong cùng TOUR
 # Mục tiêu: luôn trả lời bằng trường (field) đúng của tour khi user nhắc đến tên tour hoặc hỏi keyword liên quan.
-# Giữ nguyên mọi hành vi quan trọng từ file gốc, thêm robust tour-detection, từ-khóa→field mapping,
-# an toàn với nhiều SDK/phiên bản, fallback deterministic embedding, và khả năng chạy trên Render (low RAM).
 
 import os
 import json
@@ -11,18 +9,23 @@ import re
 import unicodedata
 from functools import lru_cache
 from typing import List, Tuple, Dict, Optional
-from flask import Flask, request, jsonify, Response, stream_with_context
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-import openai
 import numpy as np
 
 # Try FAISS; fallback to numpy-only index if missing
 HAS_FAISS = False
 try:
-    import faiss  # type: ignore
+    import faiss
     HAS_FAISS = True
 except Exception:
     HAS_FAISS = False
+
+# ✅ OPENAI API MỚI
+try:
+    from openai import OpenAI
+except Exception:
+    OpenAI = None
 
 # ---------- Logging ----------
 logging.basicConfig(level=logging.INFO)
@@ -30,8 +33,11 @@ logger = logging.getLogger("rbw")
 
 # ---------- Config ----------
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
-if OPENAI_API_KEY:
-    openai.api_key = OPENAI_API_KEY
+
+# ✅ KHỞI TẠO CLIENT OPENAI MỚI
+client = None
+if OPENAI_API_KEY and OpenAI is not None:
+    client = OpenAI(api_key=OPENAI_API_KEY)
 else:
     logger.warning("OPENAI_API_KEY not set — embeddings/chat will fallback to deterministic behavior when possible.")
 
@@ -60,7 +66,6 @@ INDEX_LOCK = threading.Lock()
 TOUR_NAME_TO_INDEX: Dict[str, int] = {}
 
 # ---------- Keyword -> field mapping (priority) ----------
-# Keep comprehensive keyword lists; preserve existing mapping semantics.
 KEYWORD_FIELD_MAP: Dict[str, Dict] = {
     "tour_list": {
         "keywords": [
@@ -195,18 +200,21 @@ def embed_text(text: str) -> Tuple[List[float], int]:
     if not text:
         return [], 0
     short = text if len(text) <= 2000 else text[:2000]
-    if OPENAI_API_KEY:
+    
+    # ✅ SỬ DỤNG OPENAI API MỚI
+    if client is not None:
         try:
-            resp = openai.Embedding.create(model=EMBEDDING_MODEL, input=short)
-            emb = None
-            if isinstance(resp, dict) and "data" in resp and len(resp["data"]) > 0:
-                emb = resp["data"][0].get("embedding") or resp["data"][0].get("vector")
-            elif hasattr(resp, "data") and len(resp.data) > 0:
-                emb = getattr(resp.data[0], "embedding", None)
-            if emb:
+            resp = client.embeddings.create(
+                model=EMBEDDING_MODEL, 
+                input=short
+            )
+            # ✅ TRÍCH XUẤT DỮ LIỆU MỚI
+            if resp.data and len(resp.data) > 0:
+                emb = resp.data[0].embedding
                 return emb, len(emb)
         except Exception:
             logger.exception("OpenAI embedding call failed — falling back to deterministic embedding.")
+    
     # Deterministic fallback (stable across runs)
     try:
         h = abs(hash(short)) % (10 ** 12)
@@ -562,41 +570,19 @@ def chat():
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}]
 
     reply = ""
-    # Try chat with OpenAI if API key present
-    if OPENAI_API_KEY:
+    # ✅ SỬ DỤNG OPENAI CHAT API MỚI
+    if client is not None:
         try:
-            # SDK 0.28.0 pattern
-            resp = openai.ChatCompletion.create(
+            resp = client.chat.completions.create(
                 model=CHAT_MODEL,
                 messages=messages,
                 temperature=0.2,
                 max_tokens=int(data.get("max_tokens", 700)),
                 top_p=0.95
             )
-            # robust parsing
-            if isinstance(resp, dict):
-                choices = resp.get("choices", [])
-                if choices:
-                    first = choices[0]
-                    if isinstance(first.get("message"), dict):
-                        reply = first["message"].get("content", "") or ""
-                    elif "text" in first:
-                        reply = first.get("text", "")
-                    else:
-                        reply = str(first)
-                else:
-                    reply = str(resp)
-            else:
-                choices = getattr(resp, "choices", None)
-                if choices and len(choices) > 0:
-                    first = choices[0]
-                    msg = getattr(first, "message", None)
-                    if msg and isinstance(msg, dict):
-                        reply = msg.get("content", "")
-                    else:
-                        reply = str(first)
-                else:
-                    reply = str(resp)
+            # ✅ TRÍCH XUẤT DỮ LIỆU MỚI
+            if resp.choices and len(resp.choices) > 0:
+                reply = resp.choices[0].message.content or ""
         except Exception:
             logger.exception("OpenAI chat failed; will fallback to deterministic reply.")
 
