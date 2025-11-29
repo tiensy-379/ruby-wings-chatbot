@@ -1,5 +1,5 @@
-# app.py — "HOÀN HẢO NHẤT" phiên bản tối ưu cho openai>=1.0.0, FAISS fallback, ưu tiên lấy FIELD trong cùng TOUR
-# Mục tiêu: luôn trả lời bằng trường (field) đúng của tour khi user nhắc đến tên tour hoặc hỏi keyword liên quan.
+# app.py — "HOÀN HẢO NHẤT" phiên bản tối ưu cho openai>=1.0.0, FAISS fallback, ưu tiên lấy FIELD trong cùng TOUR + CONTEXT AWARENESS
+# Mục tiêu: luôn trả lời bằng trường (field) đúng của tour khi user nhắc đến tên tour hoặc hỏi keyword liên quan, và NHỚ NGỮ CẢNH.
 
 import os
 import json
@@ -7,6 +7,8 @@ import threading
 import logging
 import re
 import unicodedata
+import uuid
+from datetime import datetime, timedelta
 from functools import lru_cache
 from typing import List, Tuple, Dict, Optional
 from flask import Flask, request, jsonify
@@ -51,6 +53,10 @@ CHAT_MODEL = os.environ.get("CHAT_MODEL", "gpt-4o-mini")
 TOP_K = int(os.environ.get("TOP_K", "5"))
 FAISS_ENABLED = os.environ.get("FAISS_ENABLED", "true").lower() in ("1", "true", "yes")
 
+# ---------- Session Management ----------
+USER_SESSIONS = {}
+SESSION_TIMEOUT = 300  # 5 phút
+
 # ---------- Flask ----------
 app = Flask(__name__)
 CORS(app)
@@ -93,6 +99,73 @@ KEYWORD_FIELD_MAP: Dict[str, Dict] = {
     "who_can_join": {"keywords": ["phù hợp đối tượng", "ai tham gia", "who should join"], "field": "who_can_join"},
     "hotline": {"keywords": ["hotline", "số điện thoại", "liên hệ", "contact number"], "field": "hotline"},
 }
+
+# ---------- Session Management Functions ----------
+def get_or_create_session():
+    """Lấy hoặc tạo session cho user"""
+    session_id = request.cookies.get('session_id')
+    if not session_id or session_id not in USER_SESSIONS:
+        session_id = str(uuid.uuid4())
+        USER_SESSIONS[session_id] = {
+            'created_at': datetime.now(),
+            'last_activity': datetime.now(),
+            'last_tour_index': None,
+            'last_tour_name': None,
+            'conversation_count': 0
+        }
+        logger.info(f"🆕 Created new session: {session_id}")
+    
+    # Update last activity
+    USER_SESSIONS[session_id]['last_activity'] = datetime.now()
+    
+    # Clean up expired sessions
+    cleanup_expired_sessions()
+    
+    return session_id, USER_SESSIONS[session_id]
+
+def cleanup_expired_sessions():
+    """Dọn dẹp session hết hạn"""
+    expired_sessions = []
+    current_time = datetime.now()
+    
+    for session_id, session_data in USER_SESSIONS.items():
+        if current_time - session_data['last_activity'] > timedelta(seconds=SESSION_TIMEOUT):
+            expired_sessions.append(session_id)
+    
+    for session_id in expired_sessions:
+        del USER_SESSIONS[session_id]
+        logger.info(f"🗑️ Cleaned expired session: {session_id}")
+
+def update_session_context(session_data, tour_indices, user_message):
+    """Cập nhật ngữ cảnh cho session"""
+    if tour_indices:
+        # Có tour mới được mention - cập nhật context
+        session_data['last_tour_index'] = tour_indices[0]
+        # Lấy tên tour từ index
+        session_data['last_tour_name'] = None
+        for m in MAPPING:
+            if f"[{tour_indices[0]}]" in m.get('path', '') and 'tour_name' in m.get('path', ''):
+                session_data['last_tour_name'] = m.get('text')
+                break
+        session_data['conversation_count'] = 1
+        logger.info(f"🎯 Updated session context to tour: {session_data['last_tour_name']}")
+    elif session_data['last_tour_index'] is not None:
+        # Không có tour mới, nhưng có context cũ - tiếp tục context
+        session_data['conversation_count'] += 1
+        logger.info(f"🔄 Continuing session context: {session_data['last_tour_name']} (count: {session_data['conversation_count']})")
+        
+    # Reset nếu user hỏi câu hoàn toàn không liên quan
+    if is_general_question(user_message) and session_data['conversation_count'] > 3:
+        session_data['last_tour_index'] = None
+        session_data['last_tour_name'] = None
+        session_data['conversation_count'] = 0
+        logger.info("🔄 Reset session context due to general question")
+
+def is_general_question(message):
+    """Kiểm tra xem có phải câu hỏi chung không"""
+    general_keywords = ['ai', 'là gì', 'cái gì', 'ở đâu', 'công ty', 'ruby wings', 'bạn là ai', 'giới thiệu']
+    message_lower = message.lower()
+    return any(keyword in message_lower for keyword in general_keywords)
 
 # ---------- Utilities ----------
 def normalize_text_simple(s: str) -> str:
@@ -487,15 +560,24 @@ def query_index(query: str, top_k: int = TOP_K) -> List[Tuple[float, dict]]:
     return results
 
 # ---------- Prompt composition ----------
-def compose_system_prompt(top_passages: List[Tuple[float, dict]]) -> str:
+def compose_system_prompt(top_passages: List[Tuple[float, dict]], context_tour: str = None) -> str:
     header = (
         "Bạn là trợ lý AI của Ruby Wings - chuyên tư vấn du lịch trải nghiệm.\n"
-        "TRẢ LỜI THEO CÁC NGUYÊN TẮC:\n"
+    )
+    
+    if context_tour:
+        header += f"🔹 NGỮ CẢNH HIỆN TẠI: User đang hỏi về tour '{context_tour}'\n"
+        header += "Hãy ưu tiên trả lời các câu hỏi tiếp theo trong ngữ cảnh tour này.\n\n"
+    
+    header += (
+        "TRẢ LỜI THEO NGUYÊN TẮC:\n"
         "1. ƯU TIÊN CAO: Thông tin từ dữ liệu được cung cấp\n"
         "2. Nếu thiếu thông tin CHI TIẾT, hãy trả lời dựa trên THÔNG TIN CHUNG có sẵn\n"
-        "3. Đối với tour cụ thể: tìm thông tin đúng tour trước, sau đó mới dùng thông tin chung\n"
-        "4. Luôn giữ thái độ nhiệt tình, hữu ích\n\n"
+        "3. Nếu user đang trong ngữ cảnh tour cụ thể, ƯU TIÊN trả lời về tour đó\n"
+        "4. Chỉ chuyển sang tour khác khi user đề cập rõ ràng\n"
+        "5. Luôn giữ thái độ nhiệt tình, hữu ích\n\n"
     )
+    
     if not top_passages:
         return header + "Không tìm thấy dữ liệu nội bộ phù hợp."
     
@@ -516,7 +598,8 @@ def home():
         "index_dim": _index_dim(INDEX),
         "embedding_model": EMBEDDING_MODEL,
         "faiss_available": HAS_FAISS,
-        "faiss_enabled": FAISS_ENABLED
+        "faiss_enabled": FAISS_ENABLED,
+        "active_sessions": len(USER_SESSIONS)
     })
 
 @app.route("/reindex", methods=["POST"])
@@ -532,12 +615,14 @@ def reindex():
 @app.route("/chat", methods=["POST"])
 def chat():
     """
-    Chat endpoint behavior:
-      - If user message contains keywords mapping to a field, prioritize returning that field.
-      - If a tour name is mentioned, restrict to that tour's field values.
-      - If user asked for tour listing (tour_name), list all tour_name entries.
-      - Else fallback to semantic search and LLM reply.
+    Chat endpoint với context awareness:
+      - Nhớ tour đang được nói đến trong 5 phút
+      - Tự động áp dụng context cho các câu hỏi tiếp theo
+      - Reset context khi hỏi câu chung
     """
+    # Lấy hoặc tạo session
+    session_id, session_data = get_or_create_session()
+    
     data = request.get_json() or {}
     user_message = (data.get("message") or "").strip()
     if not user_message:
@@ -556,6 +641,14 @@ def chat():
 
     # detect tour mentions
     tour_indices = find_tour_indices_from_message(user_message)
+    
+    # Cập nhật ngữ cảnh session
+    update_session_context(session_data, tour_indices, user_message)
+    
+    # Nếu không tìm thấy tour trong message nhưng có context cũ, dùng context
+    if not tour_indices and session_data['last_tour_index'] is not None:
+        tour_indices = [session_data['last_tour_index']]
+        logger.info(f"🎯 Using context from session: {session_data['last_tour_name']}")
 
     top_results: List[Tuple[float, dict]] = []
 
@@ -579,8 +672,8 @@ def chat():
         top_k = int(data.get("top_k", TOP_K))
         top_results = query_index(user_message, top_k)
 
-    # Compose system prompt from the top_results and call LLM for nicer phrasing
-    system_prompt = compose_system_prompt(top_results)
+    # Compose system prompt với context
+    system_prompt = compose_system_prompt(top_results, session_data['last_tour_name'])
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}]
 
     reply = ""
@@ -641,7 +734,16 @@ def chat():
         else:
             reply = "Xin lỗi — hiện không có dữ liệu nội bộ liên quan."
 
-    return jsonify({"reply": reply, "sources": [m for _, m in top_results]})
+    # Tạo response và set cookie
+    response = jsonify({
+        "reply": reply, 
+        "sources": [m for _, m in top_results],
+        "context_tour": session_data['last_tour_name'],
+        "session_active": session_data['last_tour_name'] is not None
+    })
+    response.set_cookie('session_id', session_id, max_age=SESSION_TIMEOUT, httponly=True)
+    
+    return response
 
 # ---------- Knowledge loader ----------
 def load_knowledge(path: str = KNOWLEDGE_PATH):

@@ -76,11 +76,13 @@ def flatten_json(path: str) -> List[dict]:
 def call_embeddings_with_retry(inputs: List[str], model: str):
     """Call OpenAI embeddings with retries; returns list of vectors (lists)."""
     if not OPENAI_KEY or OpenAI is None:
+        print("⚠️ OpenAI client not available, using synthetic embeddings", file=sys.stderr)
         return [synthetic_embedding(text) for text in inputs]
     
     client = OpenAI(api_key=OPENAI_KEY)
     attempt = 0
-    while True:
+    
+    while attempt <= RETRY_LIMIT:
         try:
             # ✅ SỬ DỤNG OPENAI API MỚI
             resp = client.embeddings.create(
@@ -89,19 +91,29 @@ def call_embeddings_with_retry(inputs: List[str], model: str):
             )
             
             # ✅ TRÍCH XUẤT EMBEDDING TỪ RESPONSE MỚI
-            out = [r.embedding for r in resp.data]
-            return out
+            if resp.data and len(resp.data) > 0:
+                out = [r.embedding for r in resp.data]
+                print(f"✅ Successfully generated {len(out)} embeddings", flush=True)
+                return out
+            else:
+                raise ValueError("Empty response from OpenAI API")
             
-        except Exception as e:  # ✅ BẮT TẤT CẢ LỖI
+        except Exception as e:
             attempt += 1
             if attempt > RETRY_LIMIT:
-                print(f"ERROR: Embedding API failed after {RETRY_LIMIT} attempts: {e}", file=sys.stderr)
-                # Fallback to synthetic embeddings
-                return [synthetic_embedding(text) for text in inputs]
+                print(f"❌ Embedding API failed after {RETRY_LIMIT} attempts: {e}", file=sys.stderr)
+                print("🔄 Falling back to synthetic embeddings...", file=sys.stderr)
+                # Fallback to synthetic embeddings với dimension phù hợp
+                dim = 1536 if "3-small" in model else 3072
+                return [synthetic_embedding(text, dim) for text in inputs]
                 
             delay = RETRY_BASE * (2 ** (attempt - 1))
-            print(f"Warning: embedding API error (attempt {attempt}/{RETRY_LIMIT}): {e}. Retrying in {delay:.1f}s...", file=sys.stderr)
+            print(f"⚠️ Embedding API error (attempt {attempt}/{RETRY_LIMIT}): {e}. Retrying in {delay:.1f}s...", file=sys.stderr)
             time.sleep(delay)
+    
+    # Final fallback
+    dim = 1536 if "3-small" in model else 3072
+    return [synthetic_embedding(text, dim) for text in inputs]
 
 def synthetic_embedding(text: str, dim: int = 1536):
     """Deterministic synthetic embedding (fallback when no API)."""
