@@ -1,8 +1,8 @@
 {
-  "created_at": "2025-11-30T09:44:38.731776Z",
-  "num_passages": 730,
+  "created_at": "2025-11-30T13:36:42.616094Z",
+  "num_passages": 753,
   "embedding_model": "text-embedding-3-small",
   "dimension": 1536,
   "faiss_available": true,
-  "notes": "Built with batch memmap flow; tour_entities.json produced if entities module present"
+  "notes": "Mapping entries include fields: path, text, field, tour_index"
 }
