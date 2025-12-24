@@ -1,8 +1,7 @@
-# app.py — "HOÀN HẢO NHẤT" phiên bản tối ưu cho openai==0.28.0, FAISS fallback, ưu tiên lấy FIELD trong cùng TOUR
+# app.py — "HOÀN HẢO NHẤT" phiên bản tối ưu cho openai>=1.0.0, FAISS fallback, ưu tiên lấy FIELD trong cùng TOUR
 # Mục tiêu: luôn trả lời bằng trường (field) đúng của tour khi user nhắc đến tên tour hoặc hỏi keyword liên quan.
-# Giữ nguyên mọi hành vi quan trọng từ file gốc, thêm robust tour-detection, từ-khóa→field mapping,
-# an toàn với nhiều SDK/phiên bản, fallback deterministic embedding, và khả năng chạy trên Render (low RAM).
 
+from meta_capi import send_meta_pageview
 import os
 import json
 import threading
@@ -11,18 +10,23 @@ import re
 import unicodedata
 from functools import lru_cache
 from typing import List, Tuple, Dict, Optional
-from flask import Flask, request, jsonify, Response, stream_with_context
+from flask import Flask, request, jsonify
 from flask_cors import CORS
-import openai
 import numpy as np
 
 # Try FAISS; fallback to numpy-only index if missing
 HAS_FAISS = False
 try:
-    import faiss  # type: ignore
+    import faiss
     HAS_FAISS = True
 except Exception:
     HAS_FAISS = False
+
+# ✅ OPENAI API MỚI
+try:
+    from openai import OpenAI
+except Exception:
+    OpenAI = None
 
 # ---------- Logging ----------
 logging.basicConfig(level=logging.INFO)
@@ -30,8 +34,11 @@ logger = logging.getLogger("rbw")
 
 # ---------- Config ----------
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
-if OPENAI_API_KEY:
-    openai.api_key = OPENAI_API_KEY
+
+# ✅ KHỞI TẠO CLIENT OPENAI MỚI
+client = None
+if OPENAI_API_KEY and OpenAI is not None:
+    client = OpenAI(api_key=OPENAI_API_KEY)
 else:
     logger.warning("OPENAI_API_KEY not set — embeddings/chat will fallback to deterministic behavior when possible.")
 
@@ -49,6 +56,11 @@ FAISS_ENABLED = os.environ.get("FAISS_ENABLED", "true").lower() in ("1", "true",
 app = Flask(__name__)
 CORS(app)
 
+# ---------- Meta CAPI ----------
+@app.before_request
+def track_meta_pageview():
+    send_meta_pageview(request)
+
 # ---------- Global state ----------
 KNOW: Dict = {}
 FLAT_TEXTS: List[str] = []
@@ -60,7 +72,6 @@ INDEX_LOCK = threading.Lock()
 TOUR_NAME_TO_INDEX: Dict[str, int] = {}
 
 # ---------- Keyword -> field mapping (priority) ----------
-# Keep comprehensive keyword lists; preserve existing mapping semantics.
 KEYWORD_FIELD_MAP: Dict[str, Dict] = {
     "tour_list": {
         "keywords": [
@@ -127,63 +138,71 @@ def index_tour_names():
                         TOUR_NAME_TO_INDEX[norm] = idx
 
 def find_tour_indices_from_message(message: str) -> List[int]:
-    """
-    Robust detection of tour indices from a user message:
-      - Prefer longest substring match between normalized tour names and normalized message.
-      - If no substring matches, use token overlap heuristic.
-    Returns sorted unique indices (may be multiple if multiple tour names mentioned).
-    """
+    """Improved tour detection with fuzzy matching"""
     if not message:
         return []
+    
     msg_n = normalize_text_simple(message)
     if not msg_n:
         return []
-    matches: List[Tuple[int, str]] = []
+    
+    # Thêm fuzzy matching đơn giản
+    matches = []
     for norm_name, idx in TOUR_NAME_TO_INDEX.items():
-        if norm_name in msg_n or msg_n in norm_name:
-            matches.append((len(norm_name), norm_name))
+        # Kiểm tra từng từ trong tên tour
+        tour_words = set(norm_name.split())
+        msg_words = set(msg_n.split())
+        
+        # Match nếu có từ khóa trùng
+        common_words = tour_words & msg_words
+        if len(common_words) >= 1:  # Giảm ngưỡng match
+            matches.append((len(common_words), norm_name))
+    
     if matches:
         matches.sort(reverse=True)
-        # return all that have same max length (e.g., two names equal length found)
-        max_len = matches[0][0]
-        selected = [TOUR_NAME_TO_INDEX[nm] for ln, nm in matches if ln == max_len]
+        best_score = matches[0][0]
+        selected = [TOUR_NAME_TO_INDEX[nm] for sc, nm in matches if sc == best_score]
         return sorted(set(selected))
-    # token-overlap fallback
-    msg_tokens = set(msg_n.split())
-    scored: List[Tuple[int, str]] = []
-    for norm_name, idx in TOUR_NAME_TO_INDEX.items():
-        tkn_overlap = len(msg_tokens & set(norm_name.split()))
-        if tkn_overlap > 0:
-            scored.append((tkn_overlap, norm_name))
-    if not scored:
-        return []
-    scored.sort(reverse=True)
-    best_score = scored[0][0]
-    selected = [TOUR_NAME_TO_INDEX[nm] for sc, nm in scored if sc == best_score]
-    return sorted(set(selected))
+    
+    return []
 
 # ---------- MAPPING helpers ----------
 def get_passages_by_field(field_name: str, limit: int = 50, tour_indices: Optional[List[int]] = None) -> List[Tuple[float, dict]]:
     """
     Return passages whose path ends with field_name.
-    If tour_indices provided, restrict to entries matching those tour index brackets.
-    Returned score is 1.0 (for priority).
+    If tour_indices provided, RESTRICT and PRIORITIZE entries matching those tour index brackets.
+    Returned score is 2.0 for exact tour match, 1.0 for global match.
     """
-    out: List[Tuple[float, dict]] = []
+    exact_matches: List[Tuple[float, dict]] = []
+    global_matches: List[Tuple[float, dict]] = []
+    
     for m in MAPPING:
         path = m.get("path", "")
         # match exact field location (ending with .field) or field somewhere in path
         if path.endswith(f".{field_name}") or f".{field_name}" in path:
+            
+            # Check if this passage belongs to any of the mentioned tours
+            is_exact_match = False
             if tour_indices:
-                matched = False
                 for ti in tour_indices:
                     if f"[{ti}]" in path:
-                        matched = True
+                        is_exact_match = True
                         break
-                if not matched:
-                    continue
-            out.append((1.0, m))
-    return out[:limit]
+            
+            if is_exact_match:
+                # ✅ ƯU TIÊN CAO: exact tour match
+                exact_matches.append((2.0, m))
+            elif not tour_indices:
+                # ✅ Global match (no specific tour mentioned)
+                global_matches.append((1.0, m))
+    
+    # ✅ COMBINE: Exact matches first, then global matches
+    all_results = exact_matches + global_matches
+    
+    # ✅ SORT by score (exact matches will come first)
+    all_results.sort(key=lambda x: x[0], reverse=True)
+    
+    return all_results[:limit]
 
 # ---------- Embeddings (robust) ----------
 @lru_cache(maxsize=8192)
@@ -195,18 +214,21 @@ def embed_text(text: str) -> Tuple[List[float], int]:
     if not text:
         return [], 0
     short = text if len(text) <= 2000 else text[:2000]
-    if OPENAI_API_KEY:
+    
+    # ✅ SỬ DỤNG OPENAI API MỚI
+    if client is not None:
         try:
-            resp = openai.Embedding.create(model=EMBEDDING_MODEL, input=short)
-            emb = None
-            if isinstance(resp, dict) and "data" in resp and len(resp["data"]) > 0:
-                emb = resp["data"][0].get("embedding") or resp["data"][0].get("vector")
-            elif hasattr(resp, "data") and len(resp.data) > 0:
-                emb = getattr(resp.data[0], "embedding", None)
-            if emb:
+            resp = client.embeddings.create(
+                model=EMBEDDING_MODEL, 
+                input=short
+            )
+            # ✅ TRÍCH XUẤT DỮ LIỆU MỚI
+            if resp.data and len(resp.data) > 0:
+                emb = resp.data[0].embedding
                 return emb, len(emb)
         except Exception:
             logger.exception("OpenAI embedding call failed — falling back to deterministic embedding.")
+    
     # Deterministic fallback (stable across runs)
     try:
         h = abs(hash(short)) % (10 ** 12)
@@ -473,15 +495,26 @@ def query_index(query: str, top_k: int = TOP_K) -> List[Tuple[float, dict]]:
 # ---------- Prompt composition ----------
 def compose_system_prompt(top_passages: List[Tuple[float, dict]]) -> str:
     header = (
-        "Bạn là trợ lý AI của Ruby Wings — chuyên tư vấn ngành du lịch trải nghiệm, retreat, thiền, khí công, hành trình chữa lành.\n"
-        "Trả lời ngắn gọn, chính xác, tử tế.\n\n"
+
+        "Bạn là trợ lý AI của Ruby Wings - chuyên tư vấn du lịch trải nghiệm.\n"
+        "TRẢ LỜI THEO CÁC NGUYÊN TẮC:\n"
+        "1. ƯU TIÊN CAO: Thông tin từ dữ liệu được cung cấp\n"
+        "2. Nếu thiếu thông tin CHI TIẾT, hãy trả lời dựa trên THÔNG TIN CHUNG có sẵn\n"
+        "3. Đối với tour cụ thể: tìm thông tin đúng tour trước, sau đó mới dùng thông tin chung, nếu không có thông tin thì trả lời hiện nay Ruby Wings đang nâng cấp, cập nhật\n"
+        "4. Luôn giữ thái độ nhiệt tình, hữu ích\n\n"
+        "Bạn là trợ lý AI của Ruby Wings — chuyên tư vấn nghành du lịch trải nghiệm, retreat, "
+        "thiền, khí công, hành trình chữa lành - Hành trình tham quan linh hoạt theo nhhu cầu. Trả lời ngắn gọn, chính xác, tử tế.\n\n"
     )
     if not top_passages:
         return header + "Không tìm thấy dữ liệu nội bộ phù hợp."
-    content = header + "Dữ liệu nội bộ (theo độ liên quan):\n"
+    
+    content = header + "DỮ LIỆU NỘI BỘ (theo độ liên quan):\n"
     for i, (score, m) in enumerate(top_passages, start=1):
         content += f"\n[{i}] (score={score:.3f}) nguồn: {m.get('path','?')}\n{m.get('text','')}\n"
-    content += "\n---\nƯu tiên trích dẫn dữ liệu nội bộ; không bịa; văn phong lịch sự."
+
+    
+    content += "\n---\nTUÂN THỦ: Chỉ dùng dữ liệu trên; không bịa đặt nội dung không có thực; văn phong lịch sự."
+    content += "\n---\nLưu ý: Ưu tiên sử dụng trích dẫn thông tin từ dữ liệu nội bộ ở trên. Nếu phải bổ sung, chỉ dùng kiến thức chuẩn xác, không được tự ý bịa ra khi chưa rõ đúng sai; sử dụng ngôn ngữ lịch sự, thân thiện, thông minh; khi khách gõ lời tạm biệt hoặc lời chúc thì chân thành cám ơn khách, chúc khách sức khoẻ tốt, may mắn, thành công..."
     return content
 
 # ---------- Routes ----------
@@ -562,41 +595,19 @@ def chat():
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}]
 
     reply = ""
-    # Try chat with OpenAI if API key present
-    if OPENAI_API_KEY:
+    # ✅ SỬ DỤNG OPENAI CHAT API MỚI
+    if client is not None:
         try:
-            # SDK 0.28.0 pattern
-            resp = openai.ChatCompletion.create(
+            resp = client.chat.completions.create(
                 model=CHAT_MODEL,
                 messages=messages,
                 temperature=0.2,
                 max_tokens=int(data.get("max_tokens", 700)),
                 top_p=0.95
             )
-            # robust parsing
-            if isinstance(resp, dict):
-                choices = resp.get("choices", [])
-                if choices:
-                    first = choices[0]
-                    if isinstance(first.get("message"), dict):
-                        reply = first["message"].get("content", "") or ""
-                    elif "text" in first:
-                        reply = first.get("text", "")
-                    else:
-                        reply = str(first)
-                else:
-                    reply = str(resp)
-            else:
-                choices = getattr(resp, "choices", None)
-                if choices and len(choices) > 0:
-                    first = choices[0]
-                    msg = getattr(first, "message", None)
-                    if msg and isinstance(msg, dict):
-                        reply = msg.get("content", "")
-                    else:
-                        reply = str(first)
-                else:
-                    reply = str(resp)
+            # ✅ TRÍCH XUẤT DỮ LIỆU MỚI
+            if resp.choices and len(resp.choices) > 0:
+                reply = resp.choices[0].message.content or ""
         except Exception:
             logger.exception("OpenAI chat failed; will fallback to deterministic reply.")
 
