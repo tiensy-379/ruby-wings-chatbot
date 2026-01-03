@@ -3,28 +3,52 @@ services:
     name: ruby-wings-chatbot
     env: python
     plan: free
+
     buildCommand: "pip install --no-cache-dir -r requirements.txt"
     startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 300"
+
     envVars:
+      # ===== Core =====
       - key: OPENAI_BASE_URL
         value: "https://api.openai.com/v1"
-      - key: FAISS_ENABLED
-        value: "true"
+
       - key: FLASK_ENV
         value: "production"
+
+      # ===== FAISS / Chatbot (GIỮ NGUYÊN) =====
+      - key: FAISS_ENABLED
+        value: "true"
+
       - key: RBW_ALLOW_REINDEX
-        # Keep reindex protected by header by default (set to "1" to allow via env)
         value: "0"
+
       - key: KNOWLEDGE_PATH
         value: "knowledge.json"
+
       - key: FALLBACK_VECTORS_PATH
         value: "vectors.npz"
+
       - key: FAISS_MAPPING_PATH
         value: "faiss_mapping.json"
+
       - key: FAISS_INDEX_PATH
         value: "faiss_index.bin"
+
       - key: TOUR_ENTITIES_PATH
         value: "tour_entities.json"
+
+      # ===== Google OAuth (KHÔNG SET VALUE Ở ĐÂY) =====
+      # Set giá trị trực tiếp trong Render → Environment Variables
+      - key: GOOGLE_OAUTH_CLIENT_ID
+        value: ""
+
+      - key: GOOGLE_OAUTH_CLIENT_SECRET
+        value: ""
+
+      - key: GOOGLE_OAUTH_REFRESH_TOKEN
+        value: ""
+
     healthCheckPath: "/health"
+
     disk:
       sizeGb: 1
