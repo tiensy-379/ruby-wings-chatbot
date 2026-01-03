@@ -726,40 +726,68 @@ except Exception:
 
 
 # ==================================================
-# LEAD SAVING ROUTE - TEST MODE (KHÔNG GOOGLE SHEETS)
+# LEAD SAVING ROUTE - TEST MODE (NO GOOGLE SHEETS)
 # ==================================================
 from datetime import datetime
+from flask import request, jsonify
 
 @app.route('/api/save-lead', methods=['POST'])
 def save_lead():
     """
-    Tạm thời chỉ log lead, không ghi Google Sheets
+    Test mode: chỉ log lead, chưa ghi Google Sheets
+    KHÔNG ảnh hưởng chatbot / Meta CAPI
     """
     try:
-        # 1. Validate request
+        # 1. Validate Content-Type
         if not request.is_json:
-            return jsonify({'error': 'Content-Type must be application/json'}), 400
-        
-        data = request.get_json()
-        phone = data.get('phone', '').strip()
-        
-        # 2. Validate phone - lead hợp lệ phải có số điện thoại
+            return jsonify({
+                'status': 'error',
+                'message': 'Content-Type must be application/json'
+            }), 400
+
+        # 2. Parse JSON safely
+        data = request.get_json(silent=True) or {}
+
+        phone = str(data.get('phone', '')).strip()
+        page_url = data.get('page_url', '')
+        action_type = data.get('action_type', '')
+        source_channel = data.get('source_channel', 'Website')
+
+        # 3. Validate phone (lead hợp lệ)
         if not phone:
-            return jsonify({'error': 'Phone number is required'}), 400
-        
-        # 3. Log thay vì ghi Google Sheets
-        print(f"[LEAD LOG] Phone: {phone}, Page: {data.get('page_url', 'N/A')}, Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-        
+            return jsonify({
+                'status': 'error',
+                'message': 'Phone number is required'
+            }), 400
+
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+        # 4. Log lead (test mode)
+        print(
+            f"[LEAD TEST] "
+            f"time={now} | "
+            f"phone={phone} | "
+            f"action={action_type} | "
+            f"source={source_channel} | "
+            f"page={page_url}"
+        )
+
+        # 5. Trả JSON RÕ RÀNG cho frontend
         return jsonify({
-            'success': True,
-            'message': 'Lead logged (test mode)',
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+            'status': 'ok',
+            'mode': 'test',
+            'phone': phone,
+            'timestamp': now
         }), 200
-        
+
     except Exception as e:
-        # Log lỗi chung và trả về error an toàn
-        print(f"[LEAD SAVE ERROR] {type(e).__name__}: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
+        # 6. Bắt lỗi an toàn – không làm crash app
+        app.logger.error(f"[SAVE_LEAD_ERROR] {type(e).__name__}: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Internal server error'
+        }), 500
+
 
 # ==================================================
 # TEST LEAD ROUTE - SIÊU ĐƠN GIẢN
