@@ -726,8 +726,6 @@ except Exception:
 
 
 # ==================================================
-# LEAD SAVING ROUTE - ADDED 2024 (KHÔNG ẢNH HƯỞNG CHATBOT)
-# ==================================================
 # LEAD SAVING ROUTE - TEST MODE (KHÔNG GOOGLE SHEETS)
 # ==================================================
 from datetime import datetime
@@ -766,7 +764,7 @@ def save_lead():
 # ==================================================
 # TEST LEAD ROUTE - SIÊU ĐƠN GIẢN
 # ==================================================
-@app.route('/api/save-lead', methods=['POST'])
+
 def save_lead():
     print("✅ /api/save-lead được gọi!")
     return jsonify({"success": True, "message": "Test OK"}), 200
