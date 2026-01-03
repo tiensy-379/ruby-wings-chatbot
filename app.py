@@ -14,6 +14,9 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import numpy as np
 # ... các import hiện có ...
+import gspread
+from google.oauth2.service_account import Credentials
+from datetime import datetime
 
 
 
@@ -56,6 +59,13 @@ EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")
 CHAT_MODEL = os.environ.get("CHAT_MODEL", "gpt-4o-mini")
 TOP_K = int(os.environ.get("TOP_K", "5"))
 FAISS_ENABLED = os.environ.get("FAISS_ENABLED", "true").lower() in ("1", "true", "yes")
+
+
+
+GOOGLE_SHEET_ID = "1SdVbwkuxb8l1meEW--ddyfh4WmUvSXXMOPQ5bCyPkdk"
+GOOGLE_SHEET_NAME = "RBW_Lead_Raw_Inbox"
+
+
 
 # ---------- Flask ----------
 app = Flask(__name__)
@@ -523,6 +533,8 @@ def compose_system_prompt(top_passages: List[Tuple[float, dict]]) -> str:
     return content
 
 # ---------- Routes ----------
+
+
 @app.route("/")
 def home():
     return jsonify({
@@ -726,50 +738,47 @@ except Exception:
 
 
 # ==================================================
-# LEAD SAVING ROUTE - TEST MODE (NO GOOGLE SHEETS)
-
-
-
-# ==================================================
 # LEAD SAVING ROUTE - TEST MODE (KHÔNG GOOGLE SHEETS)
-# ==================================================
-from datetime import datetime
-from flask_cors import cross_origin
 
 @app.route('/api/save-lead', methods=['POST'])
-@cross_origin()
 def save_lead_to_sheet():
-    """
-    Lưu lead từ website vào Google Sheet
-    Route độc lập, không ảnh hưởng đến chatbot/FAISS/OpenAI/Meta CAPI
-    """
     try:
-        # 1. Validate request
         if not request.is_json:
-            return jsonify({'error': 'Content-Type must be application/json'}), 400
-        
-        data = request.get_json()
-        phone = data.get('phone', '').strip()
-        
-        # 2. Validate phone - lead hợp lệ phải có số điện thoại
+            return jsonify({"error": "Content-Type must be application/json"}), 400
+
+        data = request.get_json() or {}
+        phone = (data.get("phone") or "").strip()
         if not phone:
-            return jsonify({'error': 'Phone number is required'}), 400
-        
-        # 3. Log test thay vì ghi Google Sheets
-        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        print(f"[LEAD TEST] Phone: {phone}, Page: {data.get('page_url', 'N/A')}, Time: {now}")
-        
-        return jsonify({
-            'success': True,
-            'message': 'Lead logged (test mode)',
-            'timestamp': now
-        }), 200
-        
-    except Exception as e:
-        # Log lỗi chung và trả về error an toàn
-        print(f"[LEAD SAVE ERROR] {type(e).__name__}: {str(e)}")
-        return jsonify({'error': 'Internal server error'}), 500
-# Flask App Run (KHÔNG SỬA)
+            return jsonify({"error": "Phone is required"}), 400
+
+        row = [
+            datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S"),
+            data.get("source_channel", "Website"),
+            data.get("action_type", "Click Call"),
+            data.get("page_url", ""),
+            data.get("contact_name", ""),
+            phone,
+            data.get("service_interest", ""),
+            data.get("note", ""),
+            "New"
+        ]
+
+        gc = get_gspread_client()
+        sh = gc.open_by_key(GOOGLE_SHEET_ID)
+        ws = sh.worksheet(GOOGLE_SHEET_NAME)
+        ws.append_row(row, value_input_option="USER_ENTERED")
+
+        return jsonify({"success": True}), 200
+
+    except Exception:
+        logger.exception("SAVE_LEAD_ERROR")
+        return jsonify({"error": "Internal server error"}), 500
+
+
+
+
+
+
 # ==================================================
     # ... code hiện tại ...
 # When run directly, run flask dev server (note: for production use Gunicorn)
