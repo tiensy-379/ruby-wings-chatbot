@@ -727,19 +727,29 @@ except Exception:
 
 # ==================================================
 # LEAD SAVING ROUTE - TEST MODE (NO GOOGLE SHEETS)
+from flask_cors import cross_origin
+
+# ==================================================
+# LEAD SAVING ROUTE - TEST MODE (NO GOOGLE SHEETS)
 # ==================================================
 from datetime import datetime
 from flask import request, jsonify
 
 @app.route('/api/save-lead', methods=['POST'])
+@cross_origin()  # THÊM DÒNG NÀY
 def save_lead():
     """
     Test mode: chỉ log lead, chưa ghi Google Sheets
     KHÔNG ảnh hưởng chatbot / Meta CAPI
     """
     try:
+        # Log để debug
+        print(f"[LEAD DEBUG] Request received from: {request.remote_addr}")
+        print(f"[LEAD DEBUG] Headers: {dict(request.headers)}")
+        
         # 1. Validate Content-Type
         if not request.is_json:
+            print("[LEAD DEBUG] Not JSON content-type")
             return jsonify({
                 'status': 'error',
                 'message': 'Content-Type must be application/json'
@@ -747,6 +757,7 @@ def save_lead():
 
         # 2. Parse JSON safely
         data = request.get_json(silent=True) or {}
+        print(f"[LEAD DEBUG] Received data: {data}")
 
         phone = str(data.get('phone', '')).strip()
         page_url = data.get('page_url', '')
@@ -755,6 +766,7 @@ def save_lead():
 
         # 3. Validate phone (lead hợp lệ)
         if not phone:
+            print("[LEAD DEBUG] Phone number missing")
             return jsonify({
                 'status': 'error',
                 'message': 'Phone number is required'
@@ -773,16 +785,19 @@ def save_lead():
         )
 
         # 5. Trả JSON RÕ RÀNG cho frontend
-        return jsonify({
+        response_data = {
             'status': 'ok',
             'mode': 'test',
             'phone': phone,
             'timestamp': now
-        }), 200
+        }
+        
+        print(f"[LEAD DEBUG] Sending response: {response_data}")
+        return jsonify(response_data), 200
 
     except Exception as e:
         # 6. Bắt lỗi an toàn – không làm crash app
-        app.logger.error(f"[SAVE_LEAD_ERROR] {type(e).__name__}: {e}")
+        print(f"[LEAD ERROR] {type(e).__name__}: {str(e)}")
         return jsonify({
             'status': 'error',
             'message': 'Internal server error'
