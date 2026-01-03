@@ -13,6 +13,15 @@ from typing import List, Tuple, Dict, Optional
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import numpy as np
+# ... các import hiện có ...
+
+
+
+# ---------- Google Sheets Lead Saving ----------
+import gspread
+from google.oauth2 import service_account
+
+
 
 # Try FAISS; fallback to numpy-only index if missing
 HAS_FAISS = False
@@ -716,13 +725,108 @@ try:
 except Exception:
     logger.exception("Initialization error")
 
+
+
+
+
+# ==================================================
+# LEAD SAVING ROUTE - ADDED 2024 (KHÔNG ẢNH HƯỞNG CHATBOT)
+# ==================================================
+@app.route('/api/save-lead', methods=['POST'])
+def save_lead():
+    """
+    Lưu lead từ website vào Google Sheet
+    Route độc lập, không ảnh hưởng đến chatbot/FAISS/OpenAI
+    """
+    try:
+        # 1. Validate request
+        if not request.is_json:
+            return jsonify({'error': 'Content-Type must be application/json'}), 400
+        
+        data = request.get_json()
+        phone = data.get('phone', '').strip()
+        
+        # 2. Validate phone - lead hợp lệ phải có số điện thoại
+        if not phone:
+            return jsonify({'error': 'Phone number is required'}), 400
+        
+        # 3. Prepare data for Google Sheet (đúng thứ tự cột KHÓA CỨNG)
+        from datetime import datetime
+        lead_data = [
+            datetime.now().strftime('%Y-%m-%d %H:%M:%S'),  # created_at
+            data.get('source_channel', 'Website'),          # source_channel
+            data.get('action_type', 'Click Call'),          # action_type
+            data.get('page_url', ''),                       # page_url
+            data.get('contact_name', ''),                   # contact_name
+            phone,                                          # phone
+            data.get('service_interest', ''),               # service_interest
+            data.get('note', ''),                           # note
+            'New'                                           # raw_status (luôn = "New")
+        ]
+        
+        # 4. Google Sheets Service Account từ biến môi trường Render
+        service_account_json = os.environ.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+        if not service_account_json:
+            print("[LEAD ERROR] GOOGLE_SERVICE_ACCOUNT_JSON environment variable missing")
+            return jsonify({'error': 'Service account configuration missing'}), 500
+        
+        # Parse JSON từ biến môi trường
+        try:
+            service_account_info = json.loads(service_account_json)
+        except json.JSONDecodeError as e:
+            print(f"[LEAD ERROR] Invalid service account JSON: {str(e)}")
+            return jsonify({'error': f'Invalid service account JSON: {str(e)}'}), 500
+        
+        # Xác thực
+        credentials = service_account.Credentials.from_service_account_info(
+            service_account_info,
+            scopes=['https://www.googleapis.com/auth/spreadsheets']
+        )
+        
+        gc = gspread.authorize(credentials)
+        
+        # 5. Ghi dữ liệu
+        SPREADSHEET_ID = '1SdVbwkuxb8l1meEW--ddyfh4WmUvSXXMOPQ5bCyPkdk'
+        SHEET_NAME = 'RBW_Lead_Raw_Inbox'
+        
+        try:
+            spreadsheet = gc.open_by_key(SPREADSHEET_ID)
+            worksheet = spreadsheet.worksheet(SHEET_NAME)
+            worksheet.append_row(lead_data)
+        except Exception as e:
+            print(f"[GOOGLE SHEETS ERROR] {str(e)}")
+            return jsonify({'error': 'Google Sheets connection failed'}), 500
+        
+        # 6. Log thành công
+        print(f"[LEAD SAVED] Phone: {phone}, Page: {data.get('page_url', 'N/A')}, Time: {lead_data[0]}")
+        
+        return jsonify({
+            'success': True,
+            'message': 'Lead saved successfully',
+            'timestamp': lead_data[0]
+        }), 200
+        
+    except Exception as e:
+        # Log lỗi chung và trả về error an toàn
+        print(f"[LEAD SAVE ERROR] {type(e).__name__}: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
+
+
+# ==================================================
+# Flask App Run (KHÔNG SỬA)
+# ==================================================
+if __name__ == "__main__":
+    # ... code hiện tại ...
 # When run directly, run flask dev server (note: for production use Gunicorn)
 if __name__ == "__main__":
     # ensure mapping saved for reproducibility
     if MAPPING and not os.path.exists(FAISS_MAPPING_PATH):
         save_mapping_to_disk()
+
+        
     # block startup building index to ensure readiness
     built = build_index(force_rebuild=False)
     if not built:
         logger.warning("Index not ready at startup; endpoint will attempt on-demand build.")
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
+
