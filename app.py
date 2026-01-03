@@ -727,91 +727,48 @@ except Exception:
 
 # ==================================================
 # LEAD SAVING ROUTE - TEST MODE (NO GOOGLE SHEETS)
-from flask_cors import cross_origin
+
+
 
 # ==================================================
-# LEAD SAVING ROUTE - TEST MODE (NO GOOGLE SHEETS)
+# LEAD SAVING ROUTE - TEST MODE (KHÔNG GOOGLE SHEETS)
 # ==================================================
 from datetime import datetime
-from flask import request, jsonify
+from flask_cors import cross_origin
 
 @app.route('/api/save-lead', methods=['POST'])
-@cross_origin()  # THÊM DÒNG NÀY
-def save_lead():
+@cross_origin()
+def save_lead_to_sheet():
     """
-    Test mode: chỉ log lead, chưa ghi Google Sheets
-    KHÔNG ảnh hưởng chatbot / Meta CAPI
+    Lưu lead từ website vào Google Sheet
+    Route độc lập, không ảnh hưởng đến chatbot/FAISS/OpenAI/Meta CAPI
     """
     try:
-        # Log để debug
-        print(f"[LEAD DEBUG] Request received from: {request.remote_addr}")
-        print(f"[LEAD DEBUG] Headers: {dict(request.headers)}")
-        
-        # 1. Validate Content-Type
+        # 1. Validate request
         if not request.is_json:
-            print("[LEAD DEBUG] Not JSON content-type")
-            return jsonify({
-                'status': 'error',
-                'message': 'Content-Type must be application/json'
-            }), 400
-
-        # 2. Parse JSON safely
-        data = request.get_json(silent=True) or {}
-        print(f"[LEAD DEBUG] Received data: {data}")
-
-        phone = str(data.get('phone', '')).strip()
-        page_url = data.get('page_url', '')
-        action_type = data.get('action_type', '')
-        source_channel = data.get('source_channel', 'Website')
-
-        # 3. Validate phone (lead hợp lệ)
-        if not phone:
-            print("[LEAD DEBUG] Phone number missing")
-            return jsonify({
-                'status': 'error',
-                'message': 'Phone number is required'
-            }), 400
-
-        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-
-        # 4. Log lead (test mode)
-        print(
-            f"[LEAD TEST] "
-            f"time={now} | "
-            f"phone={phone} | "
-            f"action={action_type} | "
-            f"source={source_channel} | "
-            f"page={page_url}"
-        )
-
-        # 5. Trả JSON RÕ RÀNG cho frontend
-        response_data = {
-            'status': 'ok',
-            'mode': 'test',
-            'phone': phone,
-            'timestamp': now
-        }
+            return jsonify({'error': 'Content-Type must be application/json'}), 400
         
-        print(f"[LEAD DEBUG] Sending response: {response_data}")
-        return jsonify(response_data), 200
-
-    except Exception as e:
-        # 6. Bắt lỗi an toàn – không làm crash app
-        print(f"[LEAD ERROR] {type(e).__name__}: {str(e)}")
+        data = request.get_json()
+        phone = data.get('phone', '').strip()
+        
+        # 2. Validate phone - lead hợp lệ phải có số điện thoại
+        if not phone:
+            return jsonify({'error': 'Phone number is required'}), 400
+        
+        # 3. Log test thay vì ghi Google Sheets
+        now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        print(f"[LEAD TEST] Phone: {phone}, Page: {data.get('page_url', 'N/A')}, Time: {now}")
+        
         return jsonify({
-            'status': 'error',
-            'message': 'Internal server error'
-        }), 500
-
-
-# ==================================================
-# TEST LEAD ROUTE - SIÊU ĐƠN GIẢN
-# ==================================================
-
-def save_lead():
-    print("✅ /api/save-lead được gọi!")
-    return jsonify({"success": True, "message": "Test OK"}), 200
-# ==================================================
+            'success': True,
+            'message': 'Lead logged (test mode)',
+            'timestamp': now
+        }), 200
+        
+    except Exception as e:
+        # Log lỗi chung và trả về error an toàn
+        print(f"[LEAD SAVE ERROR] {type(e).__name__}: {str(e)}")
+        return jsonify({'error': 'Internal server error'}), 500
 # Flask App Run (KHÔNG SỬA)
 # ==================================================
     # ... code hiện tại ...
