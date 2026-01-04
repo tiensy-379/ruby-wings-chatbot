@@ -71,7 +71,8 @@ FAISS_ENABLED = os.environ.get("FAISS_ENABLED", "true").lower() in ("1", "true",
 
 # Google Sheets config
 GOOGLE_SHEET_ID = "1SdVbwkuxb8l1meEW--ddyfh4WmUvSXXMOPQ5bCyPkdk"
-GOOGLE_SHEET_NAME = "RBW_Lead_Raw_Inbox"
+GOOGLE_SHEET_NAME = os.environ.get("GOOGLE_SHEET_NAME", "RBW_Lead_Raw_Inbox")
+
 
 # Feature flags
 ENABLE_GOOGLE_SHEETS = os.environ.get("ENABLE_GOOGLE_SHEETS", "true").lower() in ("1", "true", "yes")
@@ -887,14 +888,29 @@ def save_lead_to_sheet():
             logger.info("Google Sheets integration is disabled")
 
         # Save to fallback storage if Google Sheets failed or for redundancy
-        fallback_success = False
-        if not sheets_success or ENABLE_FALLBACK_STORAGE:
-            fallback_success = save_lead_to_fallback_storage(lead_data)
-            if fallback_success:
-                logger.info(f"Lead saved to fallback storage: {phone}")
-                lead_data["sync_method"] = "fallback_storage"
+       # === PATCH FIX FOR GOOGLE SHEETS SYNC METHOD ===
+# Thay thế đoạn code từ dòng: "# Save to fallback storage if Google Sheets failed or for redundancy"
+# Đến trước dòng: "# Determine response"
 
-        # Determine response
+# Tìm đoạn code này trong file app.py và thay thế bằng:
+
+        # Save to fallback storage only if Google Sheets failed
+        fallback_success = False
+        if ENABLE_FALLBACK_STORAGE:
+            if not sheets_success:
+                # Only save to fallback if Google Sheets failed
+                fallback_success = save_lead_to_fallback_storage(lead_data)
+                if fallback_success:
+                    logger.info(f"Lead saved to fallback storage: {phone}")
+                    lead_data["sync_method"] = "fallback_storage"
+            else:
+                # Google Sheets succeeded, we can optionally also save to fallback for backup
+                # but don't change the sync_method
+                fallback_backup = save_lead_to_fallback_storage(lead_data)
+                if fallback_backup:
+                    logger.info(f"Lead also backed up to fallback storage: {phone}")
+
+               # Determine response - FIXED VERSION
         if sheets_success:
             return jsonify({
                 "success": True,
@@ -902,7 +918,7 @@ def save_lead_to_sheet():
                 "data": {
                     "phone": phone,
                     "timestamp": lead_data["timestamp"],
-                    "sync_method": lead_data["sync_method"]
+                    "sync_method": "google_sheets"  # <-- FIX: luôn là google_sheets khi thành công
                 }
             }), 200
         elif fallback_success:
@@ -913,9 +929,10 @@ def save_lead_to_sheet():
                 "data": {
                     "phone": phone,
                     "timestamp": lead_data["timestamp"],
-                    "sync_method": lead_data["sync_method"]
+                    "sync_method": "fallback_storage"
                 }
             }), 200
+        
         else:
             logger.error(f"Failed to save lead by any method: {phone}")
             return jsonify({
