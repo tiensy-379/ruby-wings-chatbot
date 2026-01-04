@@ -1,5 +1,13 @@
 # app.py — "HOÀN HẢO NHẤT" phiên bản tối ưu cho openai>=1.0.0, FAISS fallback, ưu tiên lấy FIELD trong cùng TOUR
 # Mục tiêu: luôn trả lời bằng trường (field) đúng của tour khi user nhắc đến tên tour hoặc hỏi keyword liên quan.
+# === SAFE MODE FOR DEBUG ===
+FLAT_TEXTS = []
+INDEX = None
+HAS_FAISS = False
+FAISS_ENABLED = False
+
+def _index_dim(idx):
+    return None
 
 from meta_capi import send_meta_pageview
 import os
