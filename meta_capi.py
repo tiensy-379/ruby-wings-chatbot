@@ -63,6 +63,9 @@ def send_meta_pageview(request):
 
         url = f"https://graph.facebook.com/v18.0/{pixel_id}/events?access_token={token}"
         response = requests.post(url, json=payload, timeout=5)
+        logger.info(f"Meta CAPI response: {response.status_code} - {response.text}")
+
+        
 
         print("META CAPI STATUS:", response.status_code)
         print("META CAPI RESPONSE TEXT:", response.text)
