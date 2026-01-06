@@ -1071,7 +1071,8 @@ def health_check():
                 "fallback_storage": fallback_status,
                 "openai": "available" if client else "unavailable",
                 "faiss": "available" if HAS_FAISS else "unavailable",
-                "index": "loaded" if INDEX else "not_loaded"
+                "index": "loaded" if (INDEX is not None or os.path.exists(FAISS_INDEX_PATH)) else "not_loaded"
+
             },
             "counts": {
                 "knowledge_passages": len(FLAT_TEXTS),
