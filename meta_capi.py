@@ -19,6 +19,9 @@ import os
 import uuid
 import hashlib
 import json
+# Thêm vào dòng 1-3 của meta_capi.py:
+import logging
+logger = logging.getLogger("meta_capi")
 
 # =========================
 # EXISTING FUNCTIONS (GIỮ NGUYÊN)
