@@ -1,5 +1,6 @@
-# app.py — RUBY WINGS CHATBOT v2.1
-# Enhanced with robust error handling for Google Sheets and file permissions
+# app.py — RUBY WINGS CHATBOT v2.1.1
+# Fixed critical UnboundLocalError in chat endpoint
+# Enhanced with robust error handling and context-aware tour detection
 
 # === SAFE MODE FOR DEBUG ===
 FLAT_TEXTS = []
@@ -34,9 +35,7 @@ from gspread.exceptions import APIError, SpreadsheetNotFound, WorksheetNotFound
 
 # Meta CAPI
 from meta_capi import send_meta_pageview
-
 from meta_capi import send_meta_lead
-
 
 # Try FAISS
 HAS_FAISS = False
@@ -77,7 +76,6 @@ FAISS_ENABLED = os.environ.get("FAISS_ENABLED", "true").lower() in ("1", "true",
 GOOGLE_SHEET_ID = "1SdVbwkuxb8l1meEW--ddyfh4WmUvSXXMOPQ5bCyPkdk"
 GOOGLE_SHEET_NAME = os.environ.get("GOOGLE_SHEET_NAME", "RBW_Lead_Raw_Inbox")
 
-
 # Feature flags
 ENABLE_GOOGLE_SHEETS = os.environ.get("ENABLE_GOOGLE_SHEETS", "true").lower() in ("1", "true", "yes")
 ENABLE_FALLBACK_STORAGE = os.environ.get("ENABLE_FALLBACK_STORAGE", "true").lower() in ("1", "true", "yes")
@@ -113,6 +111,7 @@ _gsheet_client_lock = threading.Lock()
 
 # Fallback storage for leads
 _fallback_storage_lock = threading.Lock()
+
 # =========== CONTEXT MANAGEMENT ===========
 SESSION_CONTEXT = {}
 CONTEXT_TIMEOUT = 1800  # 30 phút
@@ -150,16 +149,12 @@ def update_tour_context(session_id, tour_indices, tour_name=None):
     return context
 
 def extract_session_id(request_data, remote_addr):
-
     """Trích xuất session_id từ request"""
-     # Ưu tiên session_id từ frontend
+    # Ưu tiên session_id từ frontend
     session_id = request_data.get("session_id")
     
     if not session_id:
         # Tạo session_id ổn định từ IP + timestamp (giữ trong 30 phút)
-        import hashlib
-        from datetime import datetime
-        
         ip = remote_addr or "0.0.0.0"
         current_hour = datetime.utcnow().strftime("%Y%m%d%H")
         
@@ -195,6 +190,7 @@ def get_complete_tour_info(tour_indices):
         result[idx] = tour_info
     
     return result
+
 def get_suggested_questions(tour_indices, current_field):
     """Gợi ý câu hỏi tiếp theo"""
     suggestions = []
@@ -250,6 +246,7 @@ KEYWORD_FIELD_MAP: Dict[str, Dict] = {
     "who_can_join": {"keywords": ["phù hợp đối tượng", "ai tham gia", "who should join"], "field": "who_can_join"},
     "hotline": {"keywords": ["hotline", "số điện thoại", "liên hệ", "contact number"], "field": "hotline"},
 }
+
 # =========== TOUR FIELDS FOR COMPLETE INFO ===========
 TOUR_FIELDS = [
     "tour_name", "summary", "location", "duration", "price",
@@ -817,9 +814,6 @@ def reindex():
     ok = build_index(force_rebuild=True)
     return jsonify({"ok": ok, "count": len(FLAT_TEXTS)})
 
-
-
-
 @app.route("/chat", methods=["POST"])
 def chat():
     """
@@ -852,10 +846,7 @@ def chat():
         if requested_field:
             break
 
-        # Tour detection with context awareness - IMPROVED VERSION
-    tour_indices = find_tour_indices_from_message(user_message)
-    
-        # Tour detection with context awareness - IMPROVED VERSION
+    # Tour detection with context awareness
     tour_indices = find_tour_indices_from_message(user_message)
     
     # Nếu không tìm thấy tour, KIỂM TRA KỸ các reference
@@ -896,7 +887,7 @@ def chat():
                 break
         update_tour_context(session_id, tour_indices, tour_name)
 
-            # Update conversation history
+    # Update conversation history
     context["conversation_history"].append({
         "timestamp": datetime.utcnow().isoformat(),
         "user_message": user_message,
@@ -908,7 +899,23 @@ def chat():
     # Giữ history tối đa 10 messages
     if len(context["conversation_history"]) > 10:
         context["conversation_history"] = context["conversation_history"][-10:]
-            # =========== DEBUG LOGGING FOR TOUR CONTEXT ===========
+    
+    # =========== CHECK FOR LIST REQUEST PATTERNS ===========
+    # Initialize is_list_request to False (FIXED CRITICAL BUG)
+    is_list_request = False
+    
+    list_patterns = [
+        r"liệt kê.*tour",
+        r"có những tour nào",
+        r"danh sách tour", 
+        r"tour.*nổi bật",
+        r"show tour",
+        r"tour available"
+    ]
+    
+    is_list_request = any(re.search(pattern, text_l) for pattern in list_patterns)
+    
+    # =========== DEBUG LOGGING FOR TOUR CONTEXT ===========
     logger.info(f"🎯 TOUR DETECTION DEBUG:")
     logger.info(f"  User message: '{user_message}'")
     logger.info(f"  Found indices: {tour_indices}")
@@ -931,17 +938,6 @@ def chat():
     top_results: List[Tuple[float, dict]] = []
     
     # Handle "liệt kê tour" requests
-    list_patterns = [
-        r"liệt kê.*tour",
-        r"có những tour nào",
-        r"danh sách tour", 
-        r"tour.*nổi bật",
-        r"show tour",
-        r"tour available"
-    ]
-    
-    is_list_request = any(re.search(pattern, text_l) for pattern in list_patterns)
-    
     if is_list_request:
         # Determine how many tours to list
         limit = 3  # Default
@@ -965,9 +961,6 @@ def chat():
     else:
         top_k = int(data.get("top_k", TOP_K))
         top_results = query_index(user_message, top_k)
-
-
-
 
     system_prompt = compose_system_prompt(top_results)
     messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}]
@@ -1140,6 +1133,7 @@ def chat():
         
         else:
             reply = "Xin lỗi — hiện không có dữ liệu nội bộ liên quan. Vui lòng liên hệ hotline 0935 304 338 để được tư vấn trực tiếp."
+    
     # =========== VALIDATE DURATION TO AVOID INCORRECT INFO ===========
     # Check if reply contains unrealistic duration (like "5 ngày 4 đêm")
     if reply and ("ngày" in reply or "đêm" in reply):
@@ -1185,7 +1179,8 @@ def chat():
         # Đảm bảo reply vẫn có ý nghĩa
         if "Thông tin thời gian tour" not in reply:
             reply = "Thông tin thời gian tour đang được cập nhật. Vui lòng liên hệ hotline 0935 304 338 để biết lịch trình cụ thể."
-        return jsonify({
+    
+    return jsonify({
         "reply": reply, 
         "sources": [m for _, m in top_results],
         "context": {
@@ -1195,9 +1190,6 @@ def chat():
             "suggested_next": get_suggested_questions(tour_indices, requested_field)
         }
     })
-
-
-
 
 # =========== LEAD SAVING ROUTE ===========
 @app.route('/api/save-lead', methods=['POST'])
@@ -1276,7 +1268,8 @@ def save_lead_to_sheet():
                     sheets_success = True
                     
                     logger.info(f"✅ Lead successfully saved to Google Sheets: {phone}")
-            # --- ADD-ONLY: Meta CAPI Lead (SAFE HOOK) ---
+                    
+                # --- ADD-ONLY: Meta CAPI Lead (SAFE HOOK) ---
                 try:
                     send_meta_lead(
                         request=request,
@@ -1286,8 +1279,8 @@ def save_lead_to_sheet():
                         currency="VND",
                         content_name=lead_data.get("action_type", "Call / Consult")
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"Meta CAPI lead tracking failed: {e}")
 
             except SpreadsheetNotFound:
                 logger.error(f"Google Sheet not found: {GOOGLE_SHEET_ID}")
@@ -1310,14 +1303,6 @@ def save_lead_to_sheet():
             logger.info("Google Sheets integration is disabled")
 
         # Save to fallback storage if Google Sheets failed or for redundancy
-       # === PATCH FIX FOR GOOGLE SHEETS SYNC METHOD ===
-# Thay thế đoạn code từ dòng: "# Save to fallback storage if Google Sheets failed or for redundancy"
-# Đến trước dòng: "# Determine response"
-
-# Tìm đoạn code này trong file app.py và thay thế bằng:
-
-                # Save to fallback storage with proper sync_method handling
-                # Save to fallback storage with proper sync_method handling
         fallback_success = False
         fallback_backup = False
         
@@ -1381,25 +1366,6 @@ def save_lead_to_sheet():
             "details": "Please check server logs for details"
         }), 500
 
-    except Exception as e:
-        error_type = type(e).__name__
-        error_details = str(e)
-        error_traceback = traceback.format_exc()
-        
-        logger.error(f"SAVE_LEAD_CRITICAL_ERROR >>> Type: {error_type}")
-        logger.error(f"SAVE_LEAD_CRITICAL_ERROR >>> Details: {error_details}")
-        logger.error(f"SAVE_LEAD_CRITICAL_ERROR >>> Traceback: {error_traceback}")
-        
-        return jsonify({
-            "success": False,
-            "error": "Internal server error",
-            "error_type": error_type,
-            "details": "Please check server logs for details"
-        }), 500
-    
-
-    
-    # =========== TRACK CALL BUTTON CLICKS - ENHANCED FOR META CAPI ===========
 # =========== TRACK CALL BUTTON CLICKS - ENHANCED FOR META CAPI ===========
 @app.route('/api/track-call', methods=['POST', 'OPTIONS'])
 def track_call_event():
@@ -1543,7 +1509,6 @@ def health_check():
                 "openai": "available" if client else "unavailable",
                 "faiss": "available" if HAS_FAISS else "unavailable",
                 "index": "loaded" if (INDEX is not None or os.path.exists(FAISS_INDEX_PATH)) else "not_loaded"
-
             },
             "counts": {
                 "knowledge_passages": len(FLAT_TEXTS),
