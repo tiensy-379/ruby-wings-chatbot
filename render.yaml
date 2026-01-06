@@ -8,7 +8,7 @@ services:
     startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 300"
 
     envVars:
-      # ===== Core =====
+      # ===== CORE CONFIGURATION =====
       - key: OPENAI_API_KEY
         sync: false  # Đặt trong Render Dashboard
 
@@ -18,7 +18,10 @@ services:
       - key: FLASK_ENV
         value: "production"
 
-      # ===== FAISS / Chatbot =====
+      - key: PORT
+        value: "10000"
+
+      # ===== FAISS & CHATBOT CONFIG =====
       - key: FAISS_ENABLED
         value: "true"
 
@@ -37,7 +40,7 @@ services:
       - key: FAISS_INDEX_PATH
         value: "faiss_index.bin"
 
-      # ===== Embedding Models =====
+      # ===== AI MODELS =====
       - key: EMBEDDING_MODEL
         value: "text-embedding-3-small"
 
@@ -47,7 +50,7 @@ services:
       - key: TOP_K
         value: "5"
 
-      # ===== Google Sheets Integration =====
+      # ===== GOOGLE SHEETS INTEGRATION =====
       - key: ENABLE_GOOGLE_SHEETS
         value: "true"
 
@@ -60,14 +63,14 @@ services:
       - key: GOOGLE_SHEET_NAME
         value: "RBW_Lead_Raw_Inbox"
 
-      # ===== Fallback Storage =====
+      # ===== FALLBACK STORAGE =====
       - key: ENABLE_FALLBACK_STORAGE
         value: "true"
 
       - key: FALLBACK_STORAGE_PATH
         value: "leads_fallback.json"
 
-      # ===== Performance =====
+      # ===== PERFORMANCE =====
       - key: WORKERS
         value: "1"
 
@@ -77,7 +80,10 @@ services:
       - key: DEBUG
         value: "false"
 
-      # ===== Meta CAPI & Tracking =====
+      - key: LOG_LEVEL
+        value: "INFO"
+
+      # ===== META CONVERSION API (CAPI) =====
       - key: META_PIXEL_ID
         value: "862531473384426"
 
@@ -85,15 +91,31 @@ services:
         sync: false  # Đặt trong Render Dashboard
 
       - key: META_TEST_EVENT_CODE
-        value: ""  # Để trống hoặc đặt mã test khi cần
+        value: ""  # TEST12345 khi cần test, để trống khi production
 
+      # ===== META CAPI FEATURE FLAGS =====
       - key: ENABLE_META_CAPI_LEAD
         value: "true"  # Bật tracking lead qua /api/save-lead
 
       - key: ENABLE_META_CAPI_CALL
-        value: "true"  # Bật tracking cho nút gọi điện & tư vấn
+        value: "true"  # Bật tracking cho nút gọi điện (FIXED VERSION)
 
-      # LƯU Ý: ĐÃ LOẠI BỎ GOOGLE ADS CONVERSION (chỉ dùng GA4)
+      - key: DEBUG_META_CAPI
+        value: "true"  # Bật log debug cho Meta CAPI
+
+      # ===== SECURITY =====
+      - key: SECRET_KEY
+        generateValue: true
+
+      - key: CORS_ORIGINS
+        value: "https://www.rubywings.vn,https://rubywings.vn"
+
+      # ===== SYSTEM =====
+      - key: HOST
+        value: "0.0.0.0"
+
+      - key: MAX_CONTENT_LENGTH
+        value: "16777216"  # 16MB
 
     healthCheckPath: "/api/health"
     healthCheckTimeout: 30
@@ -106,14 +128,50 @@ services:
       mountPath: /data
       sizeGB: 1
 
-    # Add build cache for faster deployments
+    # Build cache optimization
     buildFilter:
       paths:
         - "*.py"
         - "requirements.txt"
         - "knowledge.json"
         - "*.json"
+        - "render.yaml"
       ignoredPaths:
         - "__pycache__/"
         - "*.pyc"
         - ".git/"
+        - "logs/"
+        - "*.log"
+
+    # Advanced configuration for better performance
+    scaling:
+      minInstances: 1
+      maxInstances: 1
+
+    # Header configuration for security
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: X-Frame-Options
+        value: DENY
+      - path: /*
+        name: X-XSS-Protection
+        value: 1; mode=block
+
+    # CORS configuration
+    cors:
+      allowedOrigins:
+        - "https://www.rubywings.vn"
+        - "https://rubywings.vn"
+      allowedMethods:
+        - GET
+        - POST
+        - OPTIONS
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+        - X-Requested-With
+      allowCredentials: true
+      maxAge: 86400
