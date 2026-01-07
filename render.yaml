@@ -4,13 +4,16 @@ services:
     env: python
     plan: free
 
-    buildCommand: "pip install --no-cache-dir -r requirements.txt"
-    startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 300"
+    # BUILD COMMAND - CHỈNH SỬA ĐÚNG
+    buildCommand: "pip install -r requirements.txt"
+    
+    # START COMMAND - CHỈNH SỬA ĐÚNG  
+    startCommand: "gunicorn app:app --workers=2 --threads=4 --bind=0.0.0.0:$PORT"
 
     envVars:
       # ===== CORE CONFIGURATION =====
       - key: OPENAI_API_KEY
-        sync: false  # Đặt trong Render Dashboard
+        sync: false
 
       - key: OPENAI_BASE_URL
         value: "https://api.openai.com/v1"
@@ -25,8 +28,11 @@ services:
       - key: FAISS_ENABLED
         value: "true"
 
+      - key: AUTO_INSTALL_FAISS
+        value: "true"  # TỰ ĐỘNG CÀI FAISS NẾU THIẾU
+
       - key: RBW_ALLOW_REINDEX
-        value: "0"
+        value: "1"  # QUAN TRỌNG: CHO PHÉP REINDEX KHI DEPLOY
 
       - key: KNOWLEDGE_PATH
         value: "knowledge.json"
@@ -55,7 +61,7 @@ services:
         value: "true"
 
       - key: GOOGLE_SERVICE_ACCOUNT_JSON
-        sync: false  # Đặt trong Render Dashboard với JSON đầy đủ
+        sync: false
 
       - key: GOOGLE_SHEET_ID
         value: "1SdVbwkuxb8l1meEW--ddyfh4WmUvSXXMOPQ5bCyPkdk"
@@ -72,7 +78,7 @@ services:
 
       # ===== PERFORMANCE =====
       - key: WORKERS
-        value: "1"
+        value: "2"
 
       - key: TIMEOUT
         value: "300"
@@ -88,20 +94,20 @@ services:
         value: "862531473384426"
 
       - key: META_CAPI_TOKEN
-        sync: false  # Đặt trong Render Dashboard
+        sync: false
 
       - key: META_TEST_EVENT_CODE
-        value: ""  # TEST12345 khi cần test, để trống khi production
+        value: ""
 
       # ===== META CAPI FEATURE FLAGS =====
       - key: ENABLE_META_CAPI_LEAD
-        value: "true"  # Bật tracking lead qua /api/save-lead
+        value: "true"
 
       - key: ENABLE_META_CAPI_CALL
-        value: "true"  # Bật tracking cho nút gọi điện (FIXED VERSION)
+        value: "true"
 
       - key: DEBUG_META_CAPI
-        value: "true"  # Bật log debug cho Meta CAPI
+        value: "true"
 
       # ===== SECURITY =====
       - key: SECRET_KEY
@@ -115,7 +121,7 @@ services:
         value: "0.0.0.0"
 
       - key: MAX_CONTENT_LENGTH
-        value: "16777216"  # 16MB
+        value: "16777216"
 
     healthCheckPath: "/api/health"
     healthCheckTimeout: 30
@@ -143,12 +149,12 @@ services:
         - "logs/"
         - "*.log"
 
-    # Advanced configuration for better performance
+    # Advanced configuration
     scaling:
       minInstances: 1
       maxInstances: 1
 
-    # Header configuration for security
+    # Header configuration
     headers:
       - path: /*
         name: X-Content-Type-Options
