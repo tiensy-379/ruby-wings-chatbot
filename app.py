@@ -87,7 +87,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Initialize OpenAI client
-client = None
+client = client = OpenAI(api_key=OPENAI_API_KEY, timeout=15)
 if OPENAI_API_KEY and OpenAI is not None:
     try:
         client = OpenAI(api_key=OPENAI_API_KEY)
@@ -1667,171 +1667,481 @@ def chat():
       - If user asked for tour listing (tour_name), list all tour_name entries.
       - Else fallback to semantic search and LLM reply.
     """
-    data = request.get_json() or {}
-    user_message = (data.get("message") or "").strip()
-    
-    if not user_message:
-        return jsonify({"reply": "Bạn chưa nhập câu hỏi."})
-    text_l = user_message.lower()
+    try:
+        data = request.get_json() or {}
+        user_message = (data.get("message") or "").strip()
+        
+        if not user_message:
+            return jsonify({"reply": "Bạn chưa nhập câu hỏi."})
+        
+        text_l = user_message.lower()
 
-       # =========== CONTEXT AWARE PROCESSING ===========
-    # Get session context
-    session_id = extract_session_id(data, request.remote_addr)
-    context = get_session_context(session_id)
-    last_tour_indices = context.last_tour_indices
-    last_tour_name = context.last_tour_name
+        # =========== CONTEXT AWARE PROCESSING ===========
+        # Get session context
+        session_id = extract_session_id(data, request.remote_addr)
+        context = get_session_context(session_id)
+        last_tour_indices = context.last_tour_indices
+        last_tour_name = context.last_tour_name
+        
         # Update user preferences from current message
-    # Extract interests
-    interests_to_add = []
-    text_l = user_message.lower()
-
-    if any(word in text_l for word in ["thiên nhiên", "rừng", "cây cối", "núi"]):
-        interests_to_add.append("nature")
-    if any(word in text_l for word in ["lịch sử", "tri ân", "chiến tranh", "di tích"]):
-        interests_to_add.append("history") 
-    if any(word in text_l for word in ["văn hóa", "cộng đồng", "dân tộc", "truyền thống"]):
-        interests_to_add.append("culture")
-    if any(word in text_l for word in ["thiền", "chánh niệm", "tĩnh tâm", "yoga", "khí công"]):
-        interests_to_add.append("meditation")
-    if any(word in text_l for word in ["retreat", "chữa lành", "thư giãn", "nghỉ dưỡng"]):
-        interests_to_add.append("retreat")
-    
-    for interest in interests_to_add:
-        if interest not in context.user_preferences["interests"]:
-            context.user_preferences["interests"].append(interest)
-    
-    # Extract duration preference
-    if "1 ngày" in text_l or "1ngày" in text_l:
-        context.user_preferences["duration_pref"] = "1day"
-    elif "2 ngày" in text_l or "2ngày" in text_l:
-        context.user_preferences["duration_pref"] = "2day"
-    
-    # Extract price range preference  
-    if "dưới 1 triệu" in text_l or "dưới 1tr" in text_l:
-        context.user_preferences["price_range"] = "budget"
-    elif "dưới 2 triệu" in text_l or "dưới 2tr" in text_l:
-        context.user_preferences["price_range"] = "budget"
-    elif "từ 2 đến 3 triệu" in text_l or "2-3 triệu" in text_l:
-        context.user_preferences["price_range"] = "midrange"
-    elif "trên 3 triệu" in text_l:
-        context.user_preferences["price_range"] = "premium"
-    # Detect requested field
-    text_l = user_message.lower()
-    requested_field: Optional[str] = None
-    for k, v in KEYWORD_FIELD_MAP.items():
-        for kw in v["keywords"]:
-            if kw in text_l:
-                requested_field = v["field"]
+        # Extract interests
+        interests_to_add = []
+        if any(word in text_l for word in ["thiên nhiên", "rừng", "cây cối", "núi"]):
+            interests_to_add.append("nature")
+        if any(word in text_l for word in ["lịch sử", "tri ân", "chiến tranh", "di tích"]):
+            interests_to_add.append("history") 
+        if any(word in text_l for word in ["văn hóa", "cộng đồng", "dân tộc", "truyền thống"]):
+            interests_to_add.append("culture")
+        if any(word in text_l for word in ["thiền", "chánh niệm", "tĩnh tâm", "yoga", "khí công"]):
+            interests_to_add.append("meditation")
+        if any(word in text_l for word in ["retreat", "chữa lành", "thư giãn", "nghỉ dưỡng"]):
+            interests_to_add.append("retreat")
+        
+        for interest in interests_to_add:
+            if interest not in context.user_preferences["interests"]:
+                context.user_preferences["interests"].append(interest)
+        
+        # Extract duration preference
+        if "1 ngày" in text_l or "1ngày" in text_l:
+            context.user_preferences["duration_pref"] = "1day"
+        elif "2 ngày" in text_l or "2ngày" in text_l:
+            context.user_preferences["duration_pref"] = "2day"
+        
+        # Extract price range preference  
+        if "dưới 1 triệu" in text_l or "dưới 1tr" in text_l:
+            context.user_preferences["price_range"] = "budget"
+        elif "dưới 2 triệu" in text_l or "dưới 2tr" in text_l:
+            context.user_preferences["price_range"] = "budget"
+        elif "từ 2 đến 3 triệu" in text_l or "2-3 triệu" in text_l:
+            context.user_preferences["price_range"] = "midrange"
+        elif "trên 3 triệu" in text_l:
+            context.user_preferences["price_range"] = "premium"
+        
+        # Detect requested field
+        requested_field: Optional[str] = None
+        for k, v in KEYWORD_FIELD_MAP.items():
+            for kw in v["keywords"]:
+                if kw in text_l:
+                    requested_field = v["field"]
+                    break
+            if requested_field:
                 break
-        if requested_field:
-            break
         
-            # Detect recommendation request
-    is_recommendation_request = False
-    if any(word in text_l for word in ["phù hợp", "recommend", "gợi ý", "nên chọn", "tư vấn tour", "tour nào tốt"]):
-        is_recommendation_request = True
+        # Detect recommendation request
+        is_recommendation_request = False
+        if any(word in text_l for word in ["phù hợp", "recommend", "gợi ý", "nên chọn", "tư vấn tour", "tour nào tốt"]):
+            is_recommendation_request = True
         
-                # Detect comparison request
-    is_comparison_request = False
-    compare_aspect = ""
-    if any(word in text_l for word in ["so sánh", "sánh", "compare", "khác nhau", "giống nhau"]):
-        is_comparison_request = True
+        # Detect comparison request
+        is_comparison_request = False
+        compare_aspect = ""
+        if any(word in text_l for word in ["so sánh", "sánh", "compare", "khác nhau", "giống nhau"]):
+            is_comparison_request = True
+            
+            # Xác định aspect cần so sánh
+            if "giá" in text_l or "price" in text_l:
+                compare_aspect = "giá cả"
+            elif "thời gian" in text_l or "duration" in text_l:
+                compare_aspect = "thời gian"
+            elif "địa điểm" in text_l or "location" in text_l:
+                compare_aspect = "địa điểm"
+            elif "ăn" in text_l or "meals" in text_l:
+                compare_aspect = "ăn uống"
+            elif "chỗ ở" in text_l or "accommodation" in text_l:
+                compare_aspect = "chỗ ở"
+            else:
+                compare_aspect = "tổng quat"
         
-        # Xác định aspect cần so sánh
-        if "giá" in text_l or "price" in text_l:
-            compare_aspect = "giá cả"
-        elif "thời gian" in text_l or "duration" in text_l:
-            compare_aspect = "thời gian"
-        elif "địa điểm" in text_l or "location" in text_l:
-            compare_aspect = "địa điểm"
-        elif "ăn" in text_l or "meals" in text_l:
-            compare_aspect = "ăn uống"
-        elif "chỗ ở" in text_l or "accommodation" in text_l:
-            compare_aspect = "chỗ ở"
-        else:
-            compare_aspect = "tổng quát"
-    # Tour detection with context awareness
-    tour_indices = resolve_tour_reference(user_message, context)
-    
-    # Nếu không tìm thấy tour, KIỂM TRA KỸ các reference
-    if not tour_indices:
-        # Danh sách từ tham chiếu MỞ RỘNG
-        ref_keywords = [
-            "tour này", "tour đó", "tour đang nói", 
-            "cái tour", "này", "đó", "nó",
-            "tour bach ma", "bạch mã", "bach ma"
+        # Tour detection with context awareness
+        tour_indices = resolve_tour_reference(user_message, context)
+        
+        # Nếu không tìm thấy tour, KIỂM TRA KỸ các reference
+        if not tour_indices:
+            # Danh sách từ tham chiếu MỞ RỘNG
+            ref_keywords = [
+                "tour này", "tour đó", "tour đang nói", 
+                "cái tour", "này", "đó", "nó",
+                "tour bach ma", "bạch mã", "bach ma"
+            ]
+            
+            has_reference = any(keyword in text_l for keyword in ref_keywords)
+            
+            if has_reference and last_tour_indices:
+                tour_indices = last_tour_indices
+                logger.info(f"✅ Using CONTEXT tour indices: {tour_indices} for reference: '{user_message}'")
+            elif has_reference and not last_tour_indices:
+                # Người dùng nói "tour này" nhưng chưa có context
+                # Thử tìm tour gần nhất trong lịch sử
+                if context.conversation_history:
+                    # Tìm tour được mention gần nhất trong history
+                    for msg in reversed(context.conversation_history[-5:]):
+                        if msg.get("type") == "tour_mentioned":
+                            tour_indices = msg.get("tour_indices", [])
+                            if tour_indices:
+                                break
+        
+        # Update context if we have tour indices
+        if tour_indices:
+            # Find tour name for these indices
+            tour_name = None
+            for idx in tour_indices:
+                for m in MAPPING:
+                    if f"[{idx}]" in m.get("path", "") and ".tour_name" in m.get("path", ""):
+                        tour_name = m.get("text", "")
+                        break
+                if tour_name:
+                    break
+            
+            update_tour_context(session_id, tour_indices, tour_name)
+            
+            # Update user preferences based on tour selection
+            if tour_indices and len(tour_indices) > 0:
+                first_tour_idx = tour_indices[0]
+                if first_tour_idx in TOURS_DB:
+                    tour_data = TOURS_DB[first_tour_idx]
+                    
+                    # Extract duration preference
+                    if "duration" in tour_data:
+                        duration = tour_data["duration"]
+                        if "1 ngày" in duration or "1ngày" in duration:
+                            context.user_preferences["duration_pref"] = "1day"
+                        elif "2 ngày" in duration or "2ngày" in duration:
+                            context.user_preferences["duration_pref"] = "2day"
+                    
+                    # Extract location preference
+                    if "location" in tour_data:
+                        context.user_preferences["location_pref"] = tour_data["location"].split(",")[0].strip()
+
+        # Update conversation history
+        context.conversation_history.append({
+            "timestamp": datetime.utcnow().isoformat(),
+            "user_message": user_message,
+            "tour_indices": tour_indices,
+            "requested_field": requested_field,
+            "type": "tour_mentioned" if tour_indices else "general"
+        })
+        
+        # Giữ history tối đa 10 messages
+        if len(context.conversation_history) > 10:
+            context.conversation_history = context.conversation_history[-10:]
+        
+        # Update conversation stack
+        context.conversation_stack.append({
+            "role": "user",
+            "content": user_message,
+            "timestamp": datetime.utcnow()
+        })
+        if len(context.conversation_stack) > 10:
+            context.conversation_stack = context.conversation_stack[-10:]
+        
+        # =========== CHECK FOR LIST REQUEST PATTERNS ===========
+        is_list_request = False
+        list_patterns = [
+            r"liệt kê.*tour",
+            r"có những tour nào",
+            r"danh sách tour", 
+            r"tour.*nổi bật",
+            r"show tour",
+            r"tour available"
         ]
         
-        has_reference = any(keyword in text_l for keyword in ref_keywords)
+        is_list_request = any(re.search(pattern, text_l) for pattern in list_patterns)
         
-        if has_reference and last_tour_indices:
-            tour_indices = last_tour_indices
-            logger.info(f"✅ Using CONTEXT tour indices: {tour_indices} for reference: '{user_message}'")
-        elif has_reference and not last_tour_indices:
-            # Người dùng nói "tour này" nhưng chưa có context
-            # Thử tìm tour gần nhất trong lịch sử
-            if context.conversation_history:
-                # Tìm tour được mention gần nhất trong history
-                for msg in reversed(context.conversation_history[-5:]):
-                    if msg.get("type") == "tour_mentioned":
-                        tour_indices = msg.get("tour_indices", [])
-                        if tour_indices:
+        # =========== XỬ LÝ CÁC LOẠI REQUEST RIÊNG BIỆT ===========
+        top_results: List[Tuple[float, dict]] = []
+        
+        # 1. Xử lý LIST REQUEST
+        if is_list_request:
+            # Determine how many tours to list
+            limit = 3  # Default
+            num_match = re.search(r"(\d+)\s*tour", user_message)
+            if num_match:
+                limit = int(num_match.group(1))
+            elif "tất cả" in text_l or "all" in text_l:
+                limit = 50  # Large number for "all"
+            
+            top_results = get_passages_by_field("tour_name", tour_indices=None, limit=limit)
+            
+            # Format beautiful tour list response
+            names = []
+            for _, m in top_results:
+                tour_name = m.get("text", "").strip()
+                if tour_name and tour_name not in names:
+                    names.append(tour_name)
+            
+            if names:
+                # Determine limit from message or use all found
+                display_limit = limit
+                num_match = re.search(r"(\d+)\s*tour", user_message)
+                if num_match:
+                    display_limit = min(int(num_match.group(1)), len(names))
+                
+                reply = f"✨ **Ruby Wings hiện có {len(names)} tour trải nghiệm đặc sắc:** ✨\n\n"
+                
+                for i, name in enumerate(names[:display_limit], 1):
+                    # Find tour index for this name
+                    tour_idx = None
+                    for idx, m2 in enumerate(MAPPING):
+                        if m2.get("text", "").strip() == name and ".tour_name" in m2.get("path", ""):
+                            # Extract index from path like "tours[3].tour_name"
+                            match = re.search(r'\[(\d+)\]', m2.get("path", ""))
+                            if match:
+                                tour_idx = int(match.group(1))
                             break
-    
-    # Update context if we have tour indices
-    if tour_indices:
-        # Find tour name for these indices
-        tour_name = None
-        for idx in tour_indices:
-            for m in MAPPING:
-                if f"[{idx}]" in m.get("path", "") and ".tour_name" in m.get("path", ""):
-                    tour_name = m.get("text", "")
-                    break
-            if tour_name:
-                break
-        
-        update_tour_context(session_id, tour_indices, tour_name)
-        
-        # Update user preferences based on tour selection
-        if tour_indices and len(tour_indices) > 0:
-            first_tour_idx = tour_indices[0]
-            if first_tour_idx in TOURS_DB:
-                tour_data = TOURS_DB[first_tour_idx]
+                    
+                    # Get summary for this tour
+                    summary = ""
+                    duration = ""
+                    if tour_idx is not None:
+                        for m2 in MAPPING:
+                            if f"[{tour_idx}]" in m2.get("path", ""):
+                                if ".summary" in m2.get("path", ""):
+                                    summary = m2.get("text", "").strip()
+                                elif ".duration" in m2.get("path", ""):
+                                    duration = m2.get("text", "").strip()
+                    
+                    reply += f"**{i}. {name}**"
+                    if duration:
+                        reply += f" ({duration})"
+                    reply += "\n"
+                    
+                    if summary:
+                        reply += f"   📝 *{summary[:120]}"
+                        if len(summary) > 120:
+                            reply += "...*"
+                        else:
+                            reply += "*"
+                    
+                    reply += "\n"
                 
-                # Extract duration preference
-                if "duration" in tour_data:
-                    duration = tour_data["duration"]
-                    if "1 ngày" in duration or "1ngày" in duration:
-                        context.user_preferences["duration_pref"] = "1day"
-                    elif "2 ngày" in duration or "2ngày" in duration:
-                        context.user_preferences["duration_pref"] = "2day"
+                reply += "\n💡 **Gợi ý:** Bạn có thể hỏi chi tiết về bất kỳ tour nào bằng cách nhập tên tour hoặc hỏi về: giá cả, lịch trình, chỗ ở, ẩm thực..."
+            
+            else:
+                reply = "Hiện chưa có thông tin tour trong hệ thống. Vui lòng liên hệ hotline 0332510486 để được tư vấn trực tiếp."
+            
+            return jsonify({
+                "reply": reply, 
+                "sources": [m for _, m in top_results],
+                "context": {
+                    "tour_indices": tour_indices,
+                    "session_id": session_id,
+                    "last_tour_name": context.last_tour_name,
+                    "user_preferences": context.user_preferences,
+                    "suggested_next": get_suggested_questions(tour_indices, requested_field)
+                }
+            })
+        
+        # 2. Xử lý FIELD REQUEST
+        elif requested_field:
+            # Sử dụng hàm xử lý field thông minh mới
+            field_answer, field_sources = handle_field_query(requested_field, tour_indices, context)
+            
+            # Luôn dùng field_answer từ handle_field_query (đã có inference rules)
+            reply = field_answer
+            
+            # Convert field_sources thành top_results format
+            for source in field_sources:
+                top_results.append((1.0, source))
+            
+            return jsonify({
+                "reply": reply, 
+                "sources": [m for _, m in top_results],
+                "context": {
+                    "tour_indices": tour_indices,
+                    "session_id": session_id,
+                    "last_tour_name": context.last_tour_name,
+                    "user_preferences": context.user_preferences,
+                    "suggested_next": get_suggested_questions(tour_indices, requested_field)
+                }
+            })
+        
+        # 3. Xử lý COMPARISON REQUEST
+        elif is_comparison_request and tour_indices and len(tour_indices) >= 2:
+            comparison_result = compare_tours(tour_indices, compare_aspect)
+            
+            return jsonify({
+                "reply": comparison_result,
+                "sources": [],
+                "context": {
+                    "tour_indices": tour_indices,
+                    "session_id": session_id,
+                    "last_tour_name": context.last_tour_name,
+                    "user_preferences": context.user_preferences,
+                    "suggested_next": ["So sánh về điểm khác", "Tour nào phù hợp hơn với tôi?"]
+                }
+            })
+        
+        # 4. Xử lý RECOMMENDATION REQUEST
+        elif is_recommendation_request:
+            # Get available tours (all tours in TOURS_DB)
+            available_tours = list(TOURS_DB.keys())
+            
+            if not available_tours:
+                return jsonify({
+                    "reply": "Hiện chưa có đủ dữ liệu tour để đề xuất. Vui lòng liên hệ hotline 0332510486 để được tư vấn trực tiếp.",
+                    "sources": [],
+                    "context": {
+                        "tour_indices": tour_indices,
+                        "session_id": session_id,
+                        "last_tour_name": context.last_tour_name,
+                        "user_preferences": context.user_preferences,
+                        "suggested_next": ["Tour 1 ngày nào phổ biến?", "Tour nào về Quảng Trị?"]
+                    }
+                })
+            
+            # Get recommendations
+            recommendations = recommend_tours_by_preferences(context.user_preferences, available_tours)
+            
+            if not recommendations:
+                # Fallback: recommend top 3 tours
+                recommendations = [(tid, 0.5) for tid in available_tours[:3]]
+            
+            # Format recommendation response
+            if recommendations:
+                reply_lines = ["**DỰA TRÊN SỞ THÍCH CỦA BẠN, TÔI ĐỀ XUẤT:**\n"]
                 
-                # Extract location preference
-                if "location" in tour_data:
-                    context.user_preferences["location_pref"] = tour_data["location"].split(",")[0].strip()
+                for i, (tour_idx, confidence) in enumerate(recommendations[:3], 1):
+                    if tour_idx in TOURS_DB:
+                        tour = TOURS_DB[tour_idx]
+                        name = tour.get("tour_name", f"Tour #{tour_idx}")
+                        duration = tour.get("duration", "")
+                        location = tour.get("location", "")
+                        summary = tour.get("summary", "")
+                        
+                        confidence_star = "★" * int(confidence * 5)
+                        if confidence > 0.7:
+                            match_text = "Rất phù hợp"
+                        elif confidence > 0.4:
+                            match_text = "Khá phù hợp"
+                        else:
+                            match_text = "Có thể phù hợp"
+                        
+                        reply_lines.append(f"**{i}. {name}**")
+                        reply_lines.append(f"   ⭐ Độ phù hợp: {match_text} {confidence_star}")
+                        reply_lines.append(f"   🕒 Thời gian: {duration}")
+                        reply_lines.append(f"   📍 Địa điểm: {location}")
+                        
+                        if summary:
+                            short_summary = summary[:100] + "..." if len(summary) > 100 else summary
+                            reply_lines.append(f"   📝 {short_summary}")
+                        
+                        reply_lines.append("")
+                
+                # Add explanation based on preferences
+                if context.user_preferences["duration_pref"]:
+                    reply_lines.append(f"*Đã ưu tiên tour {context.user_preferences['duration_pref']} theo yêu cầu của bạn.*")
+                if context.user_preferences["interests"]:
+                    interests_str = ", ".join(context.user_preferences["interests"])
+                    reply_lines.append(f"*Đã ưu tiên tour có chủ đề: {interests_str}.*")
+                
+                reply_lines.append("\n💡 **Gợi ý tiếp theo**: Bạn có thể hỏi chi tiết về bất kỳ tour nào bằng cách nhập tên tour.")
+                
+                reply = "\n".join(reply_lines)
+                
+                return jsonify({
+                    "reply": reply,
+                    "sources": [],
+                    "context": {
+                        "tour_indices": [tid for tid, _ in recommendations[:2]],
+                        "session_id": session_id,
+                        "last_tour_name": context.last_tour_name,
+                        "user_preferences": context.user_preferences,
+                        "suggested_next": ["Chi tiết về tour đầu tiên?", "So sánh 2 tour đầu tiên?"]
+                    }
+                })
+        
+        # 5. DEFAULT: SEMANTIC SEARCH + LLM
+        else:
+            top_k = int(data.get("top_k", TOP_K))
+            top_results = query_index(user_message, top_k)
 
-    # Update conversation history
-    context.conversation_history.append({
-        "timestamp": datetime.utcnow().isoformat(),
-        "user_message": user_message,
-        "tour_indices": tour_indices,
-        "requested_field": requested_field,
-        "type": "tour_mentioned" if tour_indices else "general"
-    })
+            system_prompt = compose_enhanced_prompt(top_results, context, tour_indices, user_message)
+            messages = [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_message}]
+
+            reply = ""
+            
+            # =========== OPENAI CHAT ===========
+            if client is not None:
+                try:
+                    resp = client.chat.completions.create(
+                        model=CHAT_MODEL,
+                        messages=messages,
+                        temperature=0.2,
+                        max_tokens=int(data.get("max_tokens", 700)),
+                        top_p=0.95
+                    )
+                    if resp.choices and len(resp.choices) > 0:
+                        reply = resp.choices[0].message.content or ""
+                except Exception as e:
+                    logger.error(f"OpenAI chat failed: {e}")
+            
+            # =========== FALLBACK RESPONSE GENERATION ===========
+            if not reply:
+                if top_results:
+                    snippets = "\n\n".join([f"• {m.get('text')}" for _, m in top_results[:5]])
+                    reply = f"**Thông tin nội bộ liên quan:**\n\n{snippets}"
+                else:
+                    reply = "Xin lỗi — hiện không có dữ liệu nội bộ liên quan. Vui lòng liên hệ hotline 0332510486 để được tư vấn trực tiếp."
+            
+            # =========== VALIDATE DURATION TO AVOID INCORRECT INFO ===========
+            # Check if reply contains unrealistic duration (like "5 ngày 4 đêm")
+            if reply and ("ngày" in reply or "đêm" in reply):
+                duration_patterns = [
+                    r'(\d+)\s*ngày\s*(\d+)\s*đêm',
+                    r'(\d+)\s*ngày',
+                    r'(\d+)\s*đêm'
+                ]
+                
+                for pattern in duration_patterns:
+                    matches = list(re.finditer(pattern, reply))
+                    for match in matches:
+                        try:
+                            if match.lastindex == 2:  # "X ngày Y đêm"
+                                days = int(match.group(1))
+                                nights = int(match.group(2))
+                                
+                                # Kiểm tra tính hợp lý: tour du lịch thường days = nights hoặc days = nights + 1
+                                if days > 7 or nights > 7 or abs(days - nights) > 1:
+                                    logger.warning(f"⚠️ Unrealistic duration detected: {days} ngày {nights} đêm")
+                                    old_duration = match.group(0)
+                                    new_duration = "thời gian phù hợp"
+                                    reply = reply.replace(old_duration, new_duration)
+                                    
+                            elif match.lastindex == 1:  # "X ngày" hoặc "Y đêm"
+                                num = int(match.group(1))
+                                if num > 7:  # Quá dài cho tour thông thường
+                                    logger.warning(f"⚠️ Unrealistic duration detected: {num}")
+                                    old_duration = match.group(0)
+                                    new_duration = "thời gian phù hợp"
+                                    reply = reply.replace(old_duration, new_duration)
+                                    
+                        except (ValueError, IndexError):
+                            continue
+            
+            # Nếu sau validation mà reply bị thay đổi nhiều, kiểm tra lại
+            if "thời gian phù hợp" in reply and "tour" in text_l:
+                # Đảm bảo reply vẫn có ý nghĩa
+                if "Thông tin thời gian tour" not in reply:
+                    reply = "Thông tin thời gian tour đang được cập nhật. Vui lòng liên hệ hotline 0332510486 để biết lịch trình cụ thể."
+            
+            return jsonify({
+                "reply": reply, 
+                "sources": [m for _, m in top_results],
+                "context": {
+                    "tour_indices": tour_indices,
+                    "session_id": session_id,
+                    "last_tour_name": context.last_tour_name,
+                    "user_preferences": context.user_preferences,
+                    "suggested_next": get_suggested_questions(tour_indices, requested_field)
+                }
+            })
     
-    # Giữ history tối đa 10 messages
-    if len(context.conversation_history) > 10:
-        context.conversation_history = context.conversation_history[-10:]
-    
-    # Update conversation stack
-    context.conversation_stack.append({
-        "role": "user",
-        "content": user_message,
-        "timestamp": datetime.utcnow()
-    })
-    if len(context.conversation_stack) > 10:
-        context.conversation_stack = context.conversation_stack[-10:]
-    
+    except Exception as e:
+        logger.error(f"Error in chat endpoint: {e}", exc_info=True)
+        return jsonify({
+            "reply": "Có lỗi xảy ra khi xử lý yêu cầu. Vui lòng thử lại sau.",
+            "error": str(e)
+        }), 500
 
 
     
