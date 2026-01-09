@@ -192,3 +192,5 @@ services:
 
     # ===== INSTANCE =====
     instanceType: starter
+    runtime: python
+    pythonVersion: 3.11.9
