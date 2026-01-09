@@ -1,58 +1,147 @@
-# Python
+# ===== PYTHON =====
 __pycache__/
 *.py[cod]
-*$py.class
 *.so
 .Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-
-# Virtual Environment
 venv/
 env/
 ENV/
+python_env/
+.python-version
+pip-wheel-metadata/
+*.pyc
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+.eggs/
+.venv/
 
-# IDE
+# ===== BUILD / DIST =====
+build/
+dist/
+*.egg-info/
+wheels/
+sdist/
+wheelhouse/
+*.whl
+*.tar.gz
+*.zip
+.coverage
+htmlcov/
+.tox/
+
+# ===== LOGS & DATA =====
+logs/
+*.log
+ruby_wings.log
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# ===== FAISS / INDEX (AUTO-GENERATED) =====
+faiss_index.bin
+index.faiss
+faiss_index_meta.json
+faiss_mapping.json
+vectors.npz
+*.index
+*.npy
+*.npz
+
+# ===== RUNTIME DATA & STORAGE =====
+leads_fallback.json
+*.jsonl
+*.csv
+*.tsv
+*.xlsx
+*.xls
+
+# ===== ENV / SECRETS / CONFIG =====
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+.env.test
+*.key
+*.pem
+*.crt
+secrets.json
+credentials.json
+config.yaml
+config.yml
+config.json
+service_account.json
+firebase-key.json
+
+# ===== IDE / EDITOR =====
 .vscode/
 .idea/
 *.swp
 *.swo
-
-# Logs
-logs/
-*.log
-
-# Index files (DO NOT COMMIT - auto-generated)
-faiss_index.bin
-vectors.npz
-faiss_mapping.json
-index.faiss
-faiss_index_meta.json
-
-# Fallback storage
-leads_fallback.json
-
-# Environment variables
-.env
-.env.local
-.env.*.local
-
-# Operating System
+*~
 .DS_Store
 Thumbs.db
+desktop.ini
+.project
+.settings/
+*.sublime-*
+*.code-workspace
 
-# Render
-.render.yaml
+# ===== RENDER / DEPLOYMENT =====
+.render/
+.render-cloud/
+Dockerfile
+docker-compose.yml
+.dockerignore
+*.dockerfile
+render.yaml
+render.yml
+Procfile
+requirements.txt
+Pipfile
+Pipfile.lock
+poetry.lock
+pyproject.toml
+
+# ===== TEMPORARY FILES =====
+*.tmp
+*.temp
+*.cache
+.cache/
+node_modules/
+.yarn/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===== TEST & COVERAGE =====
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+*.cover
+.hypothesis/
+
+# ===== JUPYTER NOTEBOOKS =====
+*.ipynb
+.ipynb_checkpoints/
+
+# ===== SYSTEM =====
+*.pid
+*.pid.lock
+*.lock
+*.sock
+*.pid
+*.state
+*.seed
+
+# ===== EXCEPTIONS (KEEP THESE) =====
+!knowledge.json
+!README.md
+!LICENSE
+!.gitkeep
+!.gitignore
