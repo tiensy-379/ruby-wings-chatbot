@@ -2267,7 +2267,6 @@ class TemplateSystem:
             'footer': "\n📞 **Tư vấn chi tiết:** 0332510486\n"
                      "🤔 *Cần so sánh thêm tiêu chí nào?*",
         },
-        
         # RECOMMENDATION TEMPLATE
         'recommendation': {
             'header': "🎯 **ĐỀ XUẤT TOUR PHÙ HỢP**\n\n",
