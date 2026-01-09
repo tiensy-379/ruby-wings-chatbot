@@ -1186,9 +1186,9 @@ class QuestionPipeline:
         result_lines.append("\n" + "="*50)
         result_lines.append("**ĐÁNH GIÁ & GỢI Ý:**")
         
-        # Duration-based recommendation - FIX: Changed 'd' to 'x' to avoid NameError
+        # Duration-based recommendation
         durations = [tour.get('duration', '') for _, tour in tours_to_compare]
-        if durations and any('1 ngày' in x for x in durations) and any('2 ngày' in x for x in durations):
+        if any('1 ngày' in d for d in durations) and any('2 ngày' in d for d in durations):
             result_lines.append("• Nếu bạn có ít thời gian: Chọn tour 1 ngày")
             result_lines.append("• Nếu muốn trải nghiệm sâu: Chọn tour 2 ngày")
         
@@ -2060,7 +2060,6 @@ class AutoValidator:
                         
                         # Check if combination is valid
                         valid_combos = constraints['valid_day_night_combos']
-                        # FIX: Changed 'd' and 'n' to 'days' and 'nights'
                         is_valid_combo = any(days == d2 and nights == n2 for d2, n2 in valid_combos)
                         
                         # Check max limits
@@ -2267,6 +2266,7 @@ class TemplateSystem:
             'footer': "\n📞 **Tư vấn chi tiết:** 0332510486\n"
                      "🤔 *Cần so sánh thêm tiêu chí nào?*",
         },
+        
         # RECOMMENDATION TEMPLATE
         'recommendation': {
             'header': "🎯 **ĐỀ XUẤT TOUR PHÙ HỢP**\n\n",
@@ -2836,18 +2836,6 @@ def build_tours_db():
                 tags.append("destination:quangtri")
             if "huế" in name_lower:
                 tags.append("destination:hue")
-                # Destination tags from tour name
-        tour_name = tour_data.get('tour_name', '')
-        if tour_name:
-            name_lower = tour_name.lower()
-            if "bạch mã" in name_lower:
-                tags.append("destination:bachma")
-            if "trường sơn" in name_lower:
-                tags.append("destination:truongson")
-            if "quảng trị" in name_lower:
-                tags.append("destination:quangtri")
-            if "huế" in name_lower:
-                tags.append("destination:hue")
         
         TOUR_TAGS[tour_idx] = list(set(tags))
         
@@ -2957,9 +2945,19 @@ def chat_endpoint():
         # Get or create session context
         context = get_session_context(session_id)
         
+        # FIX: Skip cache for questions with pronouns like "tour này", "các tour còn lại"
+        skip_cache = False
+        pronouns = ['này', 'đó', 'kia', 'còn lại', 'đang nói', 'cái đó']
+        if any(pronoun in user_message.lower() for pronoun in pronouns):
+            skip_cache = True
+            logger.info("🔄 Skipping cache for pronoun-based question")
+        
         # FIX 5: Check memory before processing
-        recent_response = context.get_recent_response(user_message)
-        if recent_response and context.check_recent_question(user_message):
+        recent_response = None
+        if not skip_cache:
+            recent_response = context.get_recent_response(user_message)
+        
+        if recent_response and context.check_recent_question(user_message) and not skip_cache:
             logger.info("💭 Using cached response from recent conversation")
             processing_time = time.time() - start_time
             return jsonify({
@@ -3015,16 +3013,18 @@ def chat_endpoint():
         # =========== UPGRADE 6: FUZZY MATCHING ===========
         fuzzy_matches = []
         if UpgradeFlags.is_enabled("6_FUZZY_MATCHING"):
-            fuzzy_matches = FuzzyMatcher.find_similar_tours(user_message, TOUR_NAME_TO_INDEX)
-            if fuzzy_matches:
-                fuzzy_indices = [idx for idx, _ in fuzzy_matches]
-                logger.info(f"🔍 Fuzzy matches found: {fuzzy_indices}")
-                
-                # Combine with context tours
-                if context.last_tour_indices:
-                    context.last_tour_indices = list(set(context.last_tour_indices + fuzzy_indices))
-                else:
-                    context.last_tour_indices = fuzzy_indices
+            # Skip fuzzy matching for pronouns and short queries
+            if len(user_message.split()) > 2 and not any(pronoun in user_message.lower() for pronoun in ['này', 'đó', 'cái']):
+                fuzzy_matches = FuzzyMatcher.find_similar_tours(user_message, TOUR_NAME_TO_INDEX)
+                if fuzzy_matches:
+                    fuzzy_indices = [idx for idx, _ in fuzzy_matches]
+                    logger.info(f"🔍 Fuzzy matches found: {fuzzy_indices}")
+                    
+                    # Combine with context tours
+                    if context.last_tour_indices:
+                        context.last_tour_indices = list(set(context.last_tour_indices + fuzzy_indices))
+                    else:
+                        context.last_tour_indices = fuzzy_indices
         
         # =========== UPGRADE 3: ENHANCED FIELD DETECTION ===========
         requested_field = None
@@ -3071,6 +3071,9 @@ def chat_endpoint():
                     for i in range(1, 3):
                         if match.group(i):
                             tour_name = match.group(i).strip()
+                            # Skip pronouns and short words
+                            if len(tour_name) < 3 or tour_name in ['này', 'đó', 'kia', 'còn']:
+                                continue
                             # Find tour by name
                             for norm_name, idx in TOUR_NAME_TO_INDEX.items():
                                 if tour_name in norm_name or FuzzyMatcher.normalize_vietnamese(tour_name) in norm_name:
@@ -3082,111 +3085,72 @@ def chat_endpoint():
                 context.last_tour_indices = tour_indices
                 logger.info(f"🔍 Extracted tours for comparison: {tour_indices}")
         
-        # =========== PROCESS BY QUESTION TYPE ===========
-        reply = ""
-        sources = []
-        
-        # Check cache first
-        cache_key = None
-        if UpgradeFlags.get_all_flags().get("ENABLE_CACHING", True):
-            context_hash = hashlib.md5(json.dumps({
-                'tour_indices': tour_indices,
-                'field': requested_field,
-                'question_type': question_type.value,
-                'filters': mandatory_filters
-            }, sort_keys=True).encode()).hexdigest()
-            
-            cache_key = CacheSystem.get_cache_key(user_message, context_hash)
-            cached_response = CacheSystem.get(cache_key)
-            
-            if cached_response:
-                logger.info("💾 Using cached response")
-                return jsonify(cached_response)
-        
-        # GREETING
-        if question_type == QuestionPipeline.QuestionType.GREETING:
-            reply = TemplateSystem.render('greeting')
-        
-        # FAREWELL
-        elif question_type == QuestionPipeline.QuestionType.FAREWELL:
-            reply = TemplateSystem.render('farewell')
-        
-        # COMPARISON
+               # COMPARISON
         elif question_type == QuestionPipeline.QuestionType.COMPARISON:
-            if len(tour_indices) >= 2:
-                # Use UPGRADE 4 comparison processing
-                comparison_result = QuestionPipeline.process_comparison_question(
+            # Case 1: đủ 2 tour để so sánh
+            if tour_indices and len(tour_indices) >= 2:
+                reply = QuestionPipeline.process_comparison_question(
                     tour_indices, TOURS_DB, "", question_metadata
                 )
-                reply = comparison_result
+
+            # Case 2: chỉ có 1 tour → gợi ý thêm tour để so sánh
+            elif tour_indices and len(tour_indices) == 1 and TOURS_DB:
+                base_idx = tour_indices[0]
+                scored_tours = []
+                for idx, tour_data in TOURS_DB.items():
+                    if idx == base_idx:
+                        continue
+                    score = TOUR_METADATA.get(idx, {}).get("completeness_score", 0)
+                    scored_tours.append((score, idx, tour_data))
+
+                scored_tours.sort(key=lambda x: x[0], reverse=True)
+
+                if scored_tours:
+                    _, compare_idx, compare_data = scored_tours[0]
+                    base_data = TOURS_DB.get(base_idx, {})
+                    reply = (
+                        "Hiện bạn mới chọn 1 tour. Bạn có thể so sánh:\n\n"
+                        f"1. **{base_data.get('tour_name', f'Tour #{base_idx}')}**\n"
+                        f"   📅 {base_data.get('duration', '')}\n"
+                        f"   📍 {base_data.get('location', '')}\n\n"
+                        f"2. **{compare_data.get('tour_name', f'Tour #{compare_idx}')}**\n"
+                        f"   📅 {compare_data.get('duration', '')}\n"
+                        f"   📍 {compare_data.get('location', '')}\n\n"
+                        "👉 Bạn muốn so sánh hai tour này theo tiêu chí nào?"
+                    )
+                else:
+                    reply = "Hiện chưa có tour phù hợp để so sánh thêm."
+
+            # Case 3: chưa xác định tour → gợi ý mặc định
+            elif TOURS_DB:
+                scored_tours = []
+                for idx, tour_data in TOURS_DB.items():
+                    score = TOUR_METADATA.get(idx, {}).get("completeness_score", 0)
+                    scored_tours.append((score, idx, tour_data))
+
+                scored_tours.sort(key=lambda x: x[0], reverse=True)
+
+                if len(scored_tours) >= 2:
+                    _, t1_idx, t1_data = scored_tours[0]
+                    _, t2_idx, t2_data = scored_tours[1]
+                    reply = (
+                        "Bạn muốn so sánh tour nào? Tôi đề xuất:\n\n"
+                        f"1. **{t1_data.get('tour_name', f'Tour #{t1_idx}')}**\n"
+                        f"   📅 {t1_data.get('duration', '')}\n"
+                        f"   📍 {t1_data.get('location', '')}\n"
+                        f"   💰 {t1_data.get('price', 'Liên hệ để biết giá')}\n\n"
+                        f"2. **{t2_data.get('tour_name', f'Tour #{t2_idx}')}**\n"
+                        f"   📅 {t2_data.get('duration', '')}\n"
+                        f"   📍 {t2_data.get('location', '')}\n"
+                        f"   💰 {t2_data.get('price', 'Liên hệ để biết giá')}\n\n"
+                        "👉 Hãy cho tôi biết bạn muốn so sánh tour nào."
+                    )
+                else:
+                    reply = "Hiện hệ thống chưa đủ tour để so sánh."
+
             else:
-                # FIX 3: Try to suggest tours for comparison
-                if TOURS_DB:
-                    # Get 2 most popular tours
-                    all_tours = list(TOURS_DB.items())
-                    if len(all_tours) >= 2:
-                        tour1_idx, tour1_data = all_tours[0]
-                        tour2_idx, tour2_data = all_tours[1]
-                        reply = f"Bạn có thể so sánh:\n1. {tour1_data.get('tour_name', f'Tour #{tour1_idx}')}\n2. {tour2_data.get('tour_name', f'Tour #{tour2_idx}')}\n\nHãy cho tôi biết bạn muốn so sánh tour nào cụ thể."
-                    else:
-                        reply = "Hiện chỉ có 1 tour trong hệ thống, không thể so sánh."
-                else:
-                    reply = "Bạn muốn so sánh tour nào với nhau? Vui lòng nêu tên 2 tour trở lên."
-        
-        # RECOMMENDATION
-        elif question_type == QuestionPipeline.QuestionType.RECOMMENDATION:
-            # FIX 5: Check if this is actually a comparison misclassified
-            if 'so sánh' in user_message.lower() or 'với' in user_message.lower():
-                # Reclassify as comparison
-                question_type = QuestionPipeline.QuestionType.COMPARISON
-                # Try to extract tours
-                if not tour_indices and TOURS_DB:
-                    tour_indices = list(TOURS_DB.keys())[:2]
-                    reply = f"Tôi thấy bạn muốn so sánh. Bạn có thể so sánh:\n1. {TOURS_DB[tour_indices[0]].get('tour_name', f'Tour #{tour_indices[0]}')}\n2. {TOURS_DB[tour_indices[1]].get('tour_name', f'Tour #{tour_indices[1]}')}"
-                else:
-                    reply = "Bạn muốn so sánh tour nào với nhau?"
-            elif UpgradeFlags.is_enabled("8_SEMANTIC_ANALYSIS"):
-                # Use semantic analysis for recommendations
-                profile_matches = SemanticAnalyzer.match_tours_to_profile(
-                    user_profile, TOURS_DB, max_results=3
-                )
-                
-                if profile_matches:
-                    # Format recommendations
-                    recommendations = []
-                    for idx, score, reasons in profile_matches:
-                        tour_data = TOURS_DB.get(idx, {})
-                        recommendations.append({
-                            'name': tour_data.get('tour_name', f'Tour #{idx}'),
-                            'score': score,
-                            'reasons': reasons,
-                            'duration': tour_data.get('duration', ''),
-                            'location': tour_data.get('location', ''),
-                            'price': tour_data.get('price', ''),
-                        })
-                    
-                    if recommendations:
-                        reply = TemplateSystem.render('recommendation',
-                            top_tour=recommendations[0] if recommendations else None,
-                            other_tours=recommendations[1:] if len(recommendations) > 1 else [],
-                            criteria=context.get_preferences_summary()
-                        )
-                    else:
-                        reply = "Hiện chưa tìm thấy tour phù hợp với yêu cầu của bạn."
-                else:
-                    reply = "Xin lỗi, tôi chưa hiểu rõ bạn cần tour như thế nào. " \
-                           "Bạn có thể nói cụ thể hơn về sở thích và yêu cầu của mình không?"
-            else:
-                # Simple recommendation fallback
-                if TOURS_DB:
-                    top_tours = list(TOURS_DB.items())[:2]
-                    reply = "Dựa trên thông tin hiện có, tôi đề xuất bạn tham khảo:\n"
-                    for idx, tour_data in top_tours:
-                        reply += f"• {tour_data.get('tour_name', f'Tour #{idx}')}\n"
-                    reply += "\n💡 Bạn có thể hỏi chi tiết về từng tour cụ thể."
-                else:
-                    reply = "Hiện chưa có thông tin tour để đề xuất."
-        
+                reply = "Bạn muốn so sánh tour nào với nhau? Vui lòng nêu tên ít nhất 2 tour."
+
         # LISTING
         elif question_type == QuestionPipeline.QuestionType.LISTING or requested_field == "tour_name":
             # Get all tours
@@ -3232,7 +3196,7 @@ def chat_endpoint():
                     reply += "💡 *Hỏi chi tiết về bất kỳ tour nào bằng cách nhập tên tour*"
                 else:
                     reply = "Hiện chưa có thông tin tour trong hệ thống."
-        
+
         # FIELD-SPECIFIC QUERY
         elif requested_field and field_confidence > 0.3:
             # Get field information
@@ -3268,7 +3232,7 @@ def chat_endpoint():
                     sources = [m for _, m in field_passages]
                 else:
                     reply = f"Hiện không có thông tin về {requested_field} trong dữ liệu."
-        
+
         # DEFAULT: SEMANTIC SEARCH + LLM
         else:
             # Perform semantic search
@@ -3456,11 +3420,12 @@ def _prepare_llm_prompt(user_message: str, search_results: List, context: Dict) 
         prompt_parts.append("Không tìm thấy dữ liệu liên quan trực tiếp.")
     
     prompt_parts.append("")
-    prompt_parts.append("TRẢ LỜI:")
-    prompt_parts.append("1. Dựa trên dữ liệu trên, trả lời câu hỏi người dùng")
-    prompt_parts.append("2. Nếu có thông tin từ dữ liệu, trích dẫn nó")
-    prompt_parts.append("3. Giữ câu trả lời ngắn gọn, rõ ràng, hữu ích")
-    prompt_parts.append("4. Kết thúc bằng lời mời liên hệ hotline 0332510486 nếu cần thêm thông tin")
+    prompt_parts.append("TRẢ LỜI:",
+        "1. Dựa trên dữ liệu trên, trả lời câu hỏi người dùng",
+        "2. Nếu có thông tin từ dữ liệu, trích dẫn nó",
+        "3. Giữ câu trả lời ngắn gọn, rõ ràng, hữu ích",
+        "4. Kết thúc bằng lời mời liên hệ hotline 0332510486 nếu cần thêm thông tin"
+    )
     
     return "\n".join(prompt_parts)
 
@@ -3973,4 +3938,3 @@ if __name__ == "__main__":
 else:
     # For WSGI
     initialize_app()
-        
