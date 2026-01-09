@@ -958,13 +958,13 @@ class QuestionPipeline:
         type_scores = defaultdict(float)
         metadata = {}
         
-        # FIX 1: Check for listing/comparison/recommendation BEFORE greeting
-        # LISTING detection - HIGH PRIORITY
+        # FIX: Improved listing detection - only trigger on clear listing requests
+        # Not on "các tour còn lại" which might be comparison
         listing_patterns = [
-            (r'liệt kê.*tour|danh sách.*tour|các tour', 0.95),
-            (r'có những.*nào|kể tên.*nào|nêu tên.*nào', 0.9),
-            (r'tất cả.*tour|mọi.*tour|mấy.*tour', 0.8),
-            (r'bên bạn.*có.*tour|hiện có.*tour', 0.85),
+            (r'^liệt kê.*tour|^danh sách.*tour|^có những tour nào$', 0.95),
+            (r'^tất cả.*tour$|^mọi.*tour$|^mấy.*tour có$', 0.9),
+            (r'^tour nào.*có\?*$|^hiện có.*tour\?*$', 0.85),
+            (r'^kể tên.*tour|^nêu tên.*tour$', 0.9),
         ]
         
         for pattern, weight in listing_patterns:
@@ -973,10 +973,11 @@ class QuestionPipeline:
                     type_scores[QuestionPipeline.QuestionType.LISTING], weight
                 )
         
-        # COMPARISON detection - HIGH PRIORITY
+        # FIX: Improved comparison detection - capture "điểm gì khác biệt"
         comparison_patterns = [
             (r'so sánh.*và|đối chiếu.*và', 0.95),
             (r'khác nhau.*nào|giống nhau.*nào', 0.9),
+            (r'điểm.*khác biệt|điểm.*khác', 0.9),
             (r'nên chọn.*nào|tốt hơn.*nào|hơn kém.*nào', 0.85),
             (r'tour.*và.*tour', 0.8),
             (r'sánh.*với|đối chiếu.*với', 0.8),
@@ -989,6 +990,12 @@ class QuestionPipeline:
                 )
                 # Extract entities being compared
                 metadata['comparison_type'] = 'direct'
+        
+        # FIX: Reduce false positive for "các tour còn lại" - NOT listing
+        if 'còn lại' in message_lower and 'tour' in message_lower:
+            # This is more likely to be comparison or information, not listing
+            if QuestionPipeline.QuestionType.LISTING in type_scores:
+                type_scores[QuestionPipeline.QuestionType.LISTING] *= 0.3  # Reduce confidence
         
         # RECOMMENDATION detection - HIGH PRIORITY
         recommendation_patterns = [
@@ -1179,9 +1186,9 @@ class QuestionPipeline:
         result_lines.append("\n" + "="*50)
         result_lines.append("**ĐÁNH GIÁ & GỢI Ý:**")
         
-        # Duration-based recommendation
+        # Duration-based recommendation - FIX: Changed 'd' to 'x' to avoid NameError
         durations = [tour.get('duration', '') for _, tour in tours_to_compare]
-        if any('1 ngày' in d for d in durations) and any('2 ngày' in d for d in durations):
+        if durations and any('1 ngày' in x for x in durations) and any('2 ngày' in x for x in durations):
             result_lines.append("• Nếu bạn có ít thời gian: Chọn tour 1 ngày")
             result_lines.append("• Nếu muốn trải nghiệm sâu: Chọn tour 2 ngày")
         
@@ -1372,6 +1379,9 @@ class ComplexQueryProcessor:
                 for i in range(1, 3):
                     if match.group(i):
                         tour_name = match.group(i).strip()
+                        # Skip short/meaningless names
+                        if len(tour_name) < 3 or tour_name in ['này', 'đó', 'kia', 'còn']:
+                            continue
                         # Try to find tour index by name
                         normalized_name = FuzzyMatcher.normalize_vietnamese(tour_name)
                         for name, idx in TOUR_NAME_TO_INDEX.items():
@@ -1623,7 +1633,7 @@ class ConversationStateMachine:
                 return self.State.TOUR_SELECTED
         
         # Check for comparison
-        if 'so sánh' in message_lower or 'sánh' in message_lower:
+        if 'so sánh' in message_lower or 'sánh' in message_lower or 'khác biệt' in message_lower:
             return self.State.COMPARING
         
         # Check for recommendation request
@@ -1999,20 +2009,35 @@ class AutoValidator:
         
         validated = response
         
-        # Validate duration
-        validated = AutoValidator._validate_duration(validated)
+        # Validate duration - FIX: Use try-catch to prevent crashes
+        try:
+            validated = AutoValidator._validate_duration(validated)
+        except Exception as e:
+            logger.error(f"❌ Duration validation error: {e}")
         
         # Validate price
-        validated = AutoValidator._validate_price(validated)
+        try:
+            validated = AutoValidator._validate_price(validated)
+        except Exception as e:
+            logger.error(f"❌ Price validation error: {e}")
         
         # Validate location names
-        validated = AutoValidator._validate_locations(validated)
+        try:
+            validated = AutoValidator._validate_locations(validated)
+        except Exception as e:
+            logger.error(f"❌ Location validation error: {e}")
         
         # Validate dates
-        validated = AutoValidator._validate_dates(validated)
+        try:
+            validated = AutoValidator._validate_dates(validated)
+        except Exception as e:
+            logger.error(f"❌ Date validation error: {e}")
         
         # Check for unrealistic information
-        validated = AutoValidator._check_unrealistic_info(validated)
+        try:
+            validated = AutoValidator._check_unrealistic_info(validated)
+        except Exception as e:
+            logger.error(f"❌ Unrealistic info check error: {e}")
         
         # Add disclaimer if needed
         if validated != response:
@@ -2035,7 +2060,8 @@ class AutoValidator:
                         
                         # Check if combination is valid
                         valid_combos = constraints['valid_day_night_combos']
-                        is_valid_combo = any(d == d2 and n == n2 for d2, n2 in valid_combos)
+                        # FIX: Changed 'd' and 'n' to 'days' and 'nights'
+                        is_valid_combo = any(days == d2 and nights == n2 for d2, n2 in valid_combos)
                         
                         # Check max limits
                         if days > constraints['max_days'] or nights > constraints['max_nights']:
