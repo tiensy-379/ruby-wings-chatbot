@@ -365,62 +365,69 @@ class MandatoryFilterSystem:
         
         passing_tours = []
         
-        for tour_idx, tour_data in tours_db.items():
-            passes_all = True
-            
-            # PRICE FILTERING (CRITICAL FIX)
-            if passes_all and ('price_max' in filters or 'price_min' in filters):
-                tour_price_text = tour_data.get('price', '')
-                if not tour_price_text:
-                    # If tour has no price info and user wants price filter, exclude it
-                    if 'price_max' in filters or 'price_min' in filters:
-                        passes_all = False
-                else:
-                    # Extract price range from tour
-                    tour_prices = MandatoryFilterSystem._extract_tour_prices(tour_price_text)
-                    if not tour_prices:
-                        passes_all = False
-                    else:
-                        # Check against filters
-                        min_tour_price = min(tour_prices)
-                        max_tour_price = max(tour_prices)
-                        
-                        if 'price_max' in filters and min_tour_price > filters['price_max']:
-                            passes_all = False
-                        if 'price_min' in filters and max_tour_price < filters['price_min']:
-                            passes_all = False
-            
-            # DURATION FILTERING
-            if passes_all and ('duration_min' in filters or 'duration_max' in filters):
-                duration_text = tour_data.get('duration', '').lower()
-                tour_duration = MandatoryFilterSystem._extract_duration_days(duration_text)
+        # FIX: Added try-catch for safe filtering
+        try:
+            for tour_idx, tour_data in tours_db.items():
+                passes_all = True
                 
-                if tour_duration is not None:
-                    if 'duration_min' in filters and tour_duration < filters['duration_min']:
-                        passes_all = False
-                    if 'duration_max' in filters and tour_duration > filters['duration_max']:
-                        passes_all = False
-                else:
-                    # If can't extract duration and user wants duration filter, be conservative
-                    if 'duration_min' in filters or 'duration_max' in filters:
-                        passes_all = False
+                # PRICE FILTERING (CRITICAL FIX)
+                if passes_all and ('price_max' in filters or 'price_min' in filters):
+                    tour_price_text = tour_data.get('price', '')
+                    if not tour_price_text:
+                        # If tour has no price info and user wants price filter, exclude it
+                        if 'price_max' in filters or 'price_min' in filters:
+                            passes_all = False
+                    else:
+                        # Extract price range from tour
+                        tour_prices = MandatoryFilterSystem._extract_tour_prices(tour_price_text)
+                        if not tour_prices:
+                            passes_all = False
+                        else:
+                            # Check against filters
+                            min_tour_price = min(tour_prices)
+                            max_tour_price = max(tour_prices)
+                            
+                            if 'price_max' in filters and min_tour_price > filters['price_max']:
+                                passes_all = False
+                            if 'price_min' in filters and max_tour_price < filters['price_min']:
+                                passes_all = False
+                
+                # DURATION FILTERING
+                if passes_all and ('duration_min' in filters or 'duration_max' in filters):
+                    duration_text = tour_data.get('duration', '').lower()
+                    tour_duration = MandatoryFilterSystem._extract_duration_days(duration_text)
+                    
+                    if tour_duration is not None:
+                        if 'duration_min' in filters and tour_duration < filters['duration_min']:
+                            passes_all = False
+                        if 'duration_max' in filters and tour_duration > filters['duration_max']:
+                            passes_all = False
+                    else:
+                        # If can't extract duration and user wants duration filter, be conservative
+                        if 'duration_min' in filters or 'duration_max' in filters:
+                            passes_all = False
+                
+                # LOCATION FILTERING
+                if passes_all and ('location' in filters or 'near_location' in filters):
+                    tour_location = tour_data.get('location', '').lower()
+                    if 'location' in filters:
+                        filter_location = filters['location'].lower()
+                        if filter_location not in tour_location:
+                            passes_all = False
+                    if 'near_location' in filters:
+                        near_location = filters['near_location'].lower()
+                        if near_location not in tour_location:
+                            passes_all = False
+                
+                if passes_all:
+                    passing_tours.append(tour_idx)
             
-            # LOCATION FILTERING
-            if passes_all and ('location' in filters or 'near_location' in filters):
-                tour_location = tour_data.get('location', '').lower()
-                if 'location' in filters:
-                    filter_location = filters['location'].lower()
-                    if filter_location not in tour_location:
-                        passes_all = False
-                if 'near_location' in filters:
-                    near_location = filters['near_location'].lower()
-                    if near_location not in tour_location:
-                        passes_all = False
-            
-            if passes_all:
-                passing_tours.append(tour_idx)
+            logger.info(f"🔍 After mandatory filtering: {len(passing_tours)}/{len(tours_db)} tours pass")
+        except Exception as e:
+            logger.error(f"❌ Error in apply_filters: {e}")
+            # FALLBACK: Return all tours if filtering fails
+            passing_tours = list(tours_db.keys())
         
-        logger.info(f"🔍 After mandatory filtering: {len(passing_tours)}/{len(tours_db)} tours pass")
         return passing_tours
     
     @staticmethod
@@ -951,22 +958,27 @@ class QuestionPipeline:
         type_scores = defaultdict(float)
         metadata = {}
         
-        # GREETING detection
-        greeting_words = ['xin chào', 'chào', 'hello', 'hi', 'helo', 'chao']
-        if any(word in message_lower for word in greeting_words):
-            type_scores[QuestionPipeline.QuestionType.GREETING] = 0.95
+        # FIX 1: Check for listing/comparison/recommendation BEFORE greeting
+        # LISTING detection - HIGH PRIORITY
+        listing_patterns = [
+            (r'liệt kê.*tour|danh sách.*tour|các tour', 0.95),
+            (r'có những.*nào|kể tên.*nào|nêu tên.*nào', 0.9),
+            (r'tất cả.*tour|mọi.*tour|mấy.*tour', 0.8),
+            (r'bên bạn.*có.*tour|hiện có.*tour', 0.85),
+        ]
         
-        # FAREWELL detection
-        farewell_words = ['tạm biệt', 'cảm ơn', 'thanks', 'thank you', 'bye', 'goodbye']
-        if any(word in message_lower for word in farewell_words):
-            type_scores[QuestionPipeline.QuestionType.FAREWELL] = 0.95
+        for pattern, weight in listing_patterns:
+            if re.search(pattern, message_lower):
+                type_scores[QuestionPipeline.QuestionType.LISTING] = max(
+                    type_scores[QuestionPipeline.QuestionType.LISTING], weight
+                )
         
-        # COMPARISON detection
+        # COMPARISON detection - HIGH PRIORITY
         comparison_patterns = [
             (r'so sánh.*và|đối chiếu.*và', 0.95),
             (r'khác nhau.*nào|giống nhau.*nào', 0.9),
             (r'nên chọn.*nào|tốt hơn.*nào|hơn kém.*nào', 0.85),
-            (r'tour a.*tour b|tour này.*tour kia', 0.8),
+            (r'tour.*và.*tour', 0.8),
             (r'sánh.*với|đối chiếu.*với', 0.8),
         ]
         
@@ -978,12 +990,13 @@ class QuestionPipeline:
                 # Extract entities being compared
                 metadata['comparison_type'] = 'direct'
         
-        # RECOMMENDATION detection
+        # RECOMMENDATION detection - HIGH PRIORITY
         recommendation_patterns = [
             (r'phù hợp.*với|nên đi.*nào|gợi ý.*tour', 0.9),
             (r'tour nào.*tốt|hành trình nào.*hay', 0.85),
             (r'đề xuất.*tour|tư vấn.*tour|chọn.*nào', 0.8),
             (r'cho.*tôi|dành cho.*tôi|hợp với.*tôi', 0.7),
+            (r'nếu.*thì.*nên.*tour|nên chọn.*tour', 0.8),
         ]
         
         for pattern, weight in recommendation_patterns:
@@ -992,18 +1005,26 @@ class QuestionPipeline:
                     type_scores[QuestionPipeline.QuestionType.RECOMMENDATION], weight
                 )
         
-        # LISTING detection
-        listing_patterns = [
-            (r'liệt kê.*tour|danh sách.*tour|các tour', 0.95),
-            (r'có những.*nào|kể tên.*nào|nêu tên.*nào', 0.9),
-            (r'tất cả.*tour|mọi.*tour|mấy.*tour', 0.8),
-        ]
+        # GREETING detection - LOWER PRIORITY (ONLY if no other intent)
+        greeting_words = ['xin chào', 'chào', 'hello', 'hi', 'helo', 'chao']
+        greeting_score = 0.0
+        for word in greeting_words:
+            if word in message_lower:
+                # Only count as greeting if it's at the beginning or standalone
+                if message_lower.startswith(word) or f" {word} " in message_lower or message_lower.endswith(f" {word}"):
+                    greeting_score += 0.3
         
-        for pattern, weight in listing_patterns:
-            if re.search(pattern, message_lower):
-                type_scores[QuestionPipeline.QuestionType.LISTING] = max(
-                    type_scores[QuestionPipeline.QuestionType.LISTING], weight
-                )
+        # FIX 2: Greeting only triggers if no other intent with confidence > 0.3
+        other_intent_score = max([score for qtype, score in type_scores.items() 
+                                 if qtype != QuestionPipeline.QuestionType.GREETING], default=0.0)
+        
+        if greeting_score > 0.8 and other_intent_score < 0.3:
+            type_scores[QuestionPipeline.QuestionType.GREETING] = min(greeting_score, 1.0)
+        
+        # FAREWELL detection
+        farewell_words = ['tạm biệt', 'cảm ơn', 'thanks', 'thank you', 'bye', 'goodbye']
+        if any(word in message_lower for word in farewell_words):
+            type_scores[QuestionPipeline.QuestionType.FAREWELL] = 0.95
         
         # CALCULATION detection
         calculation_patterns = [
@@ -1338,6 +1359,26 @@ class ComplexQueryProcessor:
         if 'chữa lành' in query_lower:
             conditions.append({'activity_type': 'healing'})
         
+        # FIX 3: Extract tour names from complex queries (e.g., "so sánh tour A và tour B")
+        tour_name_patterns = [
+            r'tour\s+([^và\s,]+)\s+và\s+tour\s+([^\s,]+)',
+            r'tour\s+([^\s,]+)\s+với\s+tour\s+([^\s,]+)',
+            r'tour\s+([^\s,]+)\s+.*tour\s+([^\s,]+)',
+        ]
+        
+        for pattern in tour_name_patterns:
+            matches = re.finditer(pattern, query_lower)
+            for match in matches:
+                for i in range(1, 3):
+                    if match.group(i):
+                        tour_name = match.group(i).strip()
+                        # Try to find tour index by name
+                        normalized_name = FuzzyMatcher.normalize_vietnamese(tour_name)
+                        for name, idx in TOUR_NAME_TO_INDEX.items():
+                            if normalized_name in name or name in normalized_name:
+                                conditions.append({'specific_tour': idx})
+                                logger.info(f"🔍 Extracted tour name from complex query: {tour_name} → index {idx}")
+        
         return conditions
     
     @staticmethod
@@ -1511,6 +1552,7 @@ class ConversationStateMachine:
             'conversation_history': [],  # Last N messages
             'mentioned_tours': set(), # All tours mentioned in conversation
             'current_focus': None,    # What the user is currently focusing on
+            'last_successful_tours': [], # Last tours that were successfully found
         }
         self.transitions = []
         self.created_at = datetime.utcnow()
@@ -1536,6 +1578,8 @@ class ConversationStateMachine:
         if tour_indices:
             self.context['mentioned_tours'].update(tour_indices)
             self.context['current_tours'] = tour_indices
+            # Keep track of last successful tours
+            self.context['last_successful_tours'] = tour_indices
         
         self.context['last_question'] = user_message
         self.context['last_response'] = bot_response
@@ -1573,13 +1617,17 @@ class ConversationStateMachine:
         if any(re.search(pattern, message_lower) for pattern in tour_ref_patterns):
             if self.context['current_tours']:
                 return self.State.TOUR_SELECTED
+            elif self.context['last_successful_tours']:
+                # Use last successful tours if current_tours is empty
+                self.context['current_tours'] = self.context['last_successful_tours']
+                return self.State.TOUR_SELECTED
         
         # Check for comparison
         if 'so sánh' in message_lower or 'sánh' in message_lower:
             return self.State.COMPARING
         
         # Check for recommendation request
-        if any(word in message_lower for word in ['phù hợp', 'gợi ý', 'đề xuất', 'tư vấn']):
+        if any(word in message_lower for word in ['phù hợp', 'gợi ý', 'đề xuất', 'tư vấn', 'nên chọn']):
             return self.State.RECOMMENDATION
         
         # Check for booking intent
@@ -1616,6 +1664,20 @@ class ConversationStateMachine:
         """Extract tour reference from message using conversation context"""
         message_lower = message.lower()
         
+        # FIX 2: Check context BEFORE trying to extract new references
+        if self.context['current_tours']:
+            # Check if message contains references to current tours
+            for tour_idx in self.context['current_tours']:
+                tour_name = TOURS_DB.get(tour_idx, {}).get('tour_name', '').lower()
+                if tour_name:
+                    # Simple word matching
+                    tour_words = set(tour_name.split())
+                    msg_words = set(message_lower.split())
+                    common = tour_words.intersection(msg_words)
+                    if common and len(common) >= 1:
+                        logger.info(f"🔄 State machine: Using current tour {tour_idx}")
+                        return self.context['current_tours']
+        
         # Direct references to "tour này", "tour đó", etc.
         ref_patterns = [
             (r'tour này', 1.0),
@@ -1632,6 +1694,10 @@ class ConversationStateMachine:
                 if self.context['current_tours']:
                     logger.info(f"🔄 State machine: Resolved reference to {self.context['current_tours']}")
                     return self.context['current_tours']
+                elif self.context['last_successful_tours']:
+                    # Use last successful tours
+                    logger.info(f"🔄 State machine: Using last successful tours {self.context['last_successful_tours']}")
+                    return self.context['last_successful_tours']
         
         # Try to match with recently mentioned tours
         if self.context['mentioned_tours']:
@@ -1740,7 +1806,7 @@ class SemanticAnalyzer:
         """Infer additional attributes from context"""
         # Infer age group from other attributes
         if not profile['age_group']:
-                        # Kiểm tra an toàn cho group_type
+            # Kiểm tra an toàn cho group_type
             group_type_value = profile.get('group_type') if profile else None
             if group_type_value and isinstance(group_type_value, str) and 'family_with_kids' in group_type_value:
                 profile['age_group'] = 'middle_aged'
@@ -2456,6 +2522,9 @@ class EnhancedContext:
         self.timestamp = datetime.utcnow()
         self.state_machine = None
         self.user_profile = {}
+        # FIX 5: Add memory check for recent questions
+        self.recent_questions = deque(maxlen=5)
+        self.recent_responses = deque(maxlen=5)
     
     def update_from_message(self, message: str):
         """Update context from user message"""
@@ -2509,6 +2578,39 @@ class EnhancedContext:
             prefs.append(f"Sở thích: {', '.join(self.user_preferences['interests'])}")
         
         return "; ".join(prefs) if prefs else "Chưa có thông tin sở thích"
+    
+    # FIX 5: Add memory check methods
+    def check_recent_question(self, current_question: str) -> bool:
+        """Check if similar question was asked recently"""
+        if not self.recent_questions:
+            return False
+        
+        current_lower = current_question.lower()
+        for past_question in self.recent_questions:
+            past_lower = past_question.lower()
+            # Simple similarity check
+            if (current_lower in past_lower or past_lower in current_lower or
+                SequenceMatcher(None, current_lower, past_lower).ratio() > 0.7):
+                return True
+        return False
+    
+    def add_to_history(self, question: str, response: str):
+        """Add question and response to history"""
+        self.recent_questions.append(question)
+        self.recent_responses.append(response)
+    
+    def get_recent_response(self, question: str) -> Optional[str]:
+        """Get recent response for similar question"""
+        if not self.recent_questions or not self.recent_responses:
+            return None
+        
+        current_lower = question.lower()
+        for i, past_question in enumerate(self.recent_questions):
+            past_lower = past_question.lower()
+            if (current_lower in past_lower or past_lower in current_lower or
+                SequenceMatcher(None, current_lower, past_lower).ratio() > 0.7):
+                return self.recent_responses[i]
+        return None
 
 # =========== KNOWLEDGE BASE FUNCTIONS ===========
 def load_knowledge(path: str = KNOWLEDGE_PATH):
@@ -2698,7 +2800,19 @@ def build_tours_db():
                 tags.append(f"theme:{theme}")
         
         # Destination tags from tour name
-        tour_name = tour_data.get("tour_name", "")
+        tour_name = tour_data.get('tour_name', '')
+        if tour_name:
+            name_lower = tour_name.lower()
+            if "bạch mã" in name_lower:
+                tags.append("destination:bachma")
+            if "trường sơn" in name_lower:
+                tags.append("destination:truongson")
+            if "quảng trị" in name_lower:
+                tags.append("destination:quangtri")
+            if "huế" in name_lower:
+                tags.append("destination:hue")
+                # Destination tags from tour name
+        tour_name = tour_data.get('tour_name', '')
         if tour_name:
             name_lower = tour_name.lower()
             if "bạch mã" in name_lower:
@@ -2817,12 +2931,37 @@ def chat_endpoint():
         
         # Get or create session context
         context = get_session_context(session_id)
+        
+        # FIX 5: Check memory before processing
+        recent_response = context.get_recent_response(user_message)
+        if recent_response and context.check_recent_question(user_message):
+            logger.info("💭 Using cached response from recent conversation")
+            processing_time = time.time() - start_time
+            return jsonify({
+                "reply": recent_response,
+                "sources": [],
+                "context": {
+                    "session_id": session_id,
+                    "from_memory": True,
+                    "processing_time_ms": int(processing_time * 1000)
+                }
+            })
+        
         context.update_from_message(user_message)
         
         # Initialize state machine if not exists
         if UpgradeFlags.is_enabled("7_STATE_MACHINE"):
             if not context.state_machine:
                 context.state_machine = ConversationStateMachine(session_id)
+        
+        # FIX 2: Inject context BEFORE any processing
+        # Always check state machine for references first
+        state_tour_indices = []
+        if UpgradeFlags.is_enabled("7_STATE_MACHINE") and context.state_machine:
+            state_tour_indices = context.state_machine.extract_reference(user_message)
+            if state_tour_indices:
+                logger.info(f"🔄 State machine injected tours: {state_tour_indices}")
+                context.last_tour_indices = state_tour_indices
         
         # =========== UPGRADE 5: COMPLEX QUERY SPLITTER ===========
         sub_queries = []
@@ -2839,7 +2978,13 @@ def chat_endpoint():
                 filtered_indices = MandatoryFilterSystem.apply_filters(TOURS_DB, mandatory_filters)
                 if filtered_indices:
                     # Store filtered indices for later use
-                    context.last_tour_indices = filtered_indices
+                    # FIX 2: Combine with state machine tours if available
+                    if state_tour_indices:
+                        # Intersection of state tours and filtered tours
+                        combined = [idx for idx in state_tour_indices if idx in filtered_indices]
+                        context.last_tour_indices = combined if combined else filtered_indices
+                    else:
+                        context.last_tour_indices = filtered_indices
                     logger.info(f"🔍 Applied mandatory filters: {mandatory_filters}")
         
         # =========== UPGRADE 6: FUZZY MATCHING ===========
@@ -2878,19 +3023,39 @@ def chat_endpoint():
         
         # =========== UPGRADE 7: STATE MACHINE PROCESSING ===========
         if UpgradeFlags.is_enabled("7_STATE_MACHINE") and context.state_machine:
-            # Update state machine
-            # First, get current bot response placeholder (will be updated later)
+            # Update state machine with placeholder
             placeholder_response = "Processing your request..."
             context.state_machine.update(user_message, placeholder_response, context.last_tour_indices)
-            
-            # Use state machine to resolve references
-            state_references = context.state_machine.extract_reference(user_message)
-            if state_references:
-                logger.info(f"🔄 State machine resolved references: {state_references}")
-                context.last_tour_indices = state_references
         
         # =========== TOUR RESOLUTION ===========
         tour_indices = context.last_tour_indices or []
+        
+        # FIX 3: Extract tour names from comparison questions
+        if question_type == QuestionPipeline.QuestionType.COMPARISON and not tour_indices:
+            # Try to extract tour names from the message
+            comparison_tour_names = []
+            # Look for patterns like "tour A và tour B"
+            name_patterns = [
+                r'tour\s+([^\s,]+)\s+và\s+tour\s+([^\s,]+)',
+                r'tour\s+([^\s,]+)\s+với\s+tour\s+([^\s,]+)',
+            ]
+            
+            for pattern in name_patterns:
+                matches = re.finditer(pattern, user_message.lower())
+                for match in matches:
+                    for i in range(1, 3):
+                        if match.group(i):
+                            tour_name = match.group(i).strip()
+                            # Find tour by name
+                            for norm_name, idx in TOUR_NAME_TO_INDEX.items():
+                                if tour_name in norm_name or FuzzyMatcher.normalize_vietnamese(tour_name) in norm_name:
+                                    comparison_tour_names.append(idx)
+                                    break
+            
+            if len(comparison_tour_names) >= 2:
+                tour_indices = comparison_tour_names[:2]
+                context.last_tour_indices = tour_indices
+                logger.info(f"🔍 Extracted tours for comparison: {tour_indices}")
         
         # =========== PROCESS BY QUESTION TYPE ===========
         reply = ""
@@ -2902,7 +3067,8 @@ def chat_endpoint():
             context_hash = hashlib.md5(json.dumps({
                 'tour_indices': tour_indices,
                 'field': requested_field,
-                'question_type': question_type.value
+                'question_type': question_type.value,
+                'filters': mandatory_filters
             }, sort_keys=True).encode()).hexdigest()
             
             cache_key = CacheSystem.get_cache_key(user_message, context_hash)
@@ -2929,11 +3095,32 @@ def chat_endpoint():
                 )
                 reply = comparison_result
             else:
-                reply = "Bạn muốn so sánh tour nào với nhau? Vui lòng nêu tên 2 tour trở lên."
+                # FIX 3: Try to suggest tours for comparison
+                if TOURS_DB:
+                    # Get 2 most popular tours
+                    all_tours = list(TOURS_DB.items())
+                    if len(all_tours) >= 2:
+                        tour1_idx, tour1_data = all_tours[0]
+                        tour2_idx, tour2_data = all_tours[1]
+                        reply = f"Bạn có thể so sánh:\n1. {tour1_data.get('tour_name', f'Tour #{tour1_idx}')}\n2. {tour2_data.get('tour_name', f'Tour #{tour2_idx}')}\n\nHãy cho tôi biết bạn muốn so sánh tour nào cụ thể."
+                    else:
+                        reply = "Hiện chỉ có 1 tour trong hệ thống, không thể so sánh."
+                else:
+                    reply = "Bạn muốn so sánh tour nào với nhau? Vui lòng nêu tên 2 tour trở lên."
         
         # RECOMMENDATION
         elif question_type == QuestionPipeline.QuestionType.RECOMMENDATION:
-            if UpgradeFlags.is_enabled("8_SEMANTIC_ANALYSIS"):
+            # FIX 5: Check if this is actually a comparison misclassified
+            if 'so sánh' in user_message.lower() or 'với' in user_message.lower():
+                # Reclassify as comparison
+                question_type = QuestionPipeline.QuestionType.COMPARISON
+                # Try to extract tours
+                if not tour_indices and TOURS_DB:
+                    tour_indices = list(TOURS_DB.keys())[:2]
+                    reply = f"Tôi thấy bạn muốn so sánh. Bạn có thể so sánh:\n1. {TOURS_DB[tour_indices[0]].get('tour_name', f'Tour #{tour_indices[0]}')}\n2. {TOURS_DB[tour_indices[1]].get('tour_name', f'Tour #{tour_indices[1]}')}"
+                else:
+                    reply = "Bạn muốn so sánh tour nào với nhau?"
+            elif UpgradeFlags.is_enabled("8_SEMANTIC_ANALYSIS"):
                 # Use semantic analysis for recommendations
                 profile_matches = SemanticAnalyzer.match_tours_to_profile(
                     user_profile, TOURS_DB, max_results=3
@@ -2966,8 +3153,14 @@ def chat_endpoint():
                            "Bạn có thể nói cụ thể hơn về sở thích và yêu cầu của mình không?"
             else:
                 # Simple recommendation fallback
-                reply = "Dựa trên thông tin hiện có, tôi đề xuất bạn tham khảo các tour phổ biến của Ruby Wings. " \
-                       "Bạn có thể hỏi chi tiết về từng tour cụ thể."
+                if TOURS_DB:
+                    top_tours = list(TOURS_DB.items())[:2]
+                    reply = "Dựa trên thông tin hiện có, tôi đề xuất bạn tham khảo:\n"
+                    for idx, tour_data in top_tours:
+                        reply += f"• {tour_data.get('tour_name', f'Tour #{idx}')}\n"
+                    reply += "\n💡 Bạn có thể hỏi chi tiết về từng tour cụ thể."
+                else:
+                    reply = "Hiện chưa có thông tin tour để đề xuất."
         
         # LISTING
         elif question_type == QuestionPipeline.QuestionType.LISTING or requested_field == "tour_name":
@@ -3067,7 +3260,8 @@ def chat_endpoint():
                 'question_type': question_type.value,
                 'requested_field': requested_field,
                 'user_preferences': context.user_preferences,
-                'current_tours': []
+                'current_tours': [],
+                'filters': mandatory_filters
             }
             
             # Add tour information if available
@@ -3079,6 +3273,7 @@ def chat_endpoint():
                             'name': TOURS_DB[idx].get('tour_name', f'Tour #{idx}'),
                             'duration': TOURS_DB[idx].get('duration', ''),
                             'location': TOURS_DB[idx].get('location', ''),
+                            'price': TOURS_DB[idx].get('price', ''),
                         })
             
             # Prepare prompt
@@ -3107,10 +3302,10 @@ def chat_endpoint():
                 
                 except Exception as e:
                     logger.error(f"OpenAI API error: {e}")
-                    reply = _generate_fallback_response(user_message, search_results)
+                    reply = _generate_fallback_response(user_message, search_results, tour_indices)
             else:
                 # Fallback response
-                reply = _generate_fallback_response(user_message, search_results)
+                reply = _generate_fallback_response(user_message, search_results, tour_indices)
             
             # Update sources
             sources = [m for _, m in search_results]
@@ -3132,6 +3327,9 @@ def chat_endpoint():
         if UpgradeFlags.is_enabled("7_STATE_MACHINE") and context.state_machine:
             context.state_machine.update(user_message, reply, tour_indices)
         
+        # FIX 5: Add to memory
+        context.add_to_history(user_message, reply)
+        
         # =========== PREPARE RESPONSE ===========
         processing_time = time.time() - start_time
         
@@ -3145,7 +3343,8 @@ def chat_endpoint():
                 "user_preferences": context.user_preferences,
                 "question_type": question_type.value,
                 "requested_field": requested_field,
-                "processing_time_ms": int(processing_time * 1000)
+                "processing_time_ms": int(processing_time * 1000),
+                "from_memory": False
             }
         }
         
@@ -3208,6 +3407,18 @@ def _prepare_llm_prompt(user_message: str, search_results: List, context: Dict) 
         if tours_info:
             prompt_parts.append(f"- Tour đang thảo luận: {', '.join(tours_info)}")
     
+    if context.get('filters'):
+        filters = context['filters']
+        filter_strs = []
+        if 'price_max' in filters:
+            filter_strs.append(f"giá dưới {filters['price_max']:,} VND")
+        if 'price_min' in filters:
+            filter_strs.append(f"giá trên {filters['price_min']:,} VND")
+        if 'location' in filters:
+            filter_strs.append(f"địa điểm: {filters['location']}")
+        if filter_strs:
+            prompt_parts.append(f"- Bộ lọc: {', '.join(filter_strs)}")
+    
     prompt_parts.append("")
     prompt_parts.append("DỮ LIỆU NỘI BỘ RUBY WINGS:")
     
@@ -3228,11 +3439,43 @@ def _prepare_llm_prompt(user_message: str, search_results: List, context: Dict) 
     
     return "\n".join(prompt_parts)
 
-def _generate_fallback_response(user_message: str, search_results: List) -> str:
+def _generate_fallback_response(user_message: str, search_results: List, tour_indices: List[int] = None) -> str:
     """Generate fallback response when LLM is unavailable"""
+    # FIX 4: Handle price filter queries specifically
+    message_lower = user_message.lower()
+    
+    if 'dưới' in message_lower and ('triệu' in message_lower or 'tiền' in message_lower):
+        # Price filter query
+        if not tour_indices and TOURS_DB:
+            # Try to get some tours anyway
+            all_tours = list(TOURS_DB.items())[:3]
+            response = "Dựa trên yêu cầu của bạn, tôi đề xuất các tour có giá hợp lý:\n"
+            for idx, tour_data in all_tours:
+                tour_name = tour_data.get('tour_name', f'Tour #{idx}')
+                price = tour_data.get('price', 'Liên hệ để biết giá')
+                response += f"• **{tour_name}**: {price}\n"
+            response += "\n💡 *Liên hệ hotline 0332510486 để biết giá chính xác và ưu đãi*"
+            return response
+    
     if not search_results:
-        return "Xin lỗi, hiện không tìm thấy thông tin liên quan trong dữ liệu. " \
-               "Vui lòng liên hệ hotline 0332510486 để được tư vấn trực tiếp."
+        if tour_indices and TOURS_DB:
+            # We have tour indices but no search results
+            response = "Thông tin về tour bạn quan tâm:\n"
+            for idx in tour_indices[:2]:
+                if idx in TOURS_DB:
+                    tour_data = TOURS_DB[idx]
+                    response += f"\n**{tour_data.get('tour_name', f'Tour #{idx}')}**\n"
+                    if tour_data.get('duration'):
+                        response += f"⏱️ {tour_data['duration']}\n"
+                    if tour_data.get('location'):
+                        response += f"📍 {tour_data['location']}\n"
+                    if tour_data.get('price'):
+                        response += f"💰 {tour_data['price']}\n"
+            response += "\n💡 *Liên hệ hotline 0332510486 để biết thêm chi tiết*"
+            return response
+        else:
+            return "Xin lỗi, hiện không tìm thấy thông tin liên quan trong dữ liệu. " \
+                   "Vui lòng liên hệ hotline 0332510486 để được tư vấn trực tiếp."
     
     # Use top 3 results
     top_results = search_results[:3]
@@ -3705,3 +3948,4 @@ if __name__ == "__main__":
 else:
     # For WSGI
     initialize_app()
+        
