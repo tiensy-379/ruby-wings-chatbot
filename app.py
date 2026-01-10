@@ -709,7 +709,7 @@ def chat():
       - If user asked for tour listing (tour_name), list all tour_name entries.
       - Else fallback to semantic search and LLM reply.
     """
-    data = request.get_json() or {}
+    data = request.get_json(silent=True) or {}
     user_message = (data.get("message") or "").strip()
     if not user_message:
         return jsonify({"reply": "Bạn chưa nhập câu hỏi."})
