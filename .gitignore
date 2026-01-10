@@ -97,8 +97,8 @@ Dockerfile
 docker-compose.yml
 .dockerignore
 *.dockerfile
-render.yaml
-render.yml
+# render.yaml
+# *.yaml
 Procfile
 requirements.txt
 Pipfile

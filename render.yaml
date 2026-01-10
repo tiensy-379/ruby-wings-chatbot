@@ -24,3 +24,5 @@ services:
       --timeout 300
 
     healthCheckPath: /api/health
+    rootDir: ruby-wings/ruby-wings-chatbot
+
