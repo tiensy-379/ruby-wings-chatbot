@@ -1,0 +1,2746 @@
+[
+  {
+    "path": "root.about_company.overview",
+    "text": "Ruby Wings tổ chức du lịch trải nghiệm, retreat, thiền, hành trình chữa lành với lịch trình linh hoạt theo nhu cầu; đồng thời thiết kế các hành trình tham quan trải nghiệm tùy biến theo yêu cầu của quý khách. Ngoàn ra chúng tôi còn cung cấp hành trình tham quan trải nghiệmm linh hoạt theo nhu cầu quý khách"
+  },
+  {
+    "path": "root.about_company.mission",
+    "text": "Ruby Wings mang sứ mệnh lan tỏa giá trị sống chuẩn mực – chân thành – có chiều sâu thông qua các hoạt động du lịch, bồi dưỡng và truyền thông tích cực. Mỗi thành viên, mỗi sản phẩm và mỗi hành trình đều hướng đến việc tạo ra giá trị thật cho con người, cộng đồng và thiên nhiên, để du lịch không chỉ là sự di chuyển mà là hành trình chữa lành và trưởng thành nội tâm. Giá trị cốt lõi: 1. Chuẩn mực (kỷ luật – minh bạch – làm thật), 2. Chân thành (tử tế – trung thực – lắng nghe), 3. Có chiều sâu (hiểu bản chất – làm việc bằng nhận thức – sáng tạo giá trị thật)."
+  },
+  {
+    "path": "root.tours[0].tour_name",
+    "text": "Mưa Đỏ và Trường Sơn – Hành Trình Khát Vọng (2 ngày 1 đêm)"
+  },
+  {
+    "path": "root.tours[0].summary",
+    "text": "Hành trình 2 ngày tri ân lịch sử, trải nghiệm văn hoá Vân Kiều – Pa Kô, rèn luyện tinh thần và kết nối nội tâm."
+  },
+  {
+    "path": "root.tours[0].location",
+    "text": "Thị xã Quảng Trị, Vĩnh Linh, Gio Linh, Hướng hoá (cũ) - Quảng Trị"
+  },
+  {
+    "path": "root.tours[0].duration",
+    "text": "2 ngày 1 đêm"
+  },
+  {
+    "path": "root.tours[0].price",
+    "text": "1.700.000 – 2.300.000 VNĐ/người"
+  },
+  {
+    "path": "root.tours[0].includes[0]",
+    "text": "Đêm lửa trại với cồng chiêng & đàn Ta Lư"
+  },
+  {
+    "path": "root.tours[0].includes[1]",
+    "text": "Trải nghiệm văn hóa Vân Kiều – Pa Kô"
+  },
+  {
+    "path": "root.tours[0].includes[2]",
+    "text": "Hoạt động tri ân & hành trình xanh phát triển bền vững"
+  },
+  {
+    "path": "root.tours[0].includes[3]",
+    "text": "Thực hành thiền – khí công cơ bản - tuỳ chọn"
+  },
+  {
+    "path": "root.tours[0].notes",
+    "text": "Thích hợp đoàn viên thanh niên, học sinh – sinh viên. Lưu ý về trang phục, sức khỏe, an toàn di chuyển; chuẩn bị giấy tờ tùy thân; tuân thủ hướng dẫn của HDV; bảo vệ môi trường tại điểm đến; hạn chế mang đồ công nghệ không cần thiết; có mặt đúng giờ theo lịch trình; một số hoạt động có thể thay đổi tùy điều kiện thời tiết hoặc quy định địa phương"
+  },
+  {
+    "path": "root.tours[0].style",
+    "text": "Hành trình trải nghiệm văn hóa – kết nối cộng đồng – rèn luyện nội tâm; kết hợp giữa khám phá bản sắc Vân Kiều – Pa Kô, hoạt động lửa trại cồng chiêng – đàn Ta Lư, tri ân và hành trình xanh bền vững. Nhịp đi phù hợp đoàn viên thanh niên, học sinh – sinh viên với các hoạt động trẻ trung, gắn kết tập thể, xen kẽ thực hành thiền – khí công cơ bản (tuỳ chọn) giúp cân bằng năng lượng và nuôi dưỡng tinh thần."
+  },
+  {
+    "path": "root.tours[0].transport",
+    "text": "Xe 16-29-35-45 chỗ; Xe đời mới chất lượng cao"
+  },
+  {
+    "path": "root.tours[0].accommodation",
+    "text": "Khách sạn tiêu chuẩn từ 3* hoặc homestay chất lượng tương đương; phòng sạch sẽ, thoáng mát, đầy đủ tiện nghi cơ bản (máy lạnh, nước nóng, vệ sinh riêng). Tiêu chuẩn có thể thay đổi tùy theo gói dịch vụ, địa phương lưu trú và nhu cầu nâng cấp của đoàn"
+  },
+  {
+    "path": "root.tours[0].meals",
+    "text": "ăn 3 bữa chính tiêu chuẩn 150.000 VNĐ/khách (01 bữa tăng cường trong đêm giao lưu tiêu chuẩn 200.000VNĐ/khách), ăn theo thực đơn thống nhất ưu tiên các món đặc sản địa phương"
+  },
+  {
+    "path": "root.tours[0].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[1].tour_name",
+    "text": "Non nước Bạch Mã – Một ngày giữa thiên nhiên"
+  },
+  {
+    "path": "root.tours[1].summary",
+    "text": "Retreat 1 ngày về với rừng nguyên sinh Bạch Mã dành cho người muốn tĩnh tại, chữa lành và tái tạo năng lượng. Hành trình nhịp chậm, chú trọng cảm nhận, thiền – chánh niệm, suối – núi – rừng và sự kết nối nội tâm. Không chạy theo số lượng điểm đến mà dừng lại để cảm, để lắng và để trở về với chính mình."
+  },
+  {
+    "path": "root.tours[1].location",
+    "text": "Vườn quốc gia Bạch Mã – xuất phát tại Thành phố Huế"
+  },
+  {
+    "path": "root.tours[1].duration",
+    "text": "1 ngày"
+  },
+  {
+    "path": "root.tours[1].price",
+    "text": "Gói cơ bản: 890.000 VNĐ/khách (khi đủ 12 khách). Gói theo đoàn: giá tuỳ nhóm (đã có bảng giá chi tiết). Gói nâng cao & gói cao cấp: giá theo yêu cầu. Tất cả chi phí chi tiết sẽ được cập nhật theo từng thời điểm."
+  },
+  {
+    "path": "root.tours[1].includes[0]",
+    "text": "Xe du lịch đời mới (7–16 chỗ) khởi hành từ Huế, phục vụ theo chương trình."
+  },
+  {
+    "path": "root.tours[1].includes[1]",
+    "text": "Snack nhẹ tại đỉnh Bạch Mã (bánh mì chay và sữa hạt dinh dưỡng)."
+  },
+  {
+    "path": "root.tours[1].includes[2]",
+    "text": "Picnic thuần chay giữa rừng – tiêu chuẩn dinh dưỡng 80.000đ/người."
+  },
+  {
+    "path": "root.tours[1].includes[3]",
+    "text": "Hướng dẫn viên chuyên môn, giàu trải nghiệm thiền – chánh niệm."
+  },
+  {
+    "path": "root.tours[1].includes[4]",
+    "text": "Trải nghiệm retreat: chia sẻ chữa lành bằng thiền – thiên nhiên – hơi thở."
+  },
+  {
+    "path": "root.tours[1].includes[5]",
+    "text": "Thiền chánh niệm bên suối tại Ngũ Hồ; thời gian tĩnh lặng – nghỉ ngơi giữa rừng."
+  },
+  {
+    "path": "root.tours[1].includes[6]",
+    "text": "Trekking nhẹ lên đỉnh Bạch Mã – ngắm mây núi giao hòa."
+  },
+  {
+    "path": "root.tours[1].includes[7]",
+    "text": "Tham quan Ngũ Hồ, Thác Đỗ Quyên và các cung đường rừng."
+  },
+  {
+    "path": "root.tours[1].includes[8]",
+    "text": "Quà tặng tinh thần theo huyền học cổ phương Đông (Kinh Dịch – Bát Trạch – Huyền Không…), cá nhân hóa thông điệp."
+  },
+  {
+    "path": "root.tours[1].includes[9]",
+    "text": "01 phục vụ hậu cần khi đủ số lượng 12 khách nhóm xe 16 chỗ."
+  },
+  {
+    "path": "root.tours[1].includes[10]",
+    "text": "Vé tham quan đầu tiên theo chương trình."
+  },
+  {
+    "path": "root.tours[1].includes[11]",
+    "text": "Bảo hiểm du lịch – nước uống – nón/mũ du lịch (quà tặng xác định sau)."
+  },
+  {
+    "path": "root.tours[1].includes[12]",
+    "text": "Gói nâng cao (tùy chọn): thêm bữa sáng nhẹ; xe riêng; bộ ảnh máy chuyên dụng; thiền sâu hơn; tư vấn cá nhân hóa."
+  },
+  {
+    "path": "root.tours[1].includes[13]",
+    "text": "Gói cao cấp retreat riêng (tùy chọn): xe đời mới riêng tư, thực đơn dưỡng sinh, quà cao cấp, thực hành nội tâm chuyên sâu."
+  },
+  {
+    "path": "root.tours[1].notes",
+    "text": "Hành trình thiên về retreat – thiên nhiên – chánh niệm. Không phù hợp cho trẻ dưới 9 tuổi. Hạn chế thiết bị công nghệ để trải nghiệm sâu. Mang giày thể thao/leo núi, áo khoác nhẹ, quần áo dài. Không xả rác, không bẻ cây, giữ gìn nguyên sơ của Bạch Mã. Cung cấp đầy đủ thông tin khách trước 5 ngày để chuẩn bị hồ sơ. Trường hợp cần tặng quà tinh thần: cung cấp ngày sinh dương lịch (và giờ sinh nếu có). Quy định huỷ: 5–6 ngày: 30%; 3–4 ngày: 50%; 1–2 ngày: 90%; đúng ngày: 100%."
+  },
+  {
+    "path": "root.tours[1].style",
+    "text": "Retreat nhẹ nhàng – lãng mạn – xanh – nhịp đi chậm – chú trọng cảm nhận thiên nhiên và kết nối nội tâm. Không ồn ào – không chạy số lượng – hướng đến chất lượng trải nghiệm."
+  },
+  {
+    "path": "root.tours[1].transport[0]",
+    "text": "Xe 7 chỗ"
+  },
+  {
+    "path": "root.tours[1].transport[1]",
+    "text": "Xe 16 chỗ"
+  },
+  {
+    "path": "root.tours[1].transport[2]",
+    "text": "Xe 9–16 chỗ riêng cho gói cao cấp"
+  },
+  {
+    "path": "root.tours[1].transport[3]",
+    "text": "Xe 2024–2025 đời mới (tuỳ gói nâng cao/cao cấp)"
+  },
+  {
+    "path": "root.tours[1].accommodation",
+    "text": "Hành trịnh 01 ngày nên không có lưu trú, tuy nhiên nếu bạn muốn nghỉ lại cho chương trình cá nhân, chúng tôi sẽ hỗ trợ cho bạn nơi nghỉ ngơi phù hợp"
+  },
+  {
+    "path": "root.tours[1].meals",
+    "text": "Picnic thuần chay giữa rừng + snack tại đỉnh Bạch Mã. Gói nâng cao/cao cấp có thêm bữa sáng nhẹ và thực đơn dưỡng sinh tuỳ nhu cầu."
+  },
+  {
+    "path": "root.tours[1].event_support",
+    "text": "Quà tinh thần cá nhân hóa theo huyền học – hỗ trợ HDV & phục vụ đoàn – trải nghiệm thiền mở rộng tuỳ gói nâng cao/cao cấp."
+  },
+  {
+    "path": "root.tours[2].tour_name",
+    "text": "Mưa Đỏ và Trường Sơn – Hành Trình Khát Vọng-(2 ngày 1 đêm)"
+  },
+  {
+    "path": "root.tours[2].summary",
+    "text": "Hành trình 2 ngày tri ân, trải nghiệm văn hóa Vân Kiều – Pa Kô, nghe nhân chứng lịch sử, rèn sức – dưỡng tâm qua thiền và khí công, cùng hoạt động tri ân – phát triển bền vững."
+  },
+  {
+    "path": "root.tours[2].location",
+    "text": "Tây Trường Sơn – Quảng Trị"
+  },
+  {
+    "path": "root.tours[2].duration",
+    "text": "2 ngày 1 đêm"
+  },
+  {
+    "path": "root.tours[2].price",
+    "text": "1.500.000 – 2.200.000 VNĐ/người (Tùy lựa chọn dịch vụ)"
+  },
+  {
+    "path": "root.tours[2].includes[0]",
+    "text": "Giao lưu Cựu chiến binh – nhân chứng lịch sử - tuỳ chọn"
+  },
+  {
+    "path": "root.tours[2].includes[1]",
+    "text": "Đêm lửa trại 'Ngọn lửa Trường Sơn' với cồng chiêng và đàn Ta Lư"
+  },
+  {
+    "path": "root.tours[2].includes[2]",
+    "text": "Hoạt động tri ân tại Nghĩa trang Liệt sĩ"
+  },
+  {
+    "path": "root.tours[2].includes[3]",
+    "text": "Hoạt động 'Hành trình xanh' – giáo dục bảo vệ môi trường"
+  },
+  {
+    "path": "root.tours[2].includes[4]",
+    "text": "Thiền – khí công rèn sức – dưỡng tâm"
+  },
+  {
+    "path": "root.tours[2].includes[5]",
+    "text": "Khơi dậy nội lực và tinh thần sống đẹp"
+  },
+  {
+    "path": "root.tours[2].includes[6]",
+    "text": "Ngày 1: Đông Hà – Vĩ tuyến 17 – Hướng Hóa (Ăn: sáng, trưa, tối), khởi hành – tham quan – nhận phòng – sinh hoạt nhóm, buổi tối lửa trại và giao lưu văn hóa"
+  },
+  {
+    "path": "root.tours[2].includes[7]",
+    "text": "Ngày 2: Hướng Hóa – Nghĩa trang Liệt sĩ Trường Sơn – Đông Hà (Ăn: sáng, trưa, tối), viếng nghĩa trang – tri ân – kết thúc chương trình"
+  },
+  {
+    "path": "root.tours[2].notes",
+    "text": "Lưu ý về trang phục, sức khỏe, an toàn di chuyển; chuẩn bị giấy tờ tùy thân; tuân thủ hướng dẫn của HDV; bảo vệ môi trường tại điểm đến; hạn chế mang đồ công nghệ không cần thiết; có mặt đúng giờ theo lịch trình; một số hoạt động có thể thay đổi tùy điều kiện thời tiết hoặc quy định địa phương"
+  },
+  {
+    "path": "root.tours[2].style",
+    "text": "Tìm về nguồn cội – rèn luyện thể chất – tinh thần – lắng nghe nội tâm – nuôi dưỡng lòng biết ơn và khát vọng sống đẹp"
+  },
+  {
+    "path": "root.tours[2].transport",
+    "text": "Xe 16-29-35-45 chỗ; Xe đời mới chất lượng cao"
+  },
+  {
+    "path": "root.tours[2].accommodation[0]",
+    "text": "1 đêm homestay/nhà khách cộng đồng tại Khe Sanh/Hướng Hóa"
+  },
+  {
+    "path": "root.tours[2].meals",
+    "text": "ăn 3 bữa chính tiêu chuẩn 150.000 VNĐ/khách (01 bữa tăng cường trong đêm giao lưu tiêu chuẩn 200.000VNĐ/khách), ăn theo thực đơn thống nhất ưu tiên các món đặc sản địa phương"
+  },
+  {
+    "path": "root.tours[2].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[3].tour_name",
+    "text": "Ký ức – Lịch Sử và Đại Ngàn – Tĩnh Lặng (2 ngày 1 đêm)"
+  },
+  {
+    "path": "root.tours[3].summary",
+    "text": "Hành trình 2 ngày trở về ký ức lịch sử, lắng nghe thuyết minh chuyên sâu, thực hành thiền – khí công giữa đại ngàn Bạch Mã và tham dự nghi lễ tri ân tại Thành cổ Quảng Trị."
+  },
+  {
+    "path": "root.tours[3].location",
+    "text": "Quảng Trị – Huế – Bạch Mã"
+  },
+  {
+    "path": "root.tours[3].duration",
+    "text": "2 ngày 1 đêm"
+  },
+  {
+    "path": "root.tours[3].price",
+    "text": "Bảng giá theo số lượng (nghìn VNĐ/người): 10-12: 3500; 12-13: 2800; 14-18: 2950; 19-21: 2500; 22-24: 2365; 25-27: 2290; 28-30: 2200; 31-33: 2190; 34-36: 2100; 37-39: 2050"
+  },
+  {
+    "path": "root.tours[3].includes[0]",
+    "text": "Nghe những câu chuyện lịch sử chân thực từ hướng dẫn viên chuyên sâu"
+  },
+  {
+    "path": "root.tours[3].includes[1]",
+    "text": "Tham dự nghi lễ tưởng niệm tại Thành cổ Quảng Trị"
+  },
+  {
+    "path": "root.tours[3].includes[2]",
+    "text": "Trải nghiệm thiền – khí công giữa đại ngàn Bạch Mã"
+  },
+  {
+    "path": "root.tours[3].includes[3]",
+    "text": "Hành trình tri ân kết hợp phát triển bền vững"
+  },
+  {
+    "path": "root.tours[3].includes[4]",
+    "text": "Kết nối quá khứ – hiện tại, nuôi dưỡng năng lượng tích cực"
+  },
+  {
+    "path": "root.tours[3].includes[5]",
+    "text": "Ngày 1: Khe Sanh – Thành cổ Quảng Trị – Huế (Ăn: sáng, trưa, tối), tham quan – nghe thuyết minh – sinh hoạt nhóm"
+  },
+  {
+    "path": "root.tours[3].includes[6]",
+    "text": "Ngày 2: Thành phố Huế – Bạch Mã – Hướng Hóa (Ăn: sáng, trưa, …), thiền – khí công – viếng di tích – kết thúc hành trình"
+  },
+  {
+    "path": "root.tours[3].notes",
+    "text": "Lưu ý về trang phục, sức khỏe, an toàn di chuyển; chuẩn bị giấy tờ tùy thân; tuân thủ hướng dẫn của HDV; bảo vệ môi trường tại điểm đến; hạn chế mang đồ công nghệ không cần thiết; có mặt đúng giờ theo lịch trình; một số hoạt động có thể thay đổi tùy điều kiện thời tiết hoặc quy định địa phương"
+  },
+  {
+    "path": "root.tours[3].style",
+    "text": "Kết nối quá khứ – hiện tại – lịch sử – đời sống – con người – thiên nhiên; mang đến năng lượng mới và sự an yên nội tâm."
+  },
+  {
+    "path": "root.tours[3].transport[0]",
+    "text": "Xe 16 chỗ"
+  },
+  {
+    "path": "root.tours[3].transport[1]",
+    "text": "Xe 29 chỗ"
+  },
+  {
+    "path": "root.tours[3].transport[2]",
+    "text": "Xe 35 chỗ"
+  },
+  {
+    "path": "root.tours[3].transport[3]",
+    "text": "Xe 45 chỗ"
+  },
+  {
+    "path": "root.tours[3].accommodation",
+    "text": "1 đêm khách sạn từ 3* (hoặc  homestay chất lượng tương đương) tại Thành phố Huế"
+  },
+  {
+    "path": "root.tours[3].meals",
+    "text": "ăn 3 bữa chính tiêu chuẩn 150.000 VNĐ/khách (01 bữa tăng cường trong đêm giao lưu tiêu chuẩn 200.000VNĐ/khách), ăn theo thực đơn thống nhất ưu tiên các món đặc sản địa phương"
+  },
+  {
+    "path": "root.tours[3].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings"
+  },
+  {
+    "path": "root.tours[4].tour_name",
+    "text": "Mưa Đỏ và Đôi bờ Hiền Lương"
+  },
+  {
+    "path": "root.tours[4].summary",
+    "text": "Hành trình 1 ngày kết nối quá khứ – hiện tại, nghe câu chuyện lịch sử từ nhân chứng sống, thực hiện nghi lễ tri ân và trải nghiệm giá trị sâu sắc trên mảnh đất Quảng Trị thiêng liêng."
+  },
+  {
+    "path": "root.tours[4].location",
+    "text": "Quảng Trị – Thành Cổ – Hiền Lương"
+  },
+  {
+    "path": "root.tours[4].duration",
+    "text": "1 ngày"
+  },
+  {
+    "path": "root.tours[4].price",
+    "text": "Bảng giá theo số lượng (nghìn VNĐ/người): 10-12: 1250–1395; 12-13: 1130–1270; 14-16: 1170–1300; 17-19: 1060–1185; 20-22: 985–1095; 23-25: 930–1035; 26-28: 950–1060; 29-31: 905–1015; 32-34: 925–1033; 35-37: 895–997; 38-40: 870–967"
+  },
+  {
+    "path": "root.tours[4].includes[0]",
+    "text": "Nghe câu chuyện lịch sử từ HDV chuyên sâu và cựu chiến binh"
+  },
+  {
+    "path": "root.tours[4].includes[1]",
+    "text": "Nghi lễ tưởng niệm tại Thành Cổ Quảng Trị"
+  },
+  {
+    "path": "root.tours[4].includes[2]",
+    "text": "Viếng Nghĩa trang Liệt sĩ Quốc gia Trường Sơn"
+  },
+  {
+    "path": "root.tours[4].includes[3]",
+    "text": "Trải nghiệm giá trị – cảm xúc, không chạy theo check-in"
+  },
+  {
+    "path": "root.tours[4].includes[4]",
+    "text": "Khơi dậy lòng biết ơn và sự tự hào của thế hệ trẻ"
+  },
+  {
+    "path": "root.tours[4].includes[5]",
+    "text": "Ngày 1: Huế – Thành Cổ – Quảng Trị (Ăn sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[4].notes",
+    "text": "Lưu ý về trang phục, sức khỏe, an toàn di chuyển; chuẩn bị giấy tờ tùy thân; tuân thủ hướng dẫn của HDV; bảo vệ môi trường tại điểm đến; hạn chế mang đồ công nghệ không cần thiết; có mặt đúng giờ theo lịch trình; một số hoạt động có thể thay đổi tùy điều kiện thời tiết hoặc quy định địa phương"
+  },
+  {
+    "path": "root.tours[4].style",
+    "text": "Hòa quyện lịch sử – trải nghiệm – cảm xúc; kết nối ký ức và thức tỉnh giá trị sống."
+  },
+  {
+    "path": "root.tours[4].transport[0]",
+    "text": "Xe 16 chỗ"
+  },
+  {
+    "path": "root.tours[4].transport[1]",
+    "text": "Xe 29 chỗ"
+  },
+  {
+    "path": "root.tours[4].transport[2]",
+    "text": "Xe 35 chỗ"
+  },
+  {
+    "path": "root.tours[4].transport[3]",
+    "text": "Xe 45 chỗ"
+  },
+  {
+    "path": "root.tours[4].accommodation",
+    "text": "Xe 16-29-35-45 chỗ; Xe đời mới chất lượng cao"
+  },
+  {
+    "path": "root.tours[4].meals",
+    "text": "ăn 02 bữa chính tiêu chuẩn 150.000 VNĐ/khách, ăn theo thực đơn thống nhất ưu tiên các món đặc sản địa phương"
+  },
+  {
+    "path": "root.tours[4].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[5].tour_name",
+    "text": "Ngọn Lửa Trường Sơn – Ký ức và Khát vọng (2 ngày 1 đêm)"
+  },
+  {
+    "path": "root.tours[5].summary",
+    "text": "Hành trình 2 ngày 1 đêm tại Quảng Trị, kết nối ký ức – hiện tại qua giao lưu Cựu chiến binh, đêm lửa trại Trường Sơn, thiền – khí công, hoạt động tri ân và phát triển bền vững."
+  },
+  {
+    "path": "root.tours[5].location",
+    "text": "Quảng Trị – Hướng Hóa – Trường Sơn – Huế"
+  },
+  {
+    "path": "root.tours[5].duration",
+    "text": "2 ngày 1 đêm"
+  },
+  {
+    "path": "root.tours[5].price",
+    "text": "Bảng giá theo số lượng (nghìn VNĐ/người): 10-12: 3850; 12-13: 3450; 14-18: 3250; 19-21: 2830; 22-24: 2630; 25-27: 2460; 28-30: 2390; 31-33: 2290; 34-36: 2180; 37-39: 2090"
+  },
+  {
+    "path": "root.tours[5].includes[0]",
+    "text": "Giao lưu với Cựu chiến binh – nhân chứng lịch sử - Tuỳ chọn"
+  },
+  {
+    "path": "root.tours[5].includes[1]",
+    "text": "Đêm lửa trại 'Ngọn lửa Trường Sơn' với cồng chiêng và đàn Ta Lư"
+  },
+  {
+    "path": "root.tours[5].includes[2]",
+    "text": "Hoạt động tri ân tại Nghĩa trang Liệt sĩ Trường Sơn"
+  },
+  {
+    "path": "root.tours[5].includes[3]",
+    "text": "Hành trình xanh – giáo dục bảo vệ môi trường"
+  },
+  {
+    "path": "root.tours[5].includes[4]",
+    "text": "Thiền – khí công cơ bản, học phương pháp sống khỏe từ thiên nhiên"
+  },
+  {
+    "path": "root.tours[5].includes[5]",
+    "text": "Hoạt động đội nhóm tạo giá trị – kết nối cộng đồng"
+  },
+  {
+    "path": "root.tours[5].includes[6]",
+    "text": "Bác sĩ – chuyên viên y tế đồng hành"
+  },
+  {
+    "path": "root.tours[5].includes[7]",
+    "text": "Ngày 1: Huế – Nghĩa trang Liệt sĩ Trường Sơn – Hướng Hóa (Ăn sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[5].includes[8]",
+    "text": "Ngày 2: Hướng Hóa – Quảng Trị – Huế (Ăn sáng, trưa, ...)"
+  },
+  {
+    "path": "root.tours[5].notes",
+    "text": "Lưu ý về trang phục, sức khỏe, an toàn di chuyển; chuẩn bị giấy tờ tùy thân; tuân thủ hướng dẫn của HDV; bảo vệ môi trường tại điểm đến; hạn chế mang đồ công nghệ không cần thiết; có mặt đúng giờ theo lịch trình; một số hoạt động có thể thay đổi tùy điều kiện thời tiết hoặc quy định địa phương"
+  },
+  {
+    "path": "root.tours[5].style",
+    "text": "Kết hợp tĩnh tại – năng động; rèn luyện thể chất – tinh thần; hoạt động đội nhóm và kết nối lịch sử – văn hóa."
+  },
+  {
+    "path": "root.tours[5].transport[0]",
+    "text": "Xe từ 16 chỗ đến 45 chỗ tuỳ số lượng khách, bảo đảm xe đời mới, chất lượng cao"
+  },
+  {
+    "path": "root.tours[5].transport[1]",
+    "text": "Xe 16 chỗ"
+  },
+  {
+    "path": "root.tours[5].transport[2]",
+    "text": "Xe 29 chỗ"
+  },
+  {
+    "path": "root.tours[5].transport[3]",
+    "text": "Xe 35 chỗ"
+  },
+  {
+    "path": "root.tours[5].transport[4]",
+    "text": "Xe 45 chỗ"
+  },
+  {
+    "path": "root.tours[5].accommodation",
+    "text": "1 đêm khách sạn 3* tại Thị xã Quảng Trị (hoặc thành phố Đông Hà) 1 đêm homestay/nhà khách cộng đồng tại Khe Sanh/Hướng Hóa"
+  },
+  {
+    "path": "root.tours[5].meals",
+    "text": "ăn 3 bữa chính tiêu chuẩn 150.000 VNĐ/khách (01 bữa tăng cường trong đêm giao lưu tiêu chuẩn 200.000VNĐ/khách), ăn theo thực đơn thống nhất ưu tiên các món đặc sản địa phương"
+  },
+  {
+    "path": "root.tours[5].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[6].tour_name",
+    "text": "Mưa Đỏ và Tây Trường Sơn (2 ngày 1 đêm)"
+  },
+  {
+    "path": "root.tours[6].summary",
+    "text": "Hành trình 2 ngày 1 đêm kết nối lịch sử Mưa Đỏ, văn hoá bản địa Tây Trường Sơn và không gian retreat tĩnh lặng giữa đại ngàn – mang lại cảm hứng sống đẹp và năng lượng tích cực."
+  },
+  {
+    "path": "root.tours[6].location",
+    "text": "Tây Trường Sơn – Quảng Trị – Hướng Hóa"
+  },
+  {
+    "path": "root.tours[6].duration",
+    "text": "2 ngày 1 đêm"
+  },
+  {
+    "path": "root.tours[6].price",
+    "text": "1.500.000 – 2.500.000 VNĐ/người (Tùy lựa chọn dịch vụ – phương tiện – số lượng đoàn)"
+  },
+  {
+    "path": "root.tours[6].includes[0]",
+    "text": "Gặp gỡ và nghe chuyện từ Cựu chiến binh – nhân chứng lịch sử"
+  },
+  {
+    "path": "root.tours[6].includes[1]",
+    "text": "Đêm lửa trại 'Ngọn lửa Trường Sơn' với cồng chiêng – đàn Ta Lư"
+  },
+  {
+    "path": "root.tours[6].includes[2]",
+    "text": "Nghi lễ tưởng niệm tại Nghĩa trang Liệt sĩ Quốc gia Trường Sơn"
+  },
+  {
+    "path": "root.tours[6].includes[3]",
+    "text": "Thiền – khí công giữa thiên nhiên Tây Trường Sơn"
+  },
+  {
+    "path": "root.tours[6].includes[4]",
+    "text": "Trải nghiệm văn hoá bản địa Vân Kiều – Pa Kô"
+  },
+  {
+    "path": "root.tours[6].includes[5]",
+    "text": "Được đồng hành bởi chuyên viên y tế suốt tuyến"
+  },
+  {
+    "path": "root.tours[6].includes[6]",
+    "text": "Ngày 1: Huế – Thành Cổ – Nghĩa trang Liệt sĩ Trường Sơn – Hướng Hóa (Ăn sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[6].includes[7]",
+    "text": "Ngày 2: Hướng Hóa – Quảng Trị – Huế (Ăn sáng, trưa, ...)"
+  },
+  {
+    "path": "root.tours[6].notes",
+    "text": "Lưu ý về trang phục, sức khỏe, an toàn di chuyển; chuẩn bị giấy tờ tùy thân; tuân thủ hướng dẫn của HDV; bảo vệ môi trường tại điểm đến; hạn chế mang đồ công nghệ không cần thiết; có mặt đúng giờ theo lịch trình; một số hoạt động có thể thay đổi tùy điều kiện thời tiết hoặc quy định địa phương"
+  },
+  {
+    "path": "root.tours[6].style",
+    "text": "Lịch sử – văn hoá bản địa – retreat thiên nhiên; kết nối cảm xúc – nuôi dưỡng năng lượng – lan toả giá trị sống."
+  },
+  {
+    "path": "root.tours[6].transport",
+    "text": "Xe từ 16 chỗ đến 45 chỗ tuỳ số lượng khách, bảo đảm xe đời mới, chất lượng cao"
+  },
+  {
+    "path": "root.tours[6].accommodation",
+    "text": "Khách sạn tiêu chuẩn từ 3* hoặc homestay chất lượng tương đương; phòng sạch sẽ, thoáng mát, đầy đủ tiện nghi cơ bản (máy lạnh, nước nóng, vệ sinh riêng). Tiêu chuẩn có thể thay đổi tùy theo gói dịch vụ, địa phương lưu trú và nhu cầu nâng cấp của đoàn"
+  },
+  {
+    "path": "root.tours[6].meals",
+    "text": "ăn 3 bữa chính tiêu chuẩn 150.000 VNĐ/khách (01 bữa tăng cường trong đêm giao lưu tiêu chuẩn 200.000VNĐ/khách), ăn theo thực đơn thống nhất ưu tiên các món đặc sản địa phương, nước uống suốt hành trình"
+  },
+  {
+    "path": "root.tours[6].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[7].tour_name",
+    "text": "Ngọn Lửa Trường Sơn – Hành Trình Ký Ức (2 ngày 1 đêm)"
+  },
+  {
+    "path": "root.tours[7].summary",
+    "text": "Hành trình 2 ngày 1 đêm tại Quảng Trị kết nối ký ức lịch sử, trải nghiệm văn hoá bản địa, thiền – khí công chăm sóc sức khỏe và đêm lửa trại Trường Sơn đầy cảm xúc."
+  },
+  {
+    "path": "root.tours[7].location",
+    "text": "Thị xã Quảng Trị, Vĩnh Linh, Gio Linh, Hướng Hoá (cũ) - Quảng Trị"
+  },
+  {
+    "path": "root.tours[7].duration",
+    "text": "2 ngày 1 đêm"
+  },
+  {
+    "path": "root.tours[7].price",
+    "text": "Tùy theo gói dịch vụ (khoảng 1.800.000 – 2.800.000 VNĐ/người), giá thay đổi theo đoàn – phương tiện – dịch vụ kèm theo"
+  },
+  {
+    "path": "root.tours[7].includes[0]",
+    "text": "Đêm lửa trại 'Ngọn lửa Trường Sơn' với cồng chiêng – đàn Ta Lư"
+  },
+  {
+    "path": "root.tours[7].includes[1]",
+    "text": "Hoạt động tri ân – tưởng niệm tại Nghĩa trang Liệt sĩ Quốc gia"
+  },
+  {
+    "path": "root.tours[7].includes[2]",
+    "text": "Giao lưu với Cựu chiến binh – nhân chứng lịch sử"
+  },
+  {
+    "path": "root.tours[7].includes[3]",
+    "text": "Thiền – khí công chăm sóc sức khỏe từ gốc"
+  },
+  {
+    "path": "root.tours[7].includes[4]",
+    "text": "Khơi dậy giá trị sống – tinh thần sẻ chia – trách nhiệm cộng đồng"
+  },
+  {
+    "path": "root.tours[7].includes[5]",
+    "text": "Trải nghiệm văn hoá bản địa Vân Kiều – Pa Kô"
+  },
+  {
+    "path": "root.tours[7].includes[6]",
+    "text": "Ngày 1: Huế – Nghĩa trang Liệt sĩ Trường Sơn – Hướng Hóa (Ăn ---, trưa, tối)"
+  },
+  {
+    "path": "root.tours[7].includes[7]",
+    "text": "Ngày 2: Hướng Hóa – Quảng Trị – Huế (Ăn sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[7].notes",
+    "text": "Lưu ý về trang phục, sức khỏe, an toàn di chuyển; chuẩn bị giấy tờ tùy thân; tuân thủ hướng dẫn của HDV; bảo vệ môi trường tại điểm đến; hạn chế mang đồ công nghệ không cần thiết; có mặt đúng giờ theo lịch trình; một số hoạt động có thể thay đổi tùy điều kiện thời tiết hoặc quy định địa phương"
+  },
+  {
+    "path": "root.tours[7].style",
+    "text": "Tĩnh tại – năng động; nuôi dưỡng thể chất – tinh thần; kết nối lịch sử – văn hóa – thiên nhiên."
+  },
+  {
+    "path": "root.tours[7].transport",
+    "text": "Xe từ 16 chỗ đến 45 chỗ tuỳ số lượng khách, bảo đảm xe đời mới, chất lượng cao"
+  },
+  {
+    "path": "root.tours[7].accommodation",
+    "text": "Khách sạn tiêu chuẩn từ 3* hoặc homestay chất lượng tương đương; phòng sạch sẽ, thoáng mát, đầy đủ tiện nghi cơ bản (máy lạnh, nước nóng, vệ sinh riêng). Tiêu chuẩn có thể thay đổi tùy theo gói dịch vụ, địa phương lưu trú và nhu cầu nâng cấp của đoàn"
+  },
+  {
+    "path": "root.tours[7].meals",
+    "text": "ăn 3 bữa chính tiêu chuẩn 150.000 VNĐ/khách (01 bữa tăng cường trong đêm giao lưu tiêu chuẩn 200.000VNĐ/khách), ăn theo thực đơn thống nhất ưu tiên các món đặc sản địa phương, nước uống suốt hành trình"
+  },
+  {
+    "path": "root.tours[7].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[8].tour_name",
+    "text": "Tiếng gọi Vĩ tuyến 17 – Hồi ức cùng đồng đội"
+  },
+  {
+    "path": "root.tours[8].summary",
+    "text": "Hành trình 3 ngày 2 đêm dành cho Cựu chiến binh, với nhịp đi nhẹ nhàng – cảm xúc sâu sắc, lắng nghe – tri ân – kết nối ký ức và lan tỏa giá trị nhân văn."
+  },
+  {
+    "path": "root.tours[8].location",
+    "text": "Quảng Trị – Vĩ tuyến 17 – Trường Sơn"
+  },
+  {
+    "path": "root.tours[8].duration",
+    "text": "3 ngày 2 đêm"
+  },
+  {
+    "path": "root.tours[8].price",
+    "text": "3.000.000 – 4.500.000 VNĐ/người (tùy dịch vụ – xe – số lượng CCB trong đoàn)"
+  },
+  {
+    "path": "root.tours[8].includes[0]",
+    "text": "Lắng nghe – chia sẻ câu chuyện của Cựu chiến binh"
+  },
+  {
+    "path": "root.tours[8].includes[1]",
+    "text": "Tri ân tại các điểm lịch sử linh thiêng"
+  },
+  {
+    "path": "root.tours[8].includes[2]",
+    "text": "Hành trình kết nối ký ức – đồng đội – thế hệ trẻ"
+  },
+  {
+    "path": "root.tours[8].includes[3]",
+    "text": "Không gian retreat cảm xúc sâu sắc"
+  },
+  {
+    "path": "root.tours[8].includes[4]",
+    "text": "Nhịp đi nhẹ nhàng phù hợp cho CCB"
+  },
+  {
+    "path": "root.tours[8].includes[5]",
+    "text": "Ngày 1: Dấu ấn Vĩ tuyến – Hào hùng khát vọng (Ăn ---, trưa, tối)"
+  },
+  {
+    "path": "root.tours[8].includes[6]",
+    "text": "Ngày 2: Huyền thoại Trường Sơn (Ăn sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[8].includes[7]",
+    "text": "Ngày 3: Tổng kết hành trình – Tri ân – chia tay (Ăn sáng, trưa)"
+  },
+  {
+    "path": "root.tours[8].notes",
+    "text": "Lưu ý về trang phục, sức khỏe, an toàn di chuyển; chuẩn bị giấy tờ tùy thân; tuân thủ hướng dẫn của HDV; bảo vệ môi trường tại điểm đến; hạn chế mang đồ công nghệ không cần thiết; có mặt đúng giờ theo lịch trình; một số hoạt động có thể thay đổi tùy điều kiện thời tiết hoặc quy định địa phương"
+  },
+  {
+    "path": "root.tours[8].style",
+    "text": "Retreat nhẹ nhàng – cảm xúc – kết nối ký ức – lắng nghe – tri ân."
+  },
+  {
+    "path": "root.tours[8].transport",
+    "text": "Xe từ 16 chỗ đến 45 chỗ tuỳ số lượng khách, bảo đảm xe đời mới, chất lượng cao"
+  },
+  {
+    "path": "root.tours[8].accommodation",
+    "text": "Khách sạn tiêu chuẩn từ 3* hoặc homestay chất lượng tương đương; phòng sạch sẽ, thoáng mát, đầy đủ tiện nghi cơ bản (máy lạnh, nước nóng, vệ sinh riêng). Tiêu chuẩn có thể thay đổi tùy theo gói dịch vụ, địa phương lưu trú và nhu cầu nâng cấp của đoàn"
+  },
+  {
+    "path": "root.tours[8].meals",
+    "text": "ăn 5 bữa chính tiêu chuẩn 150.000 VNĐ/khách (01 bữa tăng cường trong đêm giao lưu tiêu chuẩn 200.000VNĐ/khách), ăn theo thực đơn thống nhất ưu tiên các món đặc sản địa phương, nước uống suốt hành trình"
+  },
+  {
+    "path": "root.tours[8].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[9].tour_name",
+    "text": "Tiếng gọi Vĩ tuyến 17 – Hồi ức cùng đồng đội"
+  },
+  {
+    "path": "root.tours[9].summary",
+    "text": "Hành trình 1 ngày dành cho Cựu chiến binh trở lại chiến trường xưa, lắng nghe – chia sẻ ký ức, tri ân và kết nối đồng đội trong không khí trang trọng và xúc động."
+  },
+  {
+    "path": "root.tours[9].location",
+    "text": "Vĩ tuyến 17 – Quảng Trị"
+  },
+  {
+    "path": "root.tours[9].duration",
+    "text": "1 ngày"
+  },
+  {
+    "path": "root.tours[9].price",
+    "text": "Bảng giá theo số lượng (nghìn VNĐ/người): 10-12: 2095; 13-14: 1750; 15-18: 1669; 19-21: 1500; 22-24: 1385; 25-27: 1295; 28-30: 1250; 31-33: 1180; 34-36: 1140; 37-39: 1095; 40-42: 1065"
+  },
+  {
+    "path": "root.tours[9].includes[0]",
+    "text": "Thăm lại chiến trường xưa – Vĩ tuyến 17"
+  },
+  {
+    "path": "root.tours[9].includes[1]",
+    "text": "Lắng nghe và chia sẻ câu chuyện của Cựu chiến binh"
+  },
+  {
+    "path": "root.tours[9].includes[2]",
+    "text": "Giao lưu ý nghĩa – kết nối đồng đội"
+  },
+  {
+    "path": "root.tours[9].includes[3]",
+    "text": "Tri ân tại các điểm lịch sử thiêng liêng"
+  },
+  {
+    "path": "root.tours[9].includes[4]",
+    "text": "Hành trình nhẹ nhàng, phù hợp cho CCB"
+  },
+  {
+    "path": "root.tours[9].includes[5]",
+    "text": "Lan tỏa giá trị nhân văn và tinh thần đoàn kết"
+  },
+  {
+    "path": "root.tours[9].includes[6]",
+    "text": "Ngày 1: Tiếng gọi Vĩ tuyến 17 – Hồi ức cùng đồng đội (Ăn ---, trưa, tối)"
+  },
+  {
+    "path": "root.tours[9].notes",
+    "text": "Lưu ý về trang phục, sức khỏe, an toàn di chuyển; chuẩn bị giấy tờ tùy thân; tuân thủ hướng dẫn của HDV; bảo vệ môi trường tại điểm đến; hạn chế mang đồ công nghệ không cần thiết; có mặt đúng giờ theo lịch trình; một số hoạt động có thể thay đổi tùy điều kiện thời tiết hoặc quy định địa phương"
+  },
+  {
+    "path": "root.tours[9].style",
+    "text": "Nhịp đi nhẹ nhàng – cảm xúc – tri ân – kết nối ký ức."
+  },
+  {
+    "path": "root.tours[9].transport",
+    "text": "Xe từ 16 chỗ đến 45 chỗ tuỳ số lượng khách, bảo đảm xe đời mới, chất lượng cao"
+  },
+  {
+    "path": "root.tours[9].accommodation",
+    "text": "Không áp dụng (tour 1 ngày)"
+  },
+  {
+    "path": "root.tours[9].meals",
+    "text": "ăn 2 bữa chính tiêu chuẩn 150.000 VNĐ/khách (trong đó có 01 bữa tăng cường tiêu chuẩn 200.000VNĐ/khách), ăn theo thực đơn thống nhất ưu tiên các món đặc sản địa phương, nước uống suốt hành trình"
+  },
+  {
+    "path": "root.tours[9].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[10].tour_name",
+    "text": "Hành trình Phong Hương – Bình yên giữa núi rừng Trường Sơn (2 ngày 1 đêm)"
+  },
+  {
+    "path": "root.tours[10].summary",
+    "text": "Hành trình 2 ngày 1 đêm kết hợp tri ân lịch sử, trải nghiệm rừng phong hương, văn hóa Vân Kiều – Pa Kô và các hoạt động thiền – khí công giữa thiên nhiên nguyên sơ."
+  },
+  {
+    "path": "root.tours[10].location",
+    "text": "Quảng Trị – Hướng Hóa – Rào Quán – Trường Sơn"
+  },
+  {
+    "path": "root.tours[10].duration",
+    "text": "2 ngày 1 đêm"
+  },
+  {
+    "path": "root.tours[10].price",
+    "text": "Giá theo bảng (đơn vị: nghìn VNĐ/người): 11-13: 2570; 14-16: 2500; 17-19: 2250; 20-22: 2070; 23-25: 1950; 26-28: 1900; 29-31: 1860; 32-34: 1820; 35-37: 1770; 38-40: 1720"
+  },
+  {
+    "path": "root.tours[10].includes[0]",
+    "text": "Đêm lửa trại 'Ngọn lửa Trường Sơn' – cồng chiêng – đàn Ta Lư – dân ca Vân Kiều"
+  },
+  {
+    "path": "root.tours[10].includes[1]",
+    "text": "Du thuyền ngắm rừng phong hương – sắc màu như trời Tây"
+  },
+  {
+    "path": "root.tours[10].includes[2]",
+    "text": "Hoạt động tri ân và phát triển bền vững"
+  },
+  {
+    "path": "root.tours[10].includes[3]",
+    "text": "Thiền – khí công trong rừng núi"
+  },
+  {
+    "path": "root.tours[10].includes[4]",
+    "text": "Trải nghiệm văn hoá bản địa Vân Kiều – Pa Kô"
+  },
+  {
+    "path": "root.tours[10].includes[5]",
+    "text": "Khoảnh khắc chữa lành tại hồ Rào Quán"
+  },
+  {
+    "path": "root.tours[10].includes[6]",
+    "text": "Ngày 1: Huế – Thành cổ Quảng Trị – Hướng Hóa (Ăn ---, trưa, tối)"
+  },
+  {
+    "path": "root.tours[10].includes[7]",
+    "text": "Ngày 2: Hướng Hóa – Quảng Trị – Huế (Ăn sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[10].notes",
+    "text": "Hành trình được thiết kế nhịp độ chậm, nhưng vẫn có các hoạt động đi bộ, vui lòng thông báo trước về tình trạng sức khỏe, bệnh lý đặc biệt (nếu có) để BTC có sự chuẩn bị và hỗ trợ y tế tốt nhất. Khi tham quan các điểm tâm linh (Thành Cổ) và di tích lịch sử, quý khách mang lịch sự, kín đáo (quần dài, áo có tay). Nên mang giày thể thao để dễ dàng di chuyển, lên thuyền cần cỡi bỏ dày dép. Chuẩn bị thêm áo khoác nhẹ, và các vật dụng chống nắng/mưa.: Hãy đến với một tâm thế cởi mở và sẵn sàng chia sẻ (nếu muốn) để hành trình thêm phần ý nghĩa và nhân văn.Luôn tuân thủ các quy tắc ứng xử tại các điểm di tích lịch sử và khi giao lưu với cộng đồng dân tộc thiểu số, giữ gìn sự trang nghiêm, tôn kính tại những nơi linh thiêng.Luôn tuân thủ hướng dẫn của trưởng đoàn và hướng dẫn viên để đảm bảo an toàn tuyệt đối trong suốt hành trình"
+  },
+  {
+    "path": "root.tours[10].style",
+    "text": "Tri ân – thiên nhiên – văn hoá bản địa – retreat chữa lành."
+  },
+  {
+    "path": "root.tours[10].transport",
+    "text": "Xe từ 16 chỗ đến 45 chỗ tuỳ số lượng khách, bảo đảm xe đời mới, chất lượng cao"
+  },
+  {
+    "path": "root.tours[10].accommodation",
+    "text": "Homestay hoặc khách sạn 3* (cách 1 km), bao gồm ăn sáng"
+  },
+  {
+    "path": "root.tours[10].meals",
+    "text": "ăn 3 bữa chính tiêu chuẩn 150.000 VNĐ/khách (01 bữa tăng cường trong đêm giao lưu tiêu chuẩn 200.000VNĐ/khách), ăn theo thực đơn thống nhất ưu tiên các món đặc sản địa phương, nước uống suốt hành trình"
+  },
+  {
+    "path": "root.tours[10].event_support",
+    "text": "Hỗ trợ âm thanh – không gian tổng kết; ảnh – clip – slideshow cơ bản"
+  },
+  {
+    "path": "root.tours[11].tour_name",
+    "text": "Hành hương tâm linh – Đảo Cồn Cỏ anh hùng (3N2Đ)"
+  },
+  {
+    "path": "root.tours[11].summary",
+    "text": "Hành trình 3 ngày 2 đêm khám phá Cồn Cỏ – hòn đảo anh hùng giữa biển Đông, kết hợp trải nghiệm tâm linh – lịch sử tại Trường Sơn, Thành Cổ Quảng Trị, La Vang, Tà Cơn – Khe Sanh, và hệ thống hầm địa đạo Vịnh Mốc. Hành trình thiêng liêng của tri ân, kết nối biển đảo, thưởng thức ẩm thực Duyên hải miền Trung."
+  },
+  {
+    "path": "root.tours[11].location",
+    "text": "Huế – Đông Hà – DMZ – Cửa Việt – Đảo Cồn Cỏ – Vĩnh Mốc – Hiền Lương"
+  },
+  {
+    "path": "root.tours[11].duration",
+    "text": "3 ngày 2 đêm"
+  },
+  {
+    "path": "root.tours[11].price",
+    "text": "3.500.000 – 4.400.000 VNĐ/khách tuỳ số lượng đoàn (15–44 khách). Xe open bus Hà Nội–Đông Hà: 500.000đ; tàu SE ngồi mềm điều hòa: 1.000.000đ."
+  },
+  {
+    "path": "root.tours[11].includes[0]",
+    "text": "Xe chất lượng cao đưa đón theo chương trình (30–45 chỗ tùy đoàn)."
+  },
+  {
+    "path": "root.tours[11].includes[1]",
+    "text": "Vé tàu khứ hồi Cửa Việt – Cồn Cỏ (tàu du lịch 80 chỗ, hải trình 45 phút)."
+  },
+  {
+    "path": "root.tours[11].includes[2]",
+    "text": "06 bữa chính tiêu chuẩn 120.000–150.000đ/suất (thay đổi theo khu vực)."
+  },
+  {
+    "path": "root.tours[11].includes[3]",
+    "text": "Khách sạn Đông Hà tiêu chuẩn 4 sao (2 người/phòng, phòng 3 khách khi lẻ nam/nữ)."
+  },
+  {
+    "path": "root.tours[11].includes[4]",
+    "text": "Lưu trú tại Đảo Cồn Cỏ: phòng 3–4 khách/phòng, đầy đủ tiện nghi cơ bản."
+  },
+  {
+    "path": "root.tours[11].includes[5]",
+    "text": "Hướng dẫn viên chuyên tuyến, nhiệt tình, am hiểu lịch sử – biển đảo."
+  },
+  {
+    "path": "root.tours[11].includes[6]",
+    "text": "Tham quan & dâng hương Nghĩa trang Trường Sơn, Thành Cổ Quảng Trị, Chùa Sắc Tứ, Thánh địa La Vang."
+  },
+  {
+    "path": "root.tours[11].includes[7]",
+    "text": "Tham quan Cồn Cỏ: Cổng chào, cột cờ, nhà truyền thống – bảo tàng đảo, Hải đăng, chòi canh Anh hùng Thái Văn A, Bến Nghè, Mõm Hổ, bãi Xuân Hương."
+  },
+  {
+    "path": "root.tours[11].includes[8]",
+    "text": "Khám phá hệ thống hầm hào – lô cốt – hầm Quân y, rừng nguyên sinh, san hô và đời sống ngư dân đảo."
+  },
+  {
+    "path": "root.tours[11].includes[9]",
+    "text": "Tham quan Địa đạo Vịnh Mốc – cụm di tích Hiền Lương – Bến Hải."
+  },
+  {
+    "path": "root.tours[11].includes[10]",
+    "text": "Xe điện trên đảo."
+  },
+  {
+    "path": "root.tours[11].includes[11]",
+    "text": "Khăn lạnh – nước uống xuyên suốt hành trình."
+  },
+  {
+    "path": "root.tours[11].includes[12]",
+    "text": "Vòng hoa viếng nghĩa trang."
+  },
+  {
+    "path": "root.tours[11].includes[13]",
+    "text": "Quà tặng: nón du lịch, ảnh tập thể."
+  },
+  {
+    "path": "root.tours[11].includes[14]",
+    "text": "Bảo hiểm du lịch theo quy định TCDL Việt Nam."
+  },
+  {
+    "path": "root.tours[11].notes",
+    "text": "Không bao gồm: nước ngọt, bia, nước giải khát trong bữa ăn; chi tiêu cá nhân; tip HDV – lái xe; âm thanh đêm lửa trại trên đảo (200.000đ/giờ); VAT; các trải nghiệm tự do trên đảo như chèo thuyền, đạp xe, lặn ngắm san hô chuyên nghiệp… Trẻ em: dưới 4 tuổi miễn phí; 4–8 tuổi: 50%; 8–11 tuổi: 75%; từ 11 tuổi tính vé người lớn. Lưu ý: mang CMND/CCCD; chuẩn bị thuốc say sóng, kem chống nắng, giày mềm; tiết kiệm nước ngọt trên đảo; không bắt cua đá, không chụp nơi có biển cấm; giữ gìn môi trường biển đảo."
+  },
+  {
+    "path": "root.tours[11].style",
+    "text": "Hành hương tâm linh – trải nghiệm lịch sử – khám phá biển đảo – thiên nhiên nguyên sơ. Nhịp đi ý nghĩa, lắng đọng, kết nối tri ân – trải nghiệm – tìm hiểu văn hóa chiến khu – đảo tiền tiêu."
+  },
+  {
+    "path": "root.tours[11].transport[0]",
+    "text": "Xe 30 chỗ"
+  },
+  {
+    "path": "root.tours[11].transport[1]",
+    "text": "Xe 34 chỗ"
+  },
+  {
+    "path": "root.tours[11].transport[2]",
+    "text": "Xe 40 chỗ"
+  },
+  {
+    "path": "root.tours[11].transport[3]",
+    "text": "Xe 45 chỗ"
+  },
+  {
+    "path": "root.tours[11].transport[4]",
+    "text": "Tàu du lịch biển 80 chỗ"
+  },
+  {
+    "path": "root.tours[11].accommodation",
+    "text": "Khách sạn 4* tại Đông Hà; phòng 3–4 khách/phòng trên Đảo Cồn Cỏ (tiện nghi cơ bản)."
+  },
+  {
+    "path": "root.tours[11].meals",
+    "text": "06 bữa chính tiêu chuẩn 120.000–150.000đ/suất; ăn sáng tại khách sạn hoặc tô + ly; hải sản Cồn Cỏ nổi tiếng, đặc biệt hàu Cồn Cỏ."
+  },
+  {
+    "path": "root.tours[11].event_support",
+    "text": "Hỗ trợ đoàn tri ân – dâng hương; hỗ trợ tổ chức giao lưu cùng chiến sĩ đảo; hỗ trợ thiết kế chương trình theo đoàn."
+  },
+  {
+    "path": "root.tours[12].tour_name",
+    "text": "Cảng Cửa Việt – Đảo Cồn Cỏ Anh Hùng (2 ngày 1 đêm)"
+  },
+  {
+    "path": "root.tours[12].summary",
+    "text": "Hành trình 2 ngày 1 đêm khám phá biển đảo Cồn Cỏ – pháo đài tiền tiêu biển Đông, kết hợp trải nghiệm thiên nhiên hoang sơ, văn hóa cư dân và lịch sử oai hùng."
+  },
+  {
+    "path": "root.tours[12].location",
+    "text": "Cửa Việt – Cồn Cỏ – Quảng Trị"
+  },
+  {
+    "path": "root.tours[12].duration",
+    "text": "2 ngày 1 đêm"
+  },
+  {
+    "path": "root.tours[12].price",
+    "text": "1.600.000 – 2.500.000 VNĐ/người (phụ thuộc tàu và dịch vụ trên đảo)"
+  },
+  {
+    "path": "root.tours[12].includes[0]",
+    "text": "Khám phá đảo Cồn Cỏ – pháo đài tiền tiêu biển Đông"
+  },
+  {
+    "path": "root.tours[12].includes[1]",
+    "text": "Trải nghiệm tàu du lịch và xe điện trên đảo"
+  },
+  {
+    "path": "root.tours[12].includes[2]",
+    "text": "Tìm hiểu kinh tế biển đảo – dịch vụ hậu cần – đời sống cư dân"
+  },
+  {
+    "path": "root.tours[12].includes[3]",
+    "text": "Ngắm cảnh biển và thiên nhiên hoang sơ"
+  },
+  {
+    "path": "root.tours[12].includes[4]",
+    "text": "Trải nghiệm đời sống cộng đồng cư dân đảo"
+  },
+  {
+    "path": "root.tours[12].includes[5]",
+    "text": "Ngày 1: Cửa Việt – Cồn Cỏ (-- / trưa, chiều)"
+  },
+  {
+    "path": "root.tours[12].includes[6]",
+    "text": "Ngày 2: Cồn Cỏ – Cảng Cửa Việt (sáng / -- / --)"
+  },
+  {
+    "path": "root.tours[12].notes",
+    "text": "Mang giấy CMND, CCCDđể sử dụng khi cần; Chuẩn bị áo bơi, mủ, máy ảnh, giày mềm (cao su),... để tắm biển ngắm san hô; Nên chuẩn bị: Thuốc chống say tàu xe; Kem chống nắng, kem chống côn trùng cắn; thuốc đặc trị cho những thành viên có bệnh lý riêng; quý khách sử dụng nước tiết kiệm;Không chụp hình quay phim những nơi có biển cấm (Fly cam phải có giấy phép mới được sử dụng);Không được bắt, di chuyển cua đá, động vật rừng, chuối rừng, sâm cau;Quà có thể mua từ đảo: nước mắm, cá khô, hải sản tươi, giảo cổ lam."
+  },
+  {
+    "path": "root.tours[12].style",
+    "text": "Khám phá biển đảo – lịch sử – thiên nhiên – trải nghiệm linh hoạt."
+  },
+  {
+    "path": "root.tours[12].transport",
+    "text": "Xe từ 16 chỗ đến 45 chỗ tuỳ số lượng khách, bảo đảm xe đời mới, chất lượng cao"
+  },
+  {
+    "path": "root.tours[12].accommodation",
+    "text": "Nhà khách hoặc homestay trên đảo"
+  },
+  {
+    "path": "root.tours[12].meals",
+    "text": "ăn 3 bữa chính tiêu chuẩn 150.000 VNĐ/khách (01 bữa tăng cường nếu có giao lưu 200.000 VNĐ/khách), ăn theo thực đơn ưu tiên đặc sản địa phương, nước uống suốt hành trình"
+  },
+  {
+    "path": "root.tours[12].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[13].tour_name",
+    "text": "Hành trình trải nghiệm linh hoạt & Nghỉ dưỡng – Hà Nội – Đông Hà – Cổ Thành – Cồn Cỏ – Cửa Việt"
+  },
+  {
+    "path": "root.tours[13].summary",
+    "text": "Hành trình 3 ngày 2 đêm kết hợp tâm linh – tri ân lịch sử – nghỉ dưỡng biển và khám phá đảo Cồn Cỏ, mang đến trải nghiệm sâu lắng và thư giãn tại Quảng Trị."
+  },
+  {
+    "path": "root.tours[13].location",
+    "text": "Hà Nội – Đông Hà – Thành Cổ – Cửa Việt – Cồn Cỏ"
+  },
+  {
+    "path": "root.tours[13].duration",
+    "text": "3 ngày 2 đêm"
+  },
+  {
+    "path": "root.tours[13].price",
+    "text": "Liên hệ tùy gói dịch vụ (trong khoảng 2.200.000 đến 4.500.000 VNĐ/người), phụ thuộc tàu ra đảo – khách sạn – dịch vụ đi kèm"
+  },
+  {
+    "path": "root.tours[13].includes[0]",
+    "text": "Thăm Nghĩa trang Liệt sĩ Trường Sơn – tri ân và cầu nguyện bình an"
+  },
+  {
+    "path": "root.tours[13].includes[1]",
+    "text": "Không gian linh thiêng tại Thánh địa La Vang"
+  },
+  {
+    "path": "root.tours[13].includes[2]",
+    "text": "Tham quan Thành cổ Quảng Trị – Hiền Lương – Bến Hải – Khe Sanh – Dốc Miếu"
+  },
+  {
+    "path": "root.tours[13].includes[3]",
+    "text": "Nghỉ dưỡng tại Khu du lịch biển Cửa Việt"
+  },
+  {
+    "path": "root.tours[13].includes[4]",
+    "text": "Khám phá đảo Cồn Cỏ bằng tàu du lịch và xe điện"
+  },
+  {
+    "path": "root.tours[13].includes[5]",
+    "text": "Tìm hiểu đời sống cư dân đảo và hệ sinh thái biển"
+  },
+  {
+    "path": "root.tours[13].includes[6]",
+    "text": "Ngày 1: Đón khách – Thành Cổ Quảng Trị – Cửa Việt (sáng, trưa, chiều)"
+  },
+  {
+    "path": "root.tours[13].includes[7]",
+    "text": "Ngày 2: Cửa Việt – Đảo Cồn Cỏ (sáng, trưa, chiều)"
+  },
+  {
+    "path": "root.tours[13].includes[8]",
+    "text": "Ngày 3: Tham quan Đông Hà – Tiễn đoàn (sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[13].notes",
+    "text": "Mang CMND/CCCD, chuẩn bị đồ bơi – giày mềm – thuốc say sóng, hạn chế dùng nước ngọt trên đảo…"
+  },
+  {
+    "path": "root.tours[13].style",
+    "text": "Retreat nhẹ nhàng – tâm linh – lịch sử – biển đảo – văn hóa bản địa."
+  },
+  {
+    "path": "root.tours[13].transport",
+    "text": "Xe từ 16 chỗ đến 45 chỗ tuỳ số lượng khách, bảo đảm xe đời mới, chất lượng cao"
+  },
+  {
+    "path": "root.tours[13].accommodation",
+    "text": "Khách sạn tiêu chuẩn từ 3* hoặc homestay chất lượng tương đương; phòng sạch sẽ, thoáng mát, đầy đủ tiện nghi cơ bản (máy lạnh, nước nóng, vệ sinh riêng). Tiêu chuẩn có thể thay đổi tùy theo gói dịch vụ, địa phương lưu trú và nhu cầu nâng cấp của đoàn"
+  },
+  {
+    "path": "root.tours[13].meals",
+    "text": "ăn 3 bữa chính tiêu chuẩn 150.000 VNĐ/khách (01 bữa tăng cường nếu có đêm giao lưu: 200.000VNĐ/khách), ăn thực đơn ưu tiên đặc sản địa phương, nước uống suốt hành trình"
+  },
+  {
+    "path": "root.tours[13].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[14].tour_name",
+    "text": "Tham quan – Trải nghiệm Bình Trị Thiên (04 ngày 03 đêm)"
+  },
+  {
+    "path": "root.tours[14].summary",
+    "text": "Hành trình 4N3Đ khám phá ba vùng đất giàu di sản: Huế – Quảng Trị – Quảng Bình. Từ vẻ đẹp trầm mặc của cố đô, dấu ấn lịch sử oanh liệt tại DMZ đến kỳ quan thiên nhiên Phong Nha và biển Nhật Lệ. Một hành trình kết hợp văn hoá – tâm linh – thiên nhiên – lịch sử đặc sắc."
+  },
+  {
+    "path": "root.tours[14].location",
+    "text": "Huế – Quảng Trị – Quảng Bình"
+  },
+  {
+    "path": "root.tours[14].duration",
+    "text": "4 ngày 3 đêm"
+  },
+  {
+    "path": "root.tours[14].price",
+    "text": "Giá theo yêu cầu đoàn; đã bao gồm 6 bữa chính (150.000đ/suất), 1 bữa đặc sản miền Trung (200.000đ/suất), khách sạn 3*, vận chuyển và vé tham quan."
+  },
+  {
+    "path": "root.tours[14].includes[0]",
+    "text": "Xe chất lượng cao phục vụ trọn tuyến Huế – Quảng Trị – Quảng Bình."
+  },
+  {
+    "path": "root.tours[14].includes[1]",
+    "text": "6 bữa chính tiêu chuẩn 150.000đ/suất; 01 bữa đặc sản miền Trung tiêu chuẩn 200.000đ/suất; ăn sáng tại khách sạn."
+  },
+  {
+    "path": "root.tours[14].includes[2]",
+    "text": "Khách sạn hoặc resort tiêu chuẩn 3*: 2 khách/phòng; trường hợp lẻ nam/nữ ngủ phòng 3."
+  },
+  {
+    "path": "root.tours[14].includes[3]",
+    "text": "Hướng dẫn viên chuyên nghiệp – am hiểu văn hoá – lịch sử vùng Bình Trị Thiên."
+  },
+  {
+    "path": "root.tours[14].includes[4]",
+    "text": "Vé tham quan các điểm theo chương trình: Chùa Thiên Mụ, Đại Nội, Lăng Minh Mạng, Lăng Khải Định, La Vang, Thành Cổ Quảng Trị, Nghĩa trang Trường Sơn, Cầu Hiền Lương – Bến Hải, Địa đạo Vịnh Mốc, Động Phong Nha, Vũng Chùa (mộ Đại tướng Võ Nguyên Giáp), Quảng Bình Quan…"
+  },
+  {
+    "path": "root.tours[14].includes[5]",
+    "text": "Khăn lạnh – nước uống suốt hành trình."
+  },
+  {
+    "path": "root.tours[14].includes[6]",
+    "text": "Quà tặng: Nón du lịch hoặc ba lô tiện lợi."
+  },
+  {
+    "path": "root.tours[14].includes[7]",
+    "text": "Bảo hiểm du lịch theo luật Du lịch Việt Nam."
+  },
+  {
+    "path": "root.tours[14].notes",
+    "text": "Không bao gồm: bia/nước ngọt bữa ăn; giặt ủi; phòng đơn +400.000đ/khách; tip HDV & lái xe; VAT. Huỷ tour: Trước 10 ngày: 30%; 5–10 ngày: 50%; 3–5 ngày: 75%; dưới 3 ngày: 100%. Trẻ em: dưới 4 tuổi miễn phí; 4–8 tuổi: 50%; 8–11 tuổi: 75%; từ 11 tuổi tính như người lớn."
+  },
+  {
+    "path": "root.tours[14].style",
+    "text": "Du lịch văn hoá – tâm linh – lịch sử – thiên nhiên. Hành trình nhịp chậm, giàu cảm xúc, kết nối di sản cố đô, ký ức chiến tranh và kỳ quan thiên nhiên miền Trung."
+  },
+  {
+    "path": "root.tours[14].transport[0]",
+    "text": "Xe du lịch 16–45 chỗ đời mới"
+  },
+  {
+    "path": "root.tours[14].accommodation",
+    "text": "Khách sạn hoặc resort 3* tại Huế – Đông Hà – Đồng Hới (2 khách/phòng, lẻ ngủ phòng 3)."
+  },
+  {
+    "path": "root.tours[14].meals",
+    "text": "6 bữa chính tiêu chuẩn 150.000đ/suất; 1 bữa đặc sản miền Trung 200.000đ/suất; ăn sáng tại khách sạn."
+  },
+  {
+    "path": "root.tours[14].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[15].tour_name",
+    "text": "Khám phá Khe Sanh – Tiểu Đà Lạt giữa đại ngàn Trường Sơn (2 ngày 1 đêm)"
+  },
+  {
+    "path": "root.tours[15].summary",
+    "text": "Hành trình 2 ngày 1 đêm khám phá Khe Sanh mát lạnh, trải nghiệm bản làng Pa Cô – Vân Kiều, đồi cà phê – hồ tiêu, đèo Sa Mù và nét chuyển mình của vùng đất lửa."
+  },
+  {
+    "path": "root.tours[15].location",
+    "text": "Đông Hà – Khe Sanh – Sa Mù – Cửa Việt"
+  },
+  {
+    "path": "root.tours[15].duration",
+    "text": "2 ngày 1 đêm"
+  },
+  {
+    "path": "root.tours[15].price",
+    "text": "1.285.000 – 1.485.000 VNĐ/người (phụ thuộc số lượng khách và loại xe)"
+  },
+  {
+    "path": "root.tours[15].includes[0]",
+    "text": "Khí hậu mát mẻ quanh năm – 'tiểu Đà Lạt' của Quảng Trị"
+  },
+  {
+    "path": "root.tours[15].includes[1]",
+    "text": "Khám phá đồi cà phê – hồ tiêu – bản làng Pa Cô – Vân Kiều"
+  },
+  {
+    "path": "root.tours[15].includes[2]",
+    "text": "Check-in Đèo Sa Mù huyền ảo"
+  },
+  {
+    "path": "root.tours[15].includes[3]",
+    "text": "Thưởng thức ẩm thực dân tộc Pa Cô – Vân Kiều"
+  },
+  {
+    "path": "root.tours[15].includes[4]",
+    "text": "Ngắm hệ thống điện gió và cảnh quan đại ngàn"
+  },
+  {
+    "path": "root.tours[15].includes[5]",
+    "text": "Ngày 1: Đông Hà – Khe Sanh – Sa Mù (sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[15].includes[6]",
+    "text": "Ngày 2: Sa Mù – Khe Sanh – Cửa Việt – Trả khách (sáng, trưa, chiều)"
+  },
+  {
+    "path": "root.tours[15].notes",
+    "text": "Lưu ý về trang phục, sức khỏe, an toàn di chuyển; chuẩn bị giấy tờ tùy thân; tuân thủ hướng dẫn của HDV; bảo vệ môi trường tại điểm đến; hạn chế mang đồ công nghệ không cần thiết; có mặt đúng giờ theo lịch trình; một số hoạt động có thể thay đổi tùy điều kiện thời tiết hoặc quy định địa phương"
+  },
+  {
+    "path": "root.tours[15].style",
+    "text": "Khám phá thiên nhiên – văn hóa bản địa – khí hậu đại ngàn – lịch sử."
+  },
+  {
+    "path": "root.tours[15].transport",
+    "text": "Xe từ 16 chỗ đến 45 chỗ tuỳ số lượng khách, bảo đảm xe đời mới, chất lượng cao"
+  },
+  {
+    "path": "root.tours[15].accommodation",
+    "text": "Lưu trú tại Khe Sanh (nhà nghỉ/khách sạn/homestay tiêu chuẩn từ 3*)"
+  },
+  {
+    "path": "root.tours[15].meals",
+    "text": "ăn 3 bữa chính tiêu chuẩn 150.000 VNĐ/khách (01 bữa tăng cường nếu có giao lưu: 200.000VNĐ/khách), ăn theo thực đơn ưu tiên đặc sản địa phương, nước uống suốt hành trình"
+  },
+  {
+    "path": "root.tours[15].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[16].tour_name",
+    "text": "Khám phá miền đất trù phú Phương Nam"
+  },
+  {
+    "path": "root.tours[16].summary",
+    "text": "Hành trình 6 ngày 5 đêm khám phá Thành phố Hồ Chí Minh, Bình Dương, miền Tây sông nước và mũi Cà Mau – kết hợp văn hoá, sinh thái, ẩm thực và trải nghiệm đặc sắc."
+  },
+  {
+    "path": "root.tours[16].location",
+    "text": "TP.HCM – Bình Dương – Cần Thơ – Sóc Trăng – Cà Mau – Đồng Tháp"
+  },
+  {
+    "path": "root.tours[16].duration",
+    "text": "6 ngày 5 đêm"
+  },
+  {
+    "path": "root.tours[16].price",
+    "text": "Giá sẽ được cập nhật sau và phụ thuộc vào nhiều yếu tố: số lượng khách, thời điểm khởi hành, cấp độ dịch vụ lựa chọn (cơ bản – nâng cao – cao cấp), hạng phương tiện, tiêu chuẩn lưu trú – ăn uống, vé tham quan và các yêu cầu tùy chỉnh theo nhóm. Khi chốt đủ thông tin, Ruby Wings sẽ gửi báo giá chi tiết"
+  },
+  {
+    "path": "root.tours[16].includes[0]",
+    "text": "Tham quan Đại Nam (Bình Dương)"
+  },
+  {
+    "path": "root.tours[16].includes[1]",
+    "text": "Khám phá Dinh Độc Lập – TP.HCM"
+  },
+  {
+    "path": "root.tours[16].includes[2]",
+    "text": "Du thuyền sông rạch Cần Thơ – chợ nổi – vườn trái"
+  },
+  {
+    "path": "root.tours[16].includes[3]",
+    "text": "Khám phá rừng ngập mặn Cà Mau – Đất Mũi"
+  },
+  {
+    "path": "root.tours[16].includes[4]",
+    "text": "Tham quan Đồng Tháp – xứ sở sen"
+  },
+  {
+    "path": "root.tours[16].includes[5]",
+    "text": "Ngày 1: Đông Hà – Huế – TP.HCM (sáng/trưa/tối)"
+  },
+  {
+    "path": "root.tours[16].includes[6]",
+    "text": "Ngày 2: TP.HCM – Bình Dương – Đại Nam (sáng/trưa/tối)"
+  },
+  {
+    "path": "root.tours[16].includes[7]",
+    "text": "Ngày 3: Thủ Dầu Một – Cần Thơ (sáng/trưa/tối)"
+  },
+  {
+    "path": "root.tours[16].includes[8]",
+    "text": "Ngày 4: Cần Thơ – Sóc Trăng – Cà Mau (sáng/trưa/tối)"
+  },
+  {
+    "path": "root.tours[16].includes[9]",
+    "text": "Ngày 5: Cà Mau – Đất Mũi – Đồng Tháp (sáng/trưa/tối)"
+  },
+  {
+    "path": "root.tours[16].includes[10]",
+    "text": "Ngày 6: Đồng Tháp – TP.HCM (sáng/trưa/--)"
+  },
+  {
+    "path": "root.tours[16].notes",
+    "text": "Lưu ý về trang phục, sức khỏe, an toàn di chuyển; chuẩn bị giấy tờ tùy thân; tuân thủ hướng dẫn của HDV; bảo vệ môi trường tại điểm đến; hạn chế mang đồ công nghệ không cần thiết; có mặt đúng giờ theo lịch trình; một số hoạt động có thể thay đổi tùy điều kiện thời tiết hoặc quy định địa phương"
+  },
+  {
+    "path": "root.tours[16].style",
+    "text": "Khám phá đô thị – sinh thái – văn hoá – ẩm thực; nhịp độ vừa phải, phù hợp đa dạng đối tượng."
+  },
+  {
+    "path": "root.tours[16].transport",
+    "text": "Xe từ 16 chỗ đến 45 chỗ tuỳ số lượng khách, bảo đảm xe đời mới, chất lượng cao"
+  },
+  {
+    "path": "root.tours[16].accommodation",
+    "text": "Lưu trú 5 đêm theo tiêu chuẩn chương trình"
+  },
+  {
+    "path": "root.tours[16].meals",
+    "text": "ăn tiêu chuẩn 150.000 VNĐ/khách (có 1-2 bữa đặc sản 200.000VNĐ/khách nếu có), ăn theo thực đơn đặc sản địa phương, nước uống suốt hành trình"
+  },
+  {
+    "path": "root.tours[16].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[17].tour_name",
+    "text": "Hành Trình Phong Hương – Bình Yên Giữa Núi Rừng Trường Sơn (2 ngày 1 đêm)"
+  },
+  {
+    "path": "root.tours[17].summary",
+    "text": "Hành trình 2 ngày 1 đêm khám phá vẻ đẹp nguyên sơ của Tây Trường Sơn, kết hợp trải nghiệm lịch sử – thiên nhiên – văn hóa bản địa và thực hành thiền – khí công giữa núi rừng. Chuyến đi mang lại sự thư giãn, kết nối nội tâm và tri ân những giá trị lịch sử thiêng liêng."
+  },
+  {
+    "path": "root.tours[17].location",
+    "text": "Huế – Thành Cổ Quảng Trị – Khe Sanh – Trường Sơn – Đakrông – La Vang – Huế"
+  },
+  {
+    "path": "root.tours[17].duration",
+    "text": "2 ngày 1 đêm"
+  },
+  {
+    "path": "root.tours[17].price",
+    "text": "1.990.000 – 2.400.000 VNĐ/khách"
+  },
+  {
+    "path": "root.tours[17].includes[0]",
+    "text": "Xe du lịch đời mới, máy lạnh, lái xe chuyên nghiệp phục vụ suốt hành trình"
+  },
+  {
+    "path": "root.tours[17].includes[1]",
+    "text": "01 đêm homestay tại Khe Sanh/Hướng Hóa, đầy đủ tiện nghi cơ bản, có ăn sáng"
+  },
+  {
+    "path": "root.tours[17].includes[2]",
+    "text": "02 bữa sáng, 02 bữa trưa, 01 bữa tối theo chương trình (tiêu chuẩn 150.000 VNĐ/suất)"
+  },
+  {
+    "path": "root.tours[17].includes[3]",
+    "text": "Vé tham quan các điểm theo chương trình (01 lần vào cửa)"
+  },
+  {
+    "path": "root.tours[17].includes[4]",
+    "text": "Tham quan Thành Cổ Quảng Trị, sân bay Tà Cơn – Bảo tàng Khe Sanh"
+  },
+  {
+    "path": "root.tours[17].includes[5]",
+    "text": "Du thuyền hồ Rào Quán, check-in Cây Cô Đơn, cánh đồng điện gió"
+  },
+  {
+    "path": "root.tours[17].includes[6]",
+    "text": "Giao lưu văn hóa cộng đồng: lửa trại, cồng chiêng, bánh Ayớh, rượu cần"
+  },
+  {
+    "path": "root.tours[17].includes[7]",
+    "text": "Thực hành thiền – khí công buổi sáng giữa thiên nhiên Trường Sơn"
+  },
+  {
+    "path": "root.tours[17].includes[8]",
+    "text": "Tham quan Danh thắng Đakrông và Thánh địa La Vang"
+  },
+  {
+    "path": "root.tours[17].includes[9]",
+    "text": "Hướng dẫn viên chuyên nghiệp, am hiểu lịch sử – văn hóa địa phương"
+  },
+  {
+    "path": "root.tours[17].includes[10]",
+    "text": "Bảo hiểm du lịch theo quy định (mức 50.000.000 VNĐ/khách)"
+  },
+  {
+    "path": "root.tours[17].includes[11]",
+    "text": "Nước uống phục vụ suốt hành trình"
+  },
+  {
+    "path": "root.tours[17].includes[12]",
+    "text": "Quà tặng: mũ/nón du lịch Ruby Wings"
+  },
+  {
+    "path": "root.tours[17].includes[13]",
+    "text": "Chụp ảnh, tổng hợp hình ảnh & video thành slideshow/clip kỷ niệm"
+  },
+  {
+    "path": "root.tours[17].notes",
+    "text": "Thời gian có thể điều chỉnh linh hoạt theo điều kiện thực tế nhưng vẫn đảm bảo đầy đủ điểm tham quan. Không bao gồm VAT, chi phí cá nhân, đồ uống ngoài chương trình, tiền tip HDV & lái xe, dịch vụ quay/chụp chuyên nghiệp nâng cao. Các chi phí phát sinh do yếu tố bất khả kháng không nằm trong giá tour."
+  },
+  {
+    "path": "root.tours[17].style",
+    "text": "Trải nghiệm thiên nhiên – lịch sử – chữa lành; nhịp đi chậm, sâu; kết hợp giao lưu văn hóa bản địa và thực hành thiền – khí công; phù hợp nhóm gia đình, cộng đồng, đoàn trải nghiệm."
+  },
+  {
+    "path": "root.tours[17].transport",
+    "text": "Xe du lịch từ 16 chỗ đến 45 chỗ tùy số lượng khách, xe đời mới chất lượng cao"
+  },
+  {
+    "path": "root.tours[17].accommodation",
+    "text": "Homestay Khe Sanh/Hướng Hóa, tiêu chuẩn sạch sẽ, tiện nghi cơ bản"
+  },
+  {
+    "path": "root.tours[17].meals",
+    "text": "02 bữa sáng, 02 bữa trưa, 01 bữa tối theo chương trình (150.000 VNĐ/suất); nước uống đầy đủ"
+  },
+  {
+    "path": "root.tours[17].event_support",
+    "text": "Hỗ trợ đoàn xuyên suốt hành trình: điều phối lịch trình, tổ chức giao lưu văn hóa – lửa trại, hướng dẫn thiền – khí công cơ bản, hỗ trợ chụp ảnh, đảm bảo an toàn và tối ưu trải nghiệm theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[18].tour_name",
+    "text": "Tour trải nghiệm linh hoạt – Đông Hà – Ninh Bình – Hạ Long – Đông Hà (4 ngày)"
+  },
+  {
+    "path": "root.tours[18].summary",
+    "text": "Hành trình liên vùng 4 ngày 3 đêm kết hợp văn hóa Ninh Bình, di sản Hạ Long, vui chơi Sun World và trải nghiệm xe giường nằm + xe du lịch cao cấp."
+  },
+  {
+    "path": "root.tours[18].location",
+    "text": "Đông Hà – Ninh Bình – Hạ Long – Hà Nội"
+  },
+  {
+    "path": "root.tours[18].duration",
+    "text": "4 ngày 3 đêm"
+  },
+  {
+    "path": "root.tours[18].price",
+    "text": "4.995.000 VNĐ/khách (tham khảo đoàn 35 khách, phụ thuộc mùa và yêu cầu nâng cấp dịch vụ)"
+  },
+  {
+    "path": "root.tours[18].includes[0]",
+    "text": "Chùa Bái Đính – quần thể chùa lớn nhất Đông Nam Á"
+  },
+  {
+    "path": "root.tours[18].includes[1]",
+    "text": "Tràng An – di sản thiên nhiên & văn hoá thế giới"
+  },
+  {
+    "path": "root.tours[18].includes[2]",
+    "text": "Tam Cốc – thuyền sông Ngô Đồng"
+  },
+  {
+    "path": "root.tours[18].includes[3]",
+    "text": "Sun World Hạ Long – cáp treo Nữ Hoàng – Sun Wheel"
+  },
+  {
+    "path": "root.tours[18].includes[4]",
+    "text": "Bãi Cháy – tắm biển – dạo biển về đêm"
+  },
+  {
+    "path": "root.tours[18].includes[5]",
+    "text": "Ngày 0: Đông Hà → Ninh Bình (xe giường nằm)"
+  },
+  {
+    "path": "root.tours[18].includes[6]",
+    "text": "Ngày 1: Ninh Bình – Bái Đính – Tràng An – Tam Cốc"
+  },
+  {
+    "path": "root.tours[18].includes[7]",
+    "text": "Ngày 2: Tam Chúc – Hạ Long (sáng/trưa/tối)"
+  },
+  {
+    "path": "root.tours[18].includes[8]",
+    "text": "Ngày 3: Hạ Long – Hà Nội – xe giường nằm về Quảng Trị"
+  },
+  {
+    "path": "root.tours[18].includes[9]",
+    "text": "Ngày 4: Về đến Quảng Trị (kết thúc)"
+  },
+  {
+    "path": "root.tours[18].notes",
+    "text": "Giá thay đổi theo mùa, số lượng khách và yêu cầu nâng cấp dịch vụ."
+  },
+  {
+    "path": "root.tours[18].style",
+    "text": "Di sản – biển – giải trí – trải nghiệm tiện nghi."
+  },
+  {
+    "path": "root.tours[18].transport",
+    "text": "Xe từ 16 chỗ đến 45 chỗ tuỳ số lượng khách, bảo đảm xe đời mới, chất lượng cao"
+  },
+  {
+    "path": "root.tours[18].accommodation",
+    "text": "Khách sạn 3* (theo chương trình), ngủ đêm trên xe giường nằm 2 khách/phòng"
+  },
+  {
+    "path": "root.tours[18].meals",
+    "text": "6 bữa chính (5 bữa 150k, 1 bữa 200k hoặc bữa trên du thuyền 5*), ăn theo thực đơn địa phương, nước uống suốt hành trình"
+  },
+  {
+    "path": "root.tours[18].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[19].tour_name",
+    "text": "Trải Nghiệm Tinh Hoa Bắc Bộ: Hà Nội – Sa Pa – Phú Thọ (5 ngày 4 đêm)"
+  },
+  {
+    "path": "root.tours[19].summary",
+    "text": "Hành trình 5 ngày 4 đêm khám phá tinh hoa Bắc Bộ: Thủ đô Hà Nội ngàn năm văn hiến, chinh phục Fansipan – Nóc nhà Đông Dương, trải nghiệm văn hóa Sa Pa và dâng hương Đền Hùng – cội nguồn dân tộc Việt. Chương trình kết hợp thiên nhiên – văn hóa – lịch sử, phù hợp Quý thầy cô và các đoàn giáo dục."
+  },
+  {
+    "path": "root.tours[19].location",
+    "text": "Quảng Trị – Hà Nội – Sa Pa (Lào Cai) – Phú Thọ – Hà Nội – Quảng Trị"
+  },
+  {
+    "path": "root.tours[19].duration",
+    "text": "5 ngày 4 đêm"
+  },
+  {
+    "path": "root.tours[19].price",
+    "text": "5.070.000 – 5.220.000 VNĐ/khách (tùy quy mô đoàn 33–42 khách)"
+  },
+  {
+    "path": "root.tours[19].includes[0]",
+    "text": "Tàu hỏa SE4 chiều Quảng Trị – Hà Nội và SE5 chiều Hà Nội – Quảng Trị (hoặc xe giường nằm theo phương án tổ chức)"
+  },
+  {
+    "path": "root.tours[19].includes[1]",
+    "text": "Xe du lịch 35 chỗ đời mới (2022–2025) phục vụ theo chương trình"
+  },
+  {
+    "path": "root.tours[19].includes[2]",
+    "text": "Khách sạn tiêu chuẩn 3* tại Sa Pa, Phú Thọ và Hà Nội (ăn sáng tại khách sạn; bữa đầu ăn phở Hà Nội)"
+  },
+  {
+    "path": "root.tours[19].includes[3]",
+    "text": "06 bữa chính theo chương trình (05 bữa tiêu chuẩn 150.000 VNĐ/suất; 01 bữa đặc sản 200.000 VNĐ/suất)"
+  },
+  {
+    "path": "root.tours[19].includes[4]",
+    "text": "Hướng dẫn viên chuyên nghiệp, có khả năng hoạt náo, theo đoàn suốt hành trình"
+  },
+  {
+    "path": "root.tours[19].includes[5]",
+    "text": "Tổ chức Gala với sân khấu, âm thanh, ánh sáng tại khách sạn đêm cuối"
+  },
+  {
+    "path": "root.tours[19].includes[6]",
+    "text": "Tham quan Nhà thờ đá Sa Pa, Fansipan, Đèo Ô Quy Hồ, Bản Cát Cát, Chợ đêm Sa Pa"
+  },
+  {
+    "path": "root.tours[19].includes[7]",
+    "text": "Tham quan Đền Hùng – Phú Thọ; Hồ Gươm – Đền Ngọc Sơn"
+  },
+  {
+    "path": "root.tours[19].includes[8]",
+    "text": "Vé tham quan vào cửa đầu tiên theo chương trình (vé Fansipan theo quy định)"
+  },
+  {
+    "path": "root.tours[19].includes[9]",
+    "text": "Nước uống, nón du lịch, khăn lạnh"
+  },
+  {
+    "path": "root.tours[19].includes[10]",
+    "text": "Bảo hiểm du lịch theo quy định"
+  },
+  {
+    "path": "root.tours[19].notes",
+    "text": "Chương trình có thể hoán đổi thứ tự điểm tham quan nhưng vẫn đảm bảo đầy đủ nội dung. Không bao gồm VAT, chi phí cá nhân, đồ uống ngoài bữa ăn, dịch vụ tự chọn, phụ thu phòng đơn, tiền tip HDV & lái xe, phụ thu lễ/tết/cuối tuần. Chính sách trẻ em và chính sách hủy tour áp dụng theo quy định chi tiết của chương trình."
+  },
+  {
+    "path": "root.tours[19].style",
+    "text": "Trải nghiệm văn hóa – lịch sử – thiên nhiên; kết hợp chinh phục Fansipan, khám phá Sa Pa và hành hương về cội nguồn Đền Hùng; nhịp đi phù hợp Quý thầy cô và các đoàn giáo dục."
+  },
+  {
+    "path": "root.tours[19].transport",
+    "text": "Tàu hỏa đường dài và xe du lịch 35 chỗ đời mới phục vụ theo chương trình"
+  },
+  {
+    "path": "root.tours[19].accommodation",
+    "text": "Khách sạn tiêu chuẩn 3*; phòng 2 khách hoặc phòng 3 cho khách lẻ"
+  },
+  {
+    "path": "root.tours[19].meals",
+    "text": "06 bữa chính theo chương trình (150.000 VNĐ/suất; 01 bữa đặc sản 200.000 VNĐ/suất); ăn sáng tại khách sạn và theo chương trình"
+  },
+  {
+    "path": "root.tours[19].event_support",
+    "text": "Hỗ trợ đoàn suốt hành trình: điều phối lịch trình, tổ chức Gala – giao lưu, hỗ trợ chụp ảnh, kiểm soát an toàn, xử lý tình huống phát sinh và đồng hành chăm sóc trải nghiệm theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[20].tour_name",
+    "text": "Đông Hà – Nha Trang – Đà Lạt – Đông Hà"
+  },
+  {
+    "path": "root.tours[20].summary",
+    "text": "Hành trình 4 ngày 3 đêm đón Tết Nguyên Đán với biển Nha Trang và cao nguyên Đà Lạt; kết hợp tham quan Vinpearl Land, Tháp Bà Ponagar, Thiền viện Trúc Lâm, thác – chùa – dinh – vườn hoa và trải nghiệm văn hóa đặc sắc."
+  },
+  {
+    "path": "root.tours[20].location",
+    "text": "Đông Hà – Nha Trang – Đà Lạt"
+  },
+  {
+    "path": "root.tours[20].duration",
+    "text": "4 ngày 3 đêm"
+  },
+  {
+    "path": "root.tours[20].price",
+    "text": "Giá sẽ được cập nhật sau và phụ thuộc vào nhiều yếu tố: số lượng khách, thời điểm khởi hành, cấp độ dịch vụ lựa chọn (cơ bản – nâng cao – cao cấp), hạng phương tiện, tiêu chuẩn lưu trú – ăn uống, vé tham quan và các yêu cầu tùy chỉnh theo nhóm. Khi chốt đủ thông tin, Ruby Wings sẽ gửi báo giá chi tiết)"
+  },
+  {
+    "path": "root.tours[20].includes[0]",
+    "text": "Cáp treo Vinpearl Land – vui chơi hiện đại"
+  },
+  {
+    "path": "root.tours[20].includes[1]",
+    "text": "Tháp Bà Ponagar – văn hóa Champa"
+  },
+  {
+    "path": "root.tours[20].includes[2]",
+    "text": "Viện Hải Dương Học (tùy thời gian)"
+  },
+  {
+    "path": "root.tours[20].includes[3]",
+    "text": "Thác Datanla – trải nghiệm máng trượt tự túc"
+  },
+  {
+    "path": "root.tours[20].includes[4]",
+    "text": "Thiền Viện Trúc Lâm – Vườn hoa Thành phố"
+  },
+  {
+    "path": "root.tours[20].includes[5]",
+    "text": "Chùa Linh Phước – Dinh Bảo Đại (Dinh III)"
+  },
+  {
+    "path": "root.tours[20].includes[6]",
+    "text": "Ngày 1: Đông Hà → Nha Trang (Ăn trưa, tối)"
+  },
+  {
+    "path": "root.tours[20].includes[7]",
+    "text": "Ngày 2: Nha Trang → Vinpearl Land → Đà Lạt (Ăn sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[20].includes[8]",
+    "text": "Ngày 3: Tham quan Đà Lạt (Ăn sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[20].includes[9]",
+    "text": "Ngày 4: Đà Lạt → Đông Hà (Ăn sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[20].notes",
+    "text": "Mang trang phục phù hợp biển – núi – chùa; Tết đông khách nên đặt tour sớm."
+  },
+  {
+    "path": "root.tours[20].style",
+    "text": "Biển – núi – văn hóa – tâm linh – trải nghiệm thành phố."
+  },
+  {
+    "path": "root.tours[20].transport",
+    "text": "Xe từ 16 chỗ đến 45 chỗ tuỳ số lượng khách, bảo đảm xe đời mới, chất lượng cao"
+  },
+  {
+    "path": "root.tours[20].accommodation",
+    "text": "Khách sạn tiêu chuẩn tại Nha Trang và Đà Lạt (2 đêm)"
+  },
+  {
+    "path": "root.tours[20].meals",
+    "text": "Ăn 3 bữa chính/ngày (tiêu chuẩn 150.000 VNĐ/suất) theo chương trình + sáng tại khách sạn; nước uống mỗi ngày"
+  },
+  {
+    "path": "root.tours[20].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[21].tour_name",
+    "text": "Khám phá Đà Nẵng – Hội An (2 ngày 1 đêm)"
+  },
+  {
+    "path": "root.tours[21].summary",
+    "text": "Hành trình 2 ngày 1 đêm khám phá những điểm đến tiêu biểu của Đà Nẵng – Hội An: Chùa Linh Ứng, Công viên Kỳ Quan Thế Giới, VinWonders Nam Hội An, Ngũ Hành Sơn, Bảo tàng Quân khu 5… Kết hợp giải trí – văn hóa – thiên nhiên – ẩm thực, phù hợp cho học sinh – gia đình – nhóm bạn."
+  },
+  {
+    "path": "root.tours[21].location",
+    "text": "Đà Nẵng – Hội An – Quảng Trị (khởi hành từ Quảng Trị)"
+  },
+  {
+    "path": "root.tours[21].duration",
+    "text": "2 ngày 1 đêm"
+  },
+  {
+    "path": "root.tours[21].price",
+    "text": "Giá theo số lượng nhóm & thời điểm. Giá ưu đãi học sinh áp dụng đến 01/06/2026. Vé VinWonders: 420.000đ/học sinh; giáo viên/phụ huynh: 600.000đ/khách."
+  },
+  {
+    "path": "root.tours[21].includes[0]",
+    "text": "Khách sạn tiêu chuẩn 3* (nâng cấp 4* +350.000đ/khách/đêm)."
+  },
+  {
+    "path": "root.tours[21].includes[1]",
+    "text": "Xe du lịch chất lượng cao đưa đón theo chương trình."
+  },
+  {
+    "path": "root.tours[21].includes[2]",
+    "text": "03 bữa chính tiêu chuẩn 130.000đ/suất; ăn sáng buffet tại khách sạn."
+  },
+  {
+    "path": "root.tours[21].includes[3]",
+    "text": "Hướng dẫn viên giàu kinh nghiệm – am hiểu tuyến điểm."
+  },
+  {
+    "path": "root.tours[21].includes[4]",
+    "text": "Vé tham quan theo chương trình (01 lần vào cổng)."
+  },
+  {
+    "path": "root.tours[21].includes[5]",
+    "text": "Vé vào VinWonders Nam Hội An theo diện đoàn (420.000đ/học sinh / 600.000đ giáo viên & phụ huynh)."
+  },
+  {
+    "path": "root.tours[21].includes[6]",
+    "text": "Trải nghiệm tại VinWonders: Bến Cảng Giao Thoa, Đại Lộ Giấc Mơ, Thành Cổ Loa, Safari River, múa rối nước, dân ca quan họ, công viên nước, khu trò chơi điện tử…"
+  },
+  {
+    "path": "root.tours[21].includes[7]",
+    "text": "Tham quan Chùa Linh Ứng – Công viên Kỳ Quan Thế Giới."
+  },
+  {
+    "path": "root.tours[21].includes[8]",
+    "text": "Tham quan Ngũ Hành Sơn – làng đá Non Nước."
+  },
+  {
+    "path": "root.tours[21].includes[9]",
+    "text": "Tham quan Bảo tàng Quân khu 5."
+  },
+  {
+    "path": "root.tours[21].includes[10]",
+    "text": "Khăn lạnh – nước uống phục vụ đoàn."
+  },
+  {
+    "path": "root.tours[21].includes[11]",
+    "text": "Quà tặng: mũ du lịch – ảnh đoàn."
+  },
+  {
+    "path": "root.tours[21].includes[12]",
+    "text": "Bảo hiểm du lịch theo quy định."
+  },
+  {
+    "path": "root.tours[21].notes",
+    "text": "Chương trình có thể thay đổi thứ tự điểm tham quan nhưng đảm bảo đầy đủ nội dung. Không bao gồm: phòng đơn, chi phí cá nhân, VAT, tip HDV & lái xe, dịch vụ tự chọn. Trẻ em: 11 tuổi+ tính như người lớn; 8–10 tuổi: 75%; 4–7 tuổi: 50%; dưới 4 tuổi miễn phí (gia đình tự lo). Chính sách hủy: 14 ngày: 0%; 7–13 ngày: 30%; 5–6 ngày: 50%; 3–4 ngày: 75%; 1–2 ngày: 90%; ngày khởi hành: 100%. Ưu đãi học sinh áp dụng đến 01/06/2026. Danh sách đoàn phải có dấu nhà trường."
+  },
+  {
+    "path": "root.tours[21].style",
+    "text": "Trải nghiệm văn hóa – giải trí – giáo dục – thiên nhiên. Nhịp đi phù hợp học sinh, gia đình, nhóm bạn; kết hợp vui chơi giải trí – khám phá – học hỏi qua các không gian lịch sử và văn hóa đặc sắc."
+  },
+  {
+    "path": "root.tours[21].transport[0]",
+    "text": "Xe 16 chỗ"
+  },
+  {
+    "path": "root.tours[21].transport[1]",
+    "text": "Xe 35 chỗ"
+  },
+  {
+    "path": "root.tours[21].transport[2]",
+    "text": "Xe 45 chỗ"
+  },
+  {
+    "path": "root.tours[21].accommodation",
+    "text": "Khách sạn 3* (có thể nâng cấp 4* theo yêu cầu)."
+  },
+  {
+    "path": "root.tours[21].meals",
+    "text": "03 bữa chính theo tiêu chuẩn; ăn sáng buffet tại khách sạn; bữa tối VinWonders: học sinh 70.000đ, giáo viên/phụ huynh 130.000đ."
+  },
+  {
+    "path": "root.tours[21].event_support",
+    "text": "Hỗ trợ đoàn học sinh – chính sách miễn vé giáo viên theo tỷ lệ; hỗ trợ chụp ảnh đoàn; hỗ trợ sắp xếp dịch vụ theo nhu cầu đoàn."
+  },
+  {
+    "path": "root.tours[22].tour_name",
+    "text": "Theo Dòng Di Sản Miền Trung – Từ Phố Cổ Đến Cố Đô (3 ngày 2 đêm)"
+  },
+  {
+    "path": "root.tours[22].summary",
+    "text": "Hành trình 3 ngày 2 đêm dành cho Quý thầy cô thư giãn, kết nối và mở rộng góc nhìn về các giá trị văn hóa – lịch sử tiêu biểu của miền Trung, đi qua Hội An, Rừng dừa Bảy Mẫu, Đà Nẵng và Huế, kết hợp tham quan di sản, trải nghiệm làng nghề, giao lưu và nghỉ dưỡng."
+  },
+  {
+    "path": "root.tours[22].location",
+    "text": "Quảng Trị – Hội An (Quảng Nam) – Đà Nẵng – Huế"
+  },
+  {
+    "path": "root.tours[22].duration",
+    "text": "3 ngày 2 đêm"
+  },
+  {
+    "path": "root.tours[22].price",
+    "text": "2.670.000 – 2.790.000 VNĐ/khách (tùy theo quy mô đoàn 17–25 khách). Nếu tham quan VinWonders Nam Hội An: cộng thêm 600.000 VNĐ/khách."
+  },
+  {
+    "path": "root.tours[22].includes[0]",
+    "text": "Xe du lịch chất lượng cao đưa đón đoàn theo chương trình"
+  },
+  {
+    "path": "root.tours[22].includes[1]",
+    "text": "05 bữa chính tiêu chuẩn 150.000 VNĐ/khách (01 bữa tăng cường 200.000 VNĐ/khách)"
+  },
+  {
+    "path": "root.tours[22].includes[2]",
+    "text": "01 bữa đặc sản bánh ướt thịt heo quay Lăng Cô (75.000 VNĐ/khách)"
+  },
+  {
+    "path": "root.tours[22].includes[3]",
+    "text": "Lưu trú khách sạn hoặc resort tiêu chuẩn 3* trở lên (2 khách/phòng)"
+  },
+  {
+    "path": "root.tours[22].includes[4]",
+    "text": "Hướng dẫn viên chuyên nghiệp theo đoàn suốt hành trình"
+  },
+  {
+    "path": "root.tours[22].includes[5]",
+    "text": "Vé tham quan vào cửa lần đầu theo chương trình"
+  },
+  {
+    "path": "root.tours[22].includes[6]",
+    "text": "Tham quan Hội An, Rừng dừa Bảy Mẫu, Ngũ Hành Sơn, Chùa Linh Ứng Đà Nẵng"
+  },
+  {
+    "path": "root.tours[22].includes[7]",
+    "text": "Tham quan Làng hương Thủy Xuân, Đại Nội Huế, Chùa Thiên Mụ"
+  },
+  {
+    "path": "root.tours[22].includes[8]",
+    "text": "Chương trình giao lưu tối ngày thứ 2 (âm thanh – ánh sáng)"
+  },
+  {
+    "path": "root.tours[22].includes[9]",
+    "text": "Nước uống, nón du lịch, bảo hiểm du lịch theo quy định"
+  },
+  {
+    "path": "root.tours[22].notes",
+    "text": "Chương trình có thể hoán đổi thứ tự điểm tham quan nhưng vẫn đảm bảo đầy đủ nội dung. Không bao gồm VAT, chi phí cá nhân, đồ uống ngoài bữa ăn, dịch vụ tự chọn, vé VinWonders Nam Hội An (nếu không đăng ký), phụ thu phòng đơn 350.000 VNĐ/đêm, tiền tip HDV & lái xe. Phụ thu lễ/tết/cuối tuần từ 10–25% tùy thời điểm. Chính sách trẻ em và chính sách hủy tour áp dụng theo quy định chi tiết của chương trình."
+  },
+  {
+    "path": "root.tours[22].style",
+    "text": "Trải nghiệm văn hóa – lịch sử – thư giãn; nhịp đi nhẹ nhàng, trang trọng, phù hợp Quý thầy cô và các đoàn giáo dục; kết hợp tham quan di sản, làng nghề truyền thống, giao lưu và nghỉ dưỡng."
+  },
+  {
+    "path": "root.tours[22].transport",
+    "text": "Xe từ 16 chỗ đến 45 chỗ tùy số lượng khách, bảo đảm xe đời mới, chất lượng cao"
+  },
+  {
+    "path": "root.tours[22].accommodation",
+    "text": "Khách sạn hoặc resort tiêu chuẩn từ 3* trở lên; 2 người/phòng, phòng 3 áp dụng cho khách lẻ nam/nữ"
+  },
+  {
+    "path": "root.tours[22].meals",
+    "text": "05 bữa chính tiêu chuẩn 150.000 VNĐ/khách (01 bữa tăng cường 200.000 VNĐ/khách), 01 bữa đặc sản Lăng Cô; ăn sáng tại khách sạn"
+  },
+  {
+    "path": "root.tours[22].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: điều phối lịch trình, tổ chức giao lưu, hỗ trợ chụp ảnh – kết nối tập thể, kiểm soát an toàn điểm đến, xử lý tình huống phát sinh và đồng hành chăm sóc trải nghiệm theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[23].tour_name",
+    "text": "Tour trải nghiệm linh hoạt - Đông Hà – Nha Trang – Đà Lạt – Huế"
+  },
+  {
+    "path": "root.tours[23].summary",
+    "text": "Hành trình 4 ngày 3 đêm Tết Nguyên Đán: đi tàu SE7 đến Nha Trang, tham quan các điểm nổi tiếng, tiếp tục đến Đà Lạt ngàn hoa và bay về Đà Nẵng – Huế – Đông Hà."
+  },
+  {
+    "path": "root.tours[23].location",
+    "text": "Đông Hà – Nha Trang – Đà Lạt – Đà Nẵng – Huế"
+  },
+  {
+    "path": "root.tours[23].duration",
+    "text": "4 ngày 3 đêm"
+  },
+  {
+    "path": "root.tours[23].price",
+    "text": "Giá theo bảng (VNĐ/người): 8–9 khách: 8.570.000; 10–11: 7.960.000; 12–13: 7.620.000; 14–15: 7.530.000; 16–17: 7.300.000; 18–19: 7.120.000; 20–21: 6.960.000; 22–23: 6.840.000 (chưa gồm vé máy bay)"
+  },
+  {
+    "path": "root.tours[23].includes[0]",
+    "text": "Tàu SE7 trải nghiệm đêm Đông Hà → Nha Trang"
+  },
+  {
+    "path": "root.tours[23].includes[1]",
+    "text": "Tháp Bà Ponagar – Viện Hải Dương Học hoặc Nhà thờ Đá"
+  },
+  {
+    "path": "root.tours[23].includes[2]",
+    "text": "Chùa Long Sơn – biểu tượng tâm linh"
+  },
+  {
+    "path": "root.tours[23].includes[3]",
+    "text": "Thác Datanla – Thiền viện Trúc Lâm – Hồ Tuyền Lâm"
+  },
+  {
+    "path": "root.tours[23].includes[4]",
+    "text": "Chùa Linh Phước (PA2)"
+  },
+  {
+    "path": "root.tours[23].includes[5]",
+    "text": "Ga Đà Lạt – Vườn hoa Thành phố – Nhà thờ Con Gà"
+  },
+  {
+    "path": "root.tours[23].includes[6]",
+    "text": "Bay Đà Lạt – Đà Nẵng – ăn tối tại Huế"
+  },
+  {
+    "path": "root.tours[23].includes[7]",
+    "text": "Ngày 1: Đông Hà → Nha Trang (tàu SE7)"
+  },
+  {
+    "path": "root.tours[23].includes[8]",
+    "text": "Ngày 2: Nha Trang tham quan (Ăn sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[23].includes[9]",
+    "text": "Ngày 3: Nha Trang → Đà Lạt (Ăn sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[23].includes[10]",
+    "text": "Ngày 4: Đà Lạt → sân bay – bay → Đà Nẵng – Huế → Đông Hà"
+  },
+  {
+    "path": "root.tours[23].notes",
+    "text": "Tết cao điểm, cần đặt tour – vé tàu – vé máy bay sớm; chuẩn bị áo ấm vì Đà Lạt lạnh. Giá dịch vụ lễ tết sẽ tăng khoảng 10%"
+  },
+  {
+    "path": "root.tours[23].style",
+    "text": "Biển – núi – tâm linh – trải nghiệm tàu/xe/bay – phù hợp gia đình & cơ quan."
+  },
+  {
+    "path": "root.tours[23].transport",
+    "text": "Xe từ 16 chỗ đến 45 chỗ tuỳ số lượng khách, bảo đảm xe đời mới, chất lượng cao"
+  },
+  {
+    "path": "root.tours[23].accommodation",
+    "text": "Khách sạn từ 3* (có thể nâng cấp tuy lựa chọn quý khách)"
+  },
+  {
+    "path": "root.tours[23].meals",
+    "text": "07 bữa chính tiêu chuẩn 150.000 VNĐ/suất + ăn sáng khách sạn; nước uống cả ngày"
+  },
+  {
+    "path": "root.tours[23].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[24].tour_name",
+    "text": "Đông Hà – Nha Trang – Đà Lạt – Buôn Ma Thuột – Đông Hà"
+  },
+  {
+    "path": "root.tours[24].summary",
+    "text": "Hành trình 4N3Đ khám phá biển Nha Trang, cao nguyên Đà Lạt và văn hoá Tây Nguyên Buôn Ma Thuột; kết hợp Vinpearl Land, Tháp Bà Ponagar, thác – chùa – hồ – dinh và các trải nghiệm đặc sắc ngày Tết."
+  },
+  {
+    "path": "root.tours[24].location",
+    "text": "Đông Hà – Nha Trang – Đà Lạt – Buôn Ma Thuột"
+  },
+  {
+    "path": "root.tours[24].duration",
+    "text": "4 ngày 3 đêm"
+  },
+  {
+    "path": "root.tours[24].price",
+    "text": "6.670.000 – 8.210.000 VNĐ/người (tùy xe và số lượng khách)"
+  },
+  {
+    "path": "root.tours[24].includes[0]",
+    "text": "Khám phá Nha Trang – vịnh đẹp nhất thế giới"
+  },
+  {
+    "path": "root.tours[24].includes[1]",
+    "text": "Cáp treo Vinpearl Land – vui chơi giải trí"
+  },
+  {
+    "path": "root.tours[24].includes[2]",
+    "text": "Tháp Bà Ponagar – Viện Hải Dương Học"
+  },
+  {
+    "path": "root.tours[24].includes[3]",
+    "text": "Đà Lạt: Thác Datanla, Thiền viện Trúc Lâm, Hồ Tuyền Lâm, Chùa Linh Phước, Dinh Bảo Đại"
+  },
+  {
+    "path": "root.tours[24].includes[4]",
+    "text": "Buôn Ma Thuột – trải nghiệm văn hoá Tây Nguyên"
+  },
+  {
+    "path": "root.tours[24].includes[5]",
+    "text": "Ngày 1: Đông Hà → Nha Trang (trưa, tối)"
+  },
+  {
+    "path": "root.tours[24].includes[6]",
+    "text": "Ngày 2: Nha Trang → Vinpearl → Đà Lạt (sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[24].includes[7]",
+    "text": "Ngày 3: Đà Lạt → Buôn Ma Thuột (sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[24].includes[8]",
+    "text": "Ngày 4: Buôn Ma Thuột → Đông Hà (sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[24].notes",
+    "text": "Lịch trình có thể điều chỉnh nhẹ theo điều kiện Tết; nên đặt tour sớm để giữ phòng – xe.  Giá dịch vụ lễ tết sẽ tăng khoảng 10%"
+  },
+  {
+    "path": "root.tours[24].style",
+    "text": "Biển – núi – văn hóa – tâm linh – khám phá Tây Nguyên."
+  },
+  {
+    "path": "root.tours[24].transport",
+    "text": "Xe 16–45 chỗ đời mới tùy quy mô đoàn"
+  },
+  {
+    "path": "root.tours[24].accommodation",
+    "text": "Khách sạn tiêu chuẩn tại Nha Trang – Đà Lạt – Buôn Ma Thuột"
+  },
+  {
+    "path": "root.tours[24].meals",
+    "text": "Ăn đủ 3 bữa chính/ngày + nước uống; ăn sáng tại khách sạn"
+  },
+  {
+    "path": "root.tours[24].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[25].tour_name",
+    "text": "Phú Quốc 4N3Đ – Khám phá Nam đảo & Bắc đảo"
+  },
+  {
+    "path": "root.tours[25].summary",
+    "text": "Hành trình 4N3Đ khám phá Nam đảo – Bắc đảo: Safari, Grand World, Cầu Hôn, Chùa Hộ Quốc, show Tinh Hoa Việt Nam, Nhà tù Phú Quốc, rừng nguyên sinh và Bãi Kem."
+  },
+  {
+    "path": "root.tours[25].location",
+    "text": "Đông Hà – Đà Nẵng – Phú Quốc"
+  },
+  {
+    "path": "root.tours[25].duration",
+    "text": "4 ngày 3 đêm"
+  },
+  {
+    "path": "root.tours[25].price",
+    "text": "6.280.000 VNĐ/người (đoàn 09 khách, chưa gồm vé máy bay)"
+  },
+  {
+    "path": "root.tours[25].includes[0]",
+    "text": "Check-in Địa Trung Hải – Cầu Hôn"
+  },
+  {
+    "path": "root.tours[25].includes[1]",
+    "text": "Show Awaken Sea hoặc hoạt động đêm Grand World"
+  },
+  {
+    "path": "root.tours[25].includes[2]",
+    "text": "Chùa Hộ Quốc – điểm tâm linh lớn nhất đảo"
+  },
+  {
+    "path": "root.tours[25].includes[3]",
+    "text": "Vinpearl Safari hoặc Cáp treo Hòn Thơm / Cano 3 đảo"
+  },
+  {
+    "path": "root.tours[25].includes[4]",
+    "text": "Grand World – Bảo tàng Gấu – Show Tinh Hoa Việt Nam"
+  },
+  {
+    "path": "root.tours[25].includes[5]",
+    "text": "Rừng nguyên sinh – Đền Nguyễn Trung Trực – Nhà tù Phú Quốc – Bãi Kem"
+  },
+  {
+    "path": "root.tours[25].includes[6]",
+    "text": "Ngày 1: Đông Hà – Đà Nẵng – Phú Quốc (trưa, tối)"
+  },
+  {
+    "path": "root.tours[25].includes[7]",
+    "text": "Ngày 2: Safari/Cáp treo – Grand World (sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[25].includes[8]",
+    "text": "Ngày 3: Rừng nguyên sinh – Bãi Kem – Nhà tù Phú Quốc (sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[25].includes[9]",
+    "text": "Ngày 4: Tự do – Cafe Grand World – bay về Đà Nẵng (sáng, trưa)"
+  },
+  {
+    "path": "root.tours[25].notes",
+    "text": "Khuyến nghị đặt vé máy bay sớm để giữ giá tốt; chuẩn bị đồ đi biển."
+  },
+  {
+    "path": "root.tours[25].style",
+    "text": "Biển – giải trí – thiên nhiên – tâm linh – show nghệ thuật."
+  },
+  {
+    "path": "root.tours[25].transport",
+    "text": "Máy bay + xe du lịch tại Phú Quốc"
+  },
+  {
+    "path": "root.tours[25].accommodation",
+    "text": "Khách sạn tiêu chuẩn từ 3* tại Phú Quốc (3 đêm)"
+  },
+  {
+    "path": "root.tours[25].meals",
+    "text": "tiêu chuẩn 150.000 VNĐ/suất + ăn sáng khách sạn; nước uống mỗi ngày"
+  },
+  {
+    "path": "root.tours[25].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[26].tour_name",
+    "text": "Khám Phá Đất Việt – Văn Hóa & Kỳ Quan Thiên Nhiên (Tam Đảo – Mộc Châu) (4 ngày 3 đêm, di chuyển ban đêm)"
+  },
+  {
+    "path": "root.tours[26].summary",
+    "text": "Hành trình 4 ngày 3 đêm khám phá vẻ đẹp thiên nhiên và văn hóa đặc sắc miền Bắc, từ thị trấn mờ sương Tam Đảo đến cao nguyên xanh mát Mộc Châu. Chương trình kết hợp du lịch thiên nhiên, tâm linh, trải nghiệm văn hóa bản địa và giao lưu cộng đồng, phù hợp cho Quý thầy cô và các đoàn giáo dục."
+  },
+  {
+    "path": "root.tours[26].location",
+    "text": "Quảng Trị – Hà Nội – Tam Đảo (Vĩnh Phúc) – Mộc Châu (Sơn La) – Quảng Trị"
+  },
+  {
+    "path": "root.tours[26].duration",
+    "text": "4 ngày 3 đêm (di chuyển ban đêm)"
+  },
+  {
+    "path": "root.tours[26].price",
+    "text": "4.230.000 – 4.290.000 VNĐ/khách (tùy quy mô đoàn 33–42 khách)"
+  },
+  {
+    "path": "root.tours[26].includes[0]",
+    "text": "Vé xe giường nằm đời mới Quảng Trị – Hà Nội – Quảng Trị (02 người/giường)"
+  },
+  {
+    "path": "root.tours[26].includes[1]",
+    "text": "Xe du lịch 16–35 chỗ đời mới phục vụ tham quan tại Hà Nội – Tam Đảo – Mộc Châu"
+  },
+  {
+    "path": "root.tours[26].includes[2]",
+    "text": "Lưu trú Tam Đảo khách sạn tiêu chuẩn 3* (ăn sáng buffet)"
+  },
+  {
+    "path": "root.tours[26].includes[3]",
+    "text": "Lưu trú Mộc Châu nhà nghỉ cộng đồng truyền thống"
+  },
+  {
+    "path": "root.tours[26].includes[4]",
+    "text": "06 bữa chính theo chương trình (tiêu chuẩn 150.000 VNĐ/suất, 01 bữa đặc sản 200.000 VNĐ/suất)"
+  },
+  {
+    "path": "root.tours[26].includes[5]",
+    "text": "Ăn sáng theo chương trình (01 bữa phở Hà Nội bên ngoài)"
+  },
+  {
+    "path": "root.tours[26].includes[6]",
+    "text": "Hướng dẫn viên nhiệt tình phục vụ theo chương trình; bố trí điều hành theo đoàn"
+  },
+  {
+    "path": "root.tours[26].includes[7]",
+    "text": "Vé tham quan vào cửa lần đầu theo chương trình"
+  },
+  {
+    "path": "root.tours[26].includes[8]",
+    "text": "Tham quan Tây Thiên, Tháp truyền hình Tam Đảo, Cổng Trời Tam Đảo, Nhà thờ đá Tam Đảo"
+  },
+  {
+    "path": "root.tours[26].includes[9]",
+    "text": "Tham quan Đèo Thung Khe, Thác Dải Yếm, Vườn mận, Rừng thông Bản Áng"
+  },
+  {
+    "path": "root.tours[26].includes[10]",
+    "text": "Tổ chức đêm lửa trại với âm thanh, ánh sáng, MC và đội múa bản địa"
+  },
+  {
+    "path": "root.tours[26].includes[11]",
+    "text": "Nước uống 2 chai 0,5l/khách/ngày, nón du lịch"
+  },
+  {
+    "path": "root.tours[26].includes[12]",
+    "text": "Bảo hiểm du lịch theo quy định"
+  },
+  {
+    "path": "root.tours[26].notes",
+    "text": "Chương trình có thể hoán đổi thứ tự điểm tham quan nhưng vẫn đảm bảo đầy đủ nội dung. Không bao gồm VAT, chi phí cá nhân, đồ uống ngoài bữa ăn, vé cầu kính Bạch Long, phụ thu phòng đơn (425.000 VNĐ/phòng/đêm), tiền bồi dưỡng HDV & lái xe, dịch vụ trung chuyển phát sinh. Chính sách trẻ em và chính sách hủy tour áp dụng theo quy định chi tiết của chương trình."
+  },
+  {
+    "path": "root.tours[26].style",
+    "text": "Trải nghiệm thiên nhiên – văn hóa – cộng đồng; kết hợp du lịch núi rừng, tâm linh và giao lưu bản địa; nhịp đi linh hoạt, phù hợp Quý thầy cô và các đoàn giáo dục."
+  },
+  {
+    "path": "root.tours[26].transport",
+    "text": "Xe giường nằm đường dài và xe du lịch từ 16 đến 35 chỗ phục vụ tham quan theo chương trình"
+  },
+  {
+    "path": "root.tours[26].accommodation",
+    "text": "Khách sạn 3* tại Tam Đảo; nhà nghỉ cộng đồng truyền thống tại Mộc Châu; phòng 2 khách hoặc phòng 3 cho khách lẻ"
+  },
+  {
+    "path": "root.tours[26].meals",
+    "text": "06 bữa chính theo chương trình (150.000 VNĐ/suất; 01 bữa đặc sản 200.000 VNĐ/suất); ăn sáng tại khách sạn và theo chương trình"
+  },
+  {
+    "path": "root.tours[26].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: điều phối lịch trình, tổ chức lửa trại – giao lưu, hỗ trợ chụp ảnh, kiểm soát an toàn, xử lý tình huống phát sinh và đồng hành chăm sóc trải nghiệm theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[27].tour_name",
+    "text": "Đông Hà – Nha Trang – Quy Nhơn – Đông Hà (5 ngày 4 đêm)"
+  },
+  {
+    "path": "root.tours[27].summary",
+    "text": "Hành trình 5N4Đ kết hợp tàu hỏa và xe du lịch: tham quan Nha Trang – Quy Nhơn với Tháp Bà Ponagar, Viện Hải Dương Học, Vinpearl Land, Eo Gió, Ghềnh Ráng – Tiên Sa, Tháp Đôi và Bảo tàng Quang Trung."
+  },
+  {
+    "path": "root.tours[27].location",
+    "text": "Đông Hà – Nha Trang – Quy Nhơn"
+  },
+  {
+    "path": "root.tours[27].duration",
+    "text": "5 ngày 4 đêm"
+  },
+  {
+    "path": "root.tours[27].price",
+    "text": "4.300.000 – 4.490.000 VNĐ VNĐ/khách (tùy quy mô đoàn 33–42 khách, xe 45 chỗ), Giá sẽ được cập nhật sau và phụ thuộc vào nhiều yếu tố: số lượng khách, thời điểm khởi hành, cấp độ dịch vụ lựa chọn (cơ bản – nâng cao – cao cấp), hạng phương tiện, tiêu chuẩn lưu trú – ăn uống, vé tham quan và các yêu cầu tùy chỉnh theo nhóm. Khi chốt đủ thông tin, Ruby Wings sẽ gửi báo giá chi tiết."
+  },
+  {
+    "path": "root.tours[27].includes[0]",
+    "text": "Tàu SE7 hành trình đêm Đông Hà → Nha Trang"
+  },
+  {
+    "path": "root.tours[27].includes[1]",
+    "text": "Tháp Bà Ponagar – Chùa Long Sơn"
+  },
+  {
+    "path": "root.tours[27].includes[2]",
+    "text": "Viện Hải Dương Học hoặc Nhà thờ Đá Nha Trang"
+  },
+  {
+    "path": "root.tours[27].includes[3]",
+    "text": "Vinpearl Land – vui chơi trọn ngày"
+  },
+  {
+    "path": "root.tours[27].includes[4]",
+    "text": "Eo Gió – Ghềnh Ráng – Tiên Sa – Mộ Hàn Mặc Tử"
+  },
+  {
+    "path": "root.tours[27].includes[5]",
+    "text": "Tháp Đôi – Bảo tàng Quang Trung"
+  },
+  {
+    "path": "root.tours[27].includes[6]",
+    "text": "Ngày 1: Đông Hà → Nha Trang bằng tàu (tối tự túc)"
+  },
+  {
+    "path": "root.tours[27].includes[7]",
+    "text": "Ngày 2: Nha Trang tham quan (sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[27].includes[8]",
+    "text": "Ngày 3: Vinpearl Land → di chuyển Quy Nhơn (sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[27].includes[9]",
+    "text": "Ngày 4: Quy Nhơn tham quan (sáng, trưa, tối)"
+  },
+  {
+    "path": "root.tours[27].includes[10]",
+    "text": "Ngày 5: Quy Nhơn – Đông Hà bằng tàu SE2 (sáng)"
+  },
+  {
+    "path": "root.tours[27].notes",
+    "text": "Giá chưa bao gồm vé Vinpearl Land; cần đặt tàu sớm dịp cao điểm."
+  },
+  {
+    "path": "root.tours[27].style",
+    "text": "Biển – văn hóa – giải trí – di sản – nghỉ dưỡng."
+  },
+  {
+    "path": "root.tours[27].transport",
+    "text": "Tàu SE7/SE2 + xe 16–45 chỗ tùy đoàn"
+  },
+  {
+    "path": "root.tours[27].accommodation",
+    "text": "Khách sạn tiêu chuẩn từ 3* tại Nha Trang & Quy Nhơn"
+  },
+  {
+    "path": "root.tours[27].meals",
+    "text": "Ăn theo chương trình tiêu chuẩn 150.000 VNĐ/suất; sáng tại khách sạn; nước uống mỗi ngày"
+  },
+  {
+    "path": "root.tours[27].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[28].tour_name",
+    "text": "Miền Trung Di Sản – Khám Phá Quy Nhơn – Phú Yên (4 ngày 3 đêm)"
+  },
+  {
+    "path": "root.tours[28].summary",
+    "text": "Hành trình 4 ngày 3 đêm kết nối những điểm đến tiêu biểu của dải đất miền Trung, nơi hội tụ vẻ đẹp thiên nhiên hoang sơ, chiều sâu lịch sử và các thắng cảnh biển kỳ vĩ bậc nhất Việt Nam. Chương trình phù hợp cho Quý thầy cô và các đoàn giáo dục, kết hợp tham quan di sản, văn hóa Chăm Pa, danh thắng biển và giao lưu tập thể."
+  },
+  {
+    "path": "root.tours[28].location",
+    "text": "Quảng Trị – Quy Nhơn (Bình Định) – Tuy Hòa (Phú Yên) – Hải Vân Quan – Quảng Trị"
+  },
+  {
+    "path": "root.tours[28].duration",
+    "text": "4 ngày 3 đêm"
+  },
+  {
+    "path": "root.tours[28].price",
+    "text": "4.050.000 – 4.250.000 VNĐ/khách (tùy quy mô đoàn 33–42 khách, xe 45 chỗ)"
+  },
+  {
+    "path": "root.tours[28].includes[0]",
+    "text": "Xe du lịch 35–45 chỗ đời mới (2022–2025) đưa đón theo chương trình"
+  },
+  {
+    "path": "root.tours[28].includes[1]",
+    "text": "08 bữa chính (07 bữa tiêu chuẩn 150.000 VNĐ/suất, 01 bữa tăng cường 200.000 VNĐ/suất)"
+  },
+  {
+    "path": "root.tours[28].includes[2]",
+    "text": "Lưu trú khách sạn tiêu chuẩn 3*, ăn sáng tại khách sạn"
+  },
+  {
+    "path": "root.tours[28].includes[3]",
+    "text": "Hướng dẫn viên chuyên nghiệp theo đoàn suốt hành trình"
+  },
+  {
+    "path": "root.tours[28].includes[4]",
+    "text": "Vé tham quan vào cửa lần đầu theo chương trình"
+  },
+  {
+    "path": "root.tours[28].includes[5]",
+    "text": "Tham quan Eo Gió, Tháp Đôi, Bảo tàng Quang Trung"
+  },
+  {
+    "path": "root.tours[28].includes[6]",
+    "text": "Tham quan Chùa Thiên Hưng, Ghềnh Ráng – Tiên Sa"
+  },
+  {
+    "path": "root.tours[28].includes[7]",
+    "text": "Tham quan Tháp Nhạn, Nhà thờ Mằng Lăng"
+  },
+  {
+    "path": "root.tours[28].includes[8]",
+    "text": "Tham quan Bãi Xép – Ghềnh Ông, Gành Đá Đĩa"
+  },
+  {
+    "path": "root.tours[28].includes[9]",
+    "text": "Tham quan Bãi Môn – Mũi Đại Lãnh"
+  },
+  {
+    "path": "root.tours[28].includes[10]",
+    "text": "Tham quan Hải Vân Quan"
+  },
+  {
+    "path": "root.tours[28].includes[11]",
+    "text": "Tổ chức Gala đêm cuối với sân khấu, âm thanh, ánh sáng"
+  },
+  {
+    "path": "root.tours[28].includes[12]",
+    "text": "Nước uống, nón du lịch, bảo hiểm du lịch theo quy định"
+  },
+  {
+    "path": "root.tours[28].notes",
+    "text": "Chương trình có thể hoán đổi thứ tự điểm tham quan nhưng vẫn đảm bảo đầy đủ nội dung. Không bao gồm VAT, chi phí cá nhân, đồ uống ngoài bữa ăn, dịch vụ tự chọn, phụ thu phòng đơn, tiền tip HDV & lái xe (khoảng 30.000 VNĐ/ngày/khách). Phụ thu lễ/tết/cuối tuần từ 10–25% tùy thời điểm. Chính sách trẻ em và chính sách hủy tour áp dụng theo quy định chi tiết của chương trình."
+  },
+  {
+    "path": "root.tours[28].style",
+    "text": "Trải nghiệm di sản – văn hóa – biển đảo; nhịp đi cân bằng giữa tham quan và nghỉ dưỡng; phù hợp Quý thầy cô, đoàn giáo dục và tập thể cơ quan."
+  },
+  {
+    "path": "root.tours[28].transport",
+    "text": "Xe từ 35 chỗ đến 45 chỗ tùy số lượng khách, bảo đảm xe đời mới, chất lượng cao"
+  },
+  {
+    "path": "root.tours[28].accommodation",
+    "text": "Khách sạn tiêu chuẩn 3*, phòng 2 khách; ăn sáng tại khách sạn"
+  },
+  {
+    "path": "root.tours[28].meals",
+    "text": "08 bữa chính (07 bữa 150.000 VNĐ/suất, 01 bữa 200.000 VNĐ/suất); ăn sáng tại khách sạn"
+  },
+  {
+    "path": "root.tours[28].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: điều phối lịch trình, tổ chức Gala – giao lưu, hỗ trợ chụp ảnh, kiểm soát an toàn điểm đến, xử lý tình huống phát sinh và đồng hành chăm sóc trải nghiệm theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[29].tour_name",
+    "text": "Di sản Huế & Đầm Chuồn – Hoàng hôn phá Tam Giang"
+  },
+  {
+    "path": "root.tours[29].summary",
+    "text": "Hành trình 1 ngày trải nghiệm văn hóa – tâm linh – thiên nhiên: Đại Nội, chùa Từ Hiếu, nhà lưu niệm Bác Hồ, rừng ngập mặn Rú Chá và thưởng thức hải sản trên Đầm Chuồn lúc hoàng hôn."
+  },
+  {
+    "path": "root.tours[29].location",
+    "text": "Huế – Rú Chá – Đầm Chuồn"
+  },
+  {
+    "path": "root.tours[29].duration",
+    "text": "1 ngày"
+  },
+  {
+    "path": "root.tours[29].price",
+    "text": "500.000 – 1.200.000 VNĐ/người (tùy thực đơn & loại xe)"
+  },
+  {
+    "path": "root.tours[29].includes[0]",
+    "text": "Đại Nội Huế – Hoàng thành, Tử Cấm Thành"
+  },
+  {
+    "path": "root.tours[29].includes[1]",
+    "text": "Chùa Từ Hiếu hoặc Chùa Thiên Mụ"
+  },
+  {
+    "path": "root.tours[29].includes[2]",
+    "text": "Nhà lưu niệm Bác Hồ"
+  },
+  {
+    "path": "root.tours[29].includes[3]",
+    "text": "Rừng ngập mặn Rú Chá – hệ sinh thái nguyên sinh quý hiếm"
+  },
+  {
+    "path": "root.tours[29].includes[4]",
+    "text": "Đầm Chuồn – dùng cơm tối trên đầm giữa hoàng hôn"
+  },
+  {
+    "path": "root.tours[29].includes[5]",
+    "text": "07:30–08:00: Đón khách tại điểm hẹn"
+  },
+  {
+    "path": "root.tours[29].includes[6]",
+    "text": "08:00–10:30: Tham quan Đại Nội"
+  },
+  {
+    "path": "root.tours[29].includes[7]",
+    "text": "10:30–12:00: Chùa Từ Hiếu / Thiên Mụ"
+  },
+  {
+    "path": "root.tours[29].includes[8]",
+    "text": "12:00–14:30: Ăn trưa – nghỉ ngơi"
+  },
+  {
+    "path": "root.tours[29].includes[9]",
+    "text": "14:30–15:30: Nhà lưu niệm Bác Hồ"
+  },
+  {
+    "path": "root.tours[29].includes[10]",
+    "text": "15:30–16:30: Tham quan Rú Chá"
+  },
+  {
+    "path": "root.tours[29].includes[11]",
+    "text": "16:30–18:30: Đầm Chuồn – ăn tối trên đầm"
+  },
+  {
+    "path": "root.tours[29].includes[12]",
+    "text": "18:30: Trở về Huế"
+  },
+  {
+    "path": "root.tours[29].notes",
+    "text": "Hành trình chậm, sâu; phù hợp khách thích văn hóa – thiên nhiên – tâm linh; trang phục lịch sự khi vào chùa."
+  },
+  {
+    "path": "root.tours[29].style",
+    "text": "Trải nghiệm văn hóa – tâm linh – thiên nhiên – hành trình chậm"
+  },
+  {
+    "path": "root.tours[29].transport",
+    "text": "Xe từ 16 chỗ đến 45 chỗ tuỳ số lượng khách, bảo đảm xe đời mới, chất lượng cao"
+  },
+  {
+    "path": "root.tours[29].accommodation",
+    "text": "Không áp dụng (tour 1 ngày)"
+  },
+  {
+    "path": "root.tours[29].meals",
+    "text": "1 bữa trưa + 1 bữa tối hải sản trên Đầm Chuồn; nước uống theo chương trình"
+  },
+  {
+    "path": "root.tours[29].event_support",
+    "text": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh – ghi nhận nhu cầu cá nhân; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+  },
+  {
+    "path": "root.tours[30].tour_name",
+    "text": "Văn hoá tổ chức & Hành vi chuẩn Ruby Wings (Nội dung văn hoá – không phải tour)"
+  },
+  {
+    "path": "root.tours[30].summary",
+    "text": "Khối tiêu chuẩn văn hoá – giao tiếp – phản hồi – báo cáo – phối hợp – phong cách làm việc trong Ruby Wings. Đây là dữ liệu văn hoá doanh nghiệp, không phải chương trình tour."
+  },
+  {
+    "path": "root.tours[30].location",
+    "text": "Nội bộ Ruby Wings (Không áp dụng địa điểm du lịch)"
+  },
+  {
+    "path": "root.tours[30].duration",
+    "text": "Sẽ cập nhật sau"
+  },
+  {
+    "path": "root.tours[30].price",
+    "text": "Sẽ cập nhật sau"
+  },
+  {
+    "path": "root.tours[30].includes[0]",
+    "text": "Bộ nguyên tắc giao tiếp: Rõ ràng – chính xác – có cấu trúc; tôn trọng – chân thành – cầu thị; phản hồi trong vòng 24 giờ; chọn đúng kênh giao tiếp (trực tiếp – nhóm – email – form)."
+  },
+  {
+    "path": "root.tours[30].includes[1]",
+    "text": "Bộ tiêu chuẩn phản hồi: Quan sát – mục tiêu chung; không công kích cá nhân; phản hồi đi kèm giải pháp; tiếp nhận phản hồi với thái độ lắng nghe – không biện minh."
+  },
+  {
+    "path": "root.tours[30].includes[2]",
+    "text": "Quy trình báo cáo – phối hợp: Báo cáo đúng hạn, đúng mẫu; có tóm tắt – nguyên nhân – giải pháp; phối hợp liên ngành qua Notion/Trello/Drive/Form."
+  },
+  {
+    "path": "root.tours[30].includes[3]",
+    "text": "Phong cách làm việc Ruby Wings: Chủ động – tỉnh táo – chuẩn mực – chân thành – có chiều sâu; kiểm soát cảm xúc; làm việc dựa trên giá trị thật."
+  },
+  {
+    "path": "root.tours[30].includes[4]",
+    "text": "Hệ thống kỳ vọng hành vi: Giao tiếp chuẩn; phản hồi tích cực; báo cáo đúng hạn; duy trì năng lượng tích cực; hành động nhân văn."
+  },
+  {
+    "path": "root.tours[30].includes[5]",
+    "text": "Bộ tinh thần văn hoá: Chuẩn mực – Chân thành – Có chiều sâu được áp dụng đồng bộ trong Travel – Learn – Stay – Auto."
+  },
+  {
+    "path": "root.tours[30].notes",
+    "text": "Nội dung này thuộc hệ thống văn hoá nội bộ Ruby Wings, không phải tour du lịch. Dùng để đào tạo nhân sự, xây dựng văn hoá và đồng bộ hành vi trong toàn hệ sinh thái."
+  },
+  {
+    "path": "root.tours[30].style",
+    "text": "Văn hoá nội bộ theo định hướng nhân văn – chuẩn mực – có chiều sâu. Cách giao tiếp rõ ràng, tôn trọng, không phán xét con người mà tập trung vào hành vi; phản hồi dựa trên quan sát & mục tiêu chung; làm việc khoa học – có ý thức – hiểu bối cảnh. Phong cách kết hợp chuyên nghiệp hiện đại và tư duy tỉnh thức dựa trên thiền – khí công – giá trị sống."
+  },
+  {
+    "path": "root.tours[30].transport",
+    "text": "Sẽ cập nhật sau"
+  },
+  {
+    "path": "root.tours[30].accommodation",
+    "text": "Sẽ cập nhật sau"
+  },
+  {
+    "path": "root.tours[30].meals",
+    "text": "Sẽ cập nhật sau"
+  },
+  {
+    "path": "root.tours[30].event_support",
+    "text": "Nội dung văn hoá – không áp dụng sự kiện tour"
+  },
+  {
+    "path": "root.tours[31].tour_name",
+    "text": "Giới thiệu Ruby Wings – Lịch sử, Triết lý, Tầm nhìn & Hệ sinh thái (Nội dung văn hoá – không phải tour)"
+  },
+  {
+    "path": "root.tours[31].summary",
+    "text": "Khối thông tin tổng hợp về Ruby Wings, bao gồm nguồn gốc hình thành, triết lý nhân văn, hệ sinh thái phát triển và câu chuyện của Giám đốc Lương Tiến Sỹ – người sáng lập, người hồi sinh từ biến cố bệnh tật năm 2015 và mang tinh thần thiền – khí công trở thành cốt lõi của tổ chức. Đây là nội dung văn hoá thương hiệu, không phải chương trình tour."
+  },
+  {
+    "path": "root.tours[31].location",
+    "text": "148 Trương Gia Mô, Vỹ Dạ, TP. Huế"
+  },
+  {
+    "path": "root.tours[31].duration",
+    "text": "Không áp dụng (Nội dung văn hoá)"
+  },
+  {
+    "path": "root.tours[31].price",
+    "text": "Không áp dụng"
+  },
+  {
+    "path": "root.tours[31].includes[0]",
+    "text": "Thông tin doanh nghiệp: Ruby Wings Travel, mã số thuế, địa chỉ, kênh liên hệ, cộng đồng."
+  },
+  {
+    "path": "root.tours[31].includes[1]",
+    "text": "Câu chuyện sáng lập của Giám đốc Lương Tiến Sỹ: vượt bệnh, hồi sinh bằng thiền – khí công, từ đó định hình Ruby Wings như một hành trình nhân văn."
+  },
+  {
+    "path": "root.tours[31].includes[2]",
+    "text": "Triết lý logo: bốn cánh xanh lá (Thân – Tâm – Thiên nhiên – Niềm tin), viên ruby hồng (Trái tim – sự chữa lành), vòng tròn kết nối (tái sinh)."
+  },
+  {
+    "path": "root.tours[31].includes[3]",
+    "text": "Hệ sinh thái Ruby: Travel (du lịch chữa lành), Learn (giáo dục nội tâm), Stay (lưu trú xanh), Auto (di chuyển cân bằng)."
+  },
+  {
+    "path": "root.tours[31].includes[4]",
+    "text": "Sứ mệnh: lan tỏa giá trị sống chuẩn mực – chân thành – có chiều sâu."
+  },
+  {
+    "path": "root.tours[31].includes[5]",
+    "text": "Tầm nhìn 2030: trở thành đơn vị dẫn đầu về du lịch cảm xúc & phát triển con người tại miền Trung."
+  },
+  {
+    "path": "root.tours[31].includes[6]",
+    "text": "Giá trị cốt lõi: Chuẩn mực – Chân thành – Có chiều sâu, áp dụng trong dịch vụ – đào tạo – vận hành."
+  },
+  {
+    "path": "root.tours[31].includes[7]",
+    "text": "Tinh thần 'gieo hạt': xây triết lý và văn hoá trước sản phẩm, kết nối cộng đồng bản địa."
+  },
+  {
+    "path": "root.tours[31].includes[8]",
+    "text": "Bộ câu hỏi giúp chatbot trả lời khách tìm hiểu về thương hiệu Ruby Wings."
+  },
+  {
+    "path": "root.tours[31].notes",
+    "text": "Đây là nội dung văn hoá – thương hiệu, không phải sản phẩm tour. Form được tái sử dụng để đồng bộ dữ liệu chatbot."
+  },
+  {
+    "path": "root.tours[31].style",
+    "text": "Phong cách thương hiệu Ruby Wings mang chiều sâu cảm xúc, được định hình mạnh mẽ bởi Giám đốc Lương Tiến Sỹ – người đã trải nghiệm hành trình chữa lành thông qua thiền – khí công. Tư duy sống chuẩn mực – chân thành – có chiều sâu thấm vào cách tổ chức hoạt động: thiết kế hành trình du lịch, đào tạo nội tâm, quy trình vận hành và tương tác với khách hàng. Ngôn ngữ truyền tải nhẹ nhàng, nhân văn, hướng đến sự tỉnh thức, sự trở về và sự cân bằng của mỗi con người."
+  },
+  {
+    "path": "root.tours[31].transport",
+    "text": "Không áp dụng"
+  },
+  {
+    "path": "root.tours[31].accommodation",
+    "text": "Không áp dụng"
+  },
+  {
+    "path": "root.tours[31].meals",
+    "text": "Không áp dụng"
+  },
+  {
+    "path": "root.tours[31].event_support",
+    "text": "Không áp dụng cho tour – đây là nội dung giới thiệu công ty"
+  },
+  {
+    "path": "root.faq.cancellation_policy",
+    "text": "Trước 14 ngày: Không thu phí; Từ 07 – 13 ngày: 30% giá tour; Từ 05 - 06 ngày: 50% giá tour; Từ 03 - 04 ngày: 75% giá tour; Từ 01 - 02 ngày: 90% giá tour; Ngày xuất phát: 100% giá tour."
+  },
+  {
+    "path": "root.faq.booking_method",
+    "text": "Đặt chỗ qua form từ website, fanpage, zalo (0332510486) hoặc hotline."
+  },
+  {
+    "path": "root.faq.who_can_join",
+    "text": "Phù hợp cho mọi đối tượng có sức khỏe ổn định: học sinh – sinh viên, người trưởng thành, nhóm gia đình, đoàn thể, thanh niên; ưu tiên những người yêu thiên nhiên, văn hóa, thích hoạt động trải nghiệm nhẹ và kết nối cộng đồng."
+  },
+  {
+    "path": "root.contact.hotline",
+    "text": "0332510486"
+  },
+  {
+    "path": "root.contact.email",
+    "text": "rubywingslsa@gmail.com"
+  },
+  {
+    "path": "root.contact.office_hours",
+    "text": "08:00 - 20:00 mỗi ngày"
+  }
+]
