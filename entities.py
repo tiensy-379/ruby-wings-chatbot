@@ -324,18 +324,34 @@ class ChatResponse:
             }
         }
 
+from dataclasses import dataclass, asdict
+
 @dataclass
 class LeadData:
-    """Lead data for Google Sheets/Meta CAPI"""
-    timestamp: datetime
-    source_channel: str
-    action_type: str
-    page_url: str
-    contact_name: str
-    phone: str
-    service_interest: str
-    note: str
-    status: str
+    name: str = ""
+    phone: str = ""
+    email: str = ""
+    source: str = ""
+    tour: str = ""
+    message: str = ""
+    meta_event_id: str = ""
+    session_id: str = ""
+    timestamp: str = ""
+
+    def to_dict(self):
+        """Safe serialization for Sheets, Meta CAPI, logging"""
+        return {
+            "name": self.name or "",
+            "phone": self.phone or "",
+            "email": self.email or "",
+            "source": self.source or "",
+            "tour": self.tour or "",
+            "message": self.message or "",
+            "meta_event_id": self.meta_event_id or "",
+            "session_id": self.session_id or "",
+            "timestamp": self.timestamp or "",
+        }
+
     
     def to_row(self) -> List[str]:
         """Convert to Google Sheets row"""
