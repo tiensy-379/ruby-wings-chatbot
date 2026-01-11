@@ -1,19 +1,19 @@
 
-# === RBW LEAD & FUNNEL PATCH ===
-import re as _re
-def _rbw_extract_phone(text):
-    m=_re.search(r'(0\d{8,10})', text or "")
-    return m.group(1) if m else None
+def safe_validate(reply):
+    try:
+        if not isinstance(reply, dict):
+            return reply
+        # Only validate when tour is selected
+        if not reply.get("tour_name"):
+            return reply
+        return AutoValidator.validate_response(reply)
+    except Exception as e:
+        try:
+            reply.setdefault("warnings", []).append(str(e))
+        except:
+            pass
+        return reply
 
-def _rbw_capture_lead(session, text):
-    phone=_rbw_extract_phone(text)
-    if phone:
-        session.setdefault("lead",{})["phone"]=phone
-        session["state"]="lead_captured"
-    if "gọi" in (text or "").lower() or "điện thoại" in (text or "").lower():
-        session["callback"]=True
-    return session
-# === END PATCH ===
 
 # app.py - Ruby Wings Chatbot v4.0 (Complete Rewrite with Dataclasses)
 # =========== IMPORTS ===========
@@ -3399,7 +3399,7 @@ def chat_endpoint():
         
         # UPGRADE 9: AUTO-VALIDATION
         if UpgradeFlags.is_enabled("9_AUTO_VALIDATION"):
-            reply = AutoValidator.validate_response(reply)
+            reply = (lambda _v: _v if _v is not None else reply)(safe_validate(reply))
         
         # Update context
         context.last_action = "chat_response"
