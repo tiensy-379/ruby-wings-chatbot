@@ -17,7 +17,77 @@ from datetime import datetime, timedelta
 from collections import defaultdict, deque
 from difflib import SequenceMatcher
 from enum import Enum
-import numpy as np
+# Try to import numpy with detailed error handling
+try:
+    import numpy as np
+    NUMPY_AVAILABLE = True
+    logger.info("✅ NumPy available")
+except ImportError as e:
+    logger.error(f"❌ NumPy import failed: {e}")
+    # Create a minimal numpy-like fallback for basic operations
+    class NumpyFallback:
+        def __init__(self):
+            self.float32 = float
+            self.int64 = int
+            
+        def array(self, data, dtype=None):
+            # Simple list wrapper
+            class SimpleArray:
+                def __init__(self, data):
+                    self.data = list(data)
+                    self.shape = (len(data),) if isinstance(data[0], (int, float)) else (len(data), len(data[0]))
+                
+                def astype(self, dtype):
+                    return self
+                
+                def reshape(self, shape):
+                    return self
+                
+                def __getitem__(self, idx):
+                    return self.data[idx]
+                
+                def __len__(self):
+                    return len(self.data)
+            
+            return SimpleArray(data)
+        
+        def empty(self, shape, dtype):
+            if len(shape) == 1:
+                return [0.0] * shape[0]
+            else:
+                return [[0.0] * shape[1] for _ in range(shape[0])]
+        
+        def vstack(self, arrays):
+            result = []
+            for arr in arrays:
+                if hasattr(arr, 'data'):
+                    result.extend(arr.data)
+                else:
+                    result.extend(arr)
+            return result
+        
+        def load(self, path):
+            # Mock load function
+            class MockNpz:
+                def __init__(self):
+                    self.files = ['mat']
+                
+                def __getitem__(self, key):
+                    if key == 'mat':
+                        # Return empty array
+                        return self.array([[0.0]])
+                    return None
+            
+            return MockNpz()
+        
+        def savez_compressed(self, path, **kwargs):
+            # Mock save function
+            logger.warning(f"⚠️ NumPy fallback: Mock saving to {path}")
+            return None
+    
+    np = NumpyFallback()
+    NUMPY_AVAILABLE = False
+    logger.warning("⚠️ Using NumPy fallback - limited functionality")
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 
@@ -2596,32 +2666,72 @@ def query_index(query: str, top_k: int = TOP_K) -> List[Tuple[float, Dict]]:
         return []
 
 class NumpyIndex:
-    """Simple numpy-based index"""
+    """Simple numpy-based index with fallback support"""
     def __init__(self, mat=None):
-        self.mat = mat.astype("float32") if mat is not None else np.empty((0, 0), dtype="float32")
-        self.dim = self.mat.shape[1] if self.mat.size > 0 else None
+        if NUMPY_AVAILABLE:
+            self.mat = mat.astype("float32") if mat is not None else np.empty((0, 0), dtype="float32")
+        else:
+            # Fallback implementation
+            if mat is not None:
+                self.mat = mat
+            else:
+                self.mat = []
+        self.dim = len(self.mat[0]) if self.mat else 0
     
     def search(self, qvec, k):
-        if self.mat.size == 0:
-            return np.empty((1, 0)), np.empty((1, 0), dtype=int)
+        if not self.mat or len(self.mat) == 0:
+            # Return empty results
+            return np.array([[]]), np.array([[]], dtype=np.int64)
         
-        q = qvec.astype("float32")
-        q = q / (np.linalg.norm(q, axis=1, keepdims=True) + 1e-12)
-        m = self.mat / (np.linalg.norm(self.mat, axis=1, keepdims=True) + 1e-12)
+        q = np.array(qvec).flatten()
         
-        sims = np.dot(q, m.T)
-        idx = np.argsort(-sims, axis=1)[:, :k]
-        scores = np.take_along_axis(sims, idx, axis=1)
+        if NUMPY_AVAILABLE:
+            # Use numpy if available
+            q = q / (np.linalg.norm(q) + 1e-12)
+            m = self.mat / (np.linalg.norm(self.mat, axis=1, keepdims=True) + 1e-12)
+            sims = np.dot(q, m.T)
+            idx = np.argsort(-sims)[:k]
+            scores = sims[idx]
+        else:
+            # Fallback calculation
+            q_norm = q / (sum(x*x for x in q)**0.5 + 1e-12)
+            scores = []
+            for i, row in enumerate(self.mat):
+                row_norm = row / (sum(x*x for x in row)**0.5 + 1e-12)
+                sim = sum(q_norm[j] * row_norm[j] for j in range(min(len(q_norm), len(row_norm))))
+                scores.append((sim, i))
+            
+            scores.sort(key=lambda x: x[0], reverse=True)
+            top_k = scores[:k]
+            if top_k:
+                scores_arr = np.array([s[0] for s in top_k])
+                idx_arr = np.array([s[1] for s in top_k])
+            else:
+                scores_arr = np.array([])
+                idx_arr = np.array([], dtype=np.int64)
+            
+            return scores_arr.reshape(1, -1), idx_arr.reshape(1, -1)
         
-        return scores.astype("float32"), idx.astype("int64")
+        return scores.reshape(1, -1), idx.reshape(1, -1)
     
     def save(self, path):
-        np.savez_compressed(path, mat=self.mat)
+        if NUMPY_AVAILABLE:
+            np.savez_compressed(path, mat=self.mat)
+        else:
+            logger.warning(f"⚠️ Cannot save index without NumPy: {path}")
     
     @classmethod
     def load(cls, path):
-        arr = np.load(path)
-        return cls(arr['mat'])
+        if NUMPY_AVAILABLE:
+            try:
+                arr = np.load(path)
+                return cls(arr['mat'])
+            except Exception as e:
+                logger.error(f"Failed to load numpy index: {e}")
+                return cls()
+        else:
+            logger.warning(f"⚠️ Cannot load index without NumPy: {path}")
+            return cls()
 
 def build_index(force_rebuild: bool = False) -> bool:
     """Build or load FAISS/numpy index"""

@@ -1,6 +1,6 @@
 """
 meta_capi.py - Server-side Meta Conversion API
-Version: 3.0 (Fully Optimized for Ruby Wings v4.0)
+Version: 3.1 (Fully Optimized for Ruby Wings v4.0 on Render)
 
 ĐÃ TỐI ƯU HÓA:
 1. Tương thích 100% với app.py v4.0
@@ -26,19 +26,37 @@ from functools import lru_cache
 logger = logging.getLogger("rbw_v4")
 
 # =========================
+# =========================
 # GLOBAL CONFIGURATION
 # =========================
 @lru_cache(maxsize=1)
 def get_config():
     """Get CAPI configuration with caching"""
+    endpoint = os.environ.get("META_CAPI_ENDPOINT", "").strip()
+    
+    # Handle custom CAPI endpoint format
+    if endpoint and not endpoint.startswith('https://'):
+        # Assume it's a full URL including pixel ID
+        pixel_id = os.environ.get("META_PIXEL_ID", "").strip()
+        if pixel_id and pixel_id in endpoint:
+            # Endpoint already includes pixel ID
+            pass
+        elif endpoint.startswith('capig.'):
+            # Custom CAPI gateway
+            pass
+    else:
+        # Default Meta endpoint
+        endpoint = endpoint or "https://graph.facebook.com/v18.0/"
+    
     return {
         'pixel_id': os.environ.get("META_PIXEL_ID", "").strip(),
         'token': os.environ.get("META_CAPI_TOKEN", "").strip(),
         'test_code': os.environ.get("META_TEST_EVENT_CODE", "").strip(),
-        'endpoint': os.environ.get("META_CAPI_ENDPOINT", "https://graph.facebook.com/v18.0/"),
+        'endpoint': endpoint,
         'enable_call': os.environ.get("ENABLE_META_CAPI_CALL", "false").lower() in ("1", "true", "yes"),
         'enable_lead': os.environ.get("ENABLE_META_CAPI_LEAD", "false").lower() in ("1", "true", "yes"),
         'debug': os.environ.get("DEBUG_META_CAPI", "false").lower() in ("1", "true", "yes"),
+        'is_custom_gateway': 'graph.facebook.com' not in endpoint,
     }
 
 # =========================
@@ -77,14 +95,11 @@ def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Di
     try:
         config = get_config()
         
-        # Use direct Meta endpoint or proxy
-        if config['endpoint'].startswith('https://graph.facebook.com'):
-            url = f"{config['endpoint'].rstrip('/')}/{pixel_id}/events"
-        else:
-            url = config['endpoint']
+        # Build URL
+        url = _build_meta_url(config, pixel_id)
         
-        # Add access token to URL if using Meta endpoint
-        if 'graph.facebook.com' in url:
+        # Add access token based on endpoint type
+        if not config['is_custom_gateway']:
             url = f"{url}?access_token={config['token']}"
         
         headers = {
@@ -92,10 +107,11 @@ def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Di
             "User-Agent": "RubyWings-Chatbot/4.0"
         }
         
-        # For proxy endpoints, include token in headers
-        if 'graph.facebook.com' not in url and config['token']:
+        # Add Authorization header for custom gateways
+        if config['is_custom_gateway'] and config['token']:
             headers["Authorization"] = f"Bearer {config['token']}"
         
+        # Send request
         response = requests.post(
             url,
             json=payload,
@@ -121,7 +137,14 @@ def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Di
     except Exception as e:
         logger.error(f"Meta CAPI Unexpected Error: {str(e)}")
         return None
-
+def _build_meta_url(config: Dict, pixel_id: str) -> str:
+    """Build Meta CAPI URL based on configuration"""
+    if config['is_custom_gateway']:
+        # Custom CAPI gateway (e.g., capig.datah04.com)
+        return config['endpoint']
+    else:
+        # Standard Meta Graph API
+        return f"{config['endpoint'].rstrip('/')}/{pixel_id}/events"
 # =========================
 # MAIN CAPI FUNCTIONS
 # =========================
@@ -253,21 +276,9 @@ def send_meta_lead(
 
 def send_meta_call_button(
     request,
-    # Required parameters from app.py
     page_url: Optional[str] = None,
     phone: Optional[str] = None,
     call_type: str = "regular",
-    # Optional parameters for enhanced tracking
-    user_agent: Optional[str] = None,
-    fbp: Optional[str] = None,
-    fbc: Optional[str] = None,
-    event_id: Optional[str] = None,
-    pixel_id: Optional[str] = None,
-    event_name: str = "CallButtonClick",
-    value: float = 150000,
-    currency: str = "VND",
-    client_ip: Optional[str] = None,
-    content_name: str = "Ruby Wings Hotline Call",
     **kwargs
 ):
     """
@@ -290,49 +301,33 @@ def send_meta_call_button(
             return None
         
         # Get target pixel ID (prefer provided, fallback to env)
-        target_pixel_id = pixel_id or config['pixel_id']
+        target_pixel_id = config['pixel_id']
         if not target_pixel_id or not config['token']:
             logger.warning("Meta CAPI Call Button: Missing PIXEL_ID or TOKEN")
             return None
         
-        # Generate event ID if not provided
-        if not event_id:
-            event_id = str(uuid.uuid4())
+        # Generate event ID
+        event_id = str(uuid.uuid4())
         
         # Prepare data with priority: client > request
         final_page_url = page_url or (request.url if hasattr(request, 'url') else "")
-        final_user_agent = user_agent or (request.headers.get("User-Agent", "") if hasattr(request, 'headers') else "")
-        final_client_ip = client_ip or (request.remote_addr if hasattr(request, 'remote_addr') else "")
         
         # Build user data
-        user_data = {
-            "client_ip_address": final_client_ip,
-            "client_user_agent": final_user_agent
-        }
-        
-        # Add Facebook cookies if provided
-        if fbp:
-            user_data["fbp"] = fbp
-        if fbc:
-            user_data["fbc"] = fbc
-        
-        # Add phone hash if provided
-        if phone:
-            user_data["ph"] = _hash(str(phone))
+        user_data = _build_user_data(request, phone=phone)
         
         # Build event payload
         payload_event = {
-            "event_name": event_name,
+            "event_name": "CallButtonClick",
             "event_time": int(time.time()),
             "event_id": event_id,
             "event_source_url": final_page_url,
             "action_source": "website",
             "user_data": user_data,
             "custom_data": {
-                "value": value,
-                "currency": currency,
+                "value": 150000,
+                "currency": "VND",
                 "call_type": call_type,
-                "content_name": content_name,
+                "content_name": "Ruby Wings Hotline Call",
                 "button_location": "fixed_bottom_left",
                 "content_category": "Zalo Call" if call_type == "zalo" else "Phone Call",
                 "business_name": "Ruby Wings Travel",
@@ -356,7 +351,7 @@ def send_meta_call_button(
         masked_phone = f"{phone[:4]}..." if phone else "None"
         logger.info(
             f"Meta CAPI Call Button Tracking: "
-            f"Event={event_name}, "
+            f"Event=CallButtonClick, "
             f"Pixel={target_pixel_id[:6]}..., "
             f"Phone={masked_phone}, "
             f"Type={call_type}, "
@@ -454,7 +449,7 @@ def check_meta_capi_health() -> Dict[str, Any]:
             'test_code_set': bool(config['test_code']),
         },
         'timestamp': time.time(),
-        'version': '3.0'
+        'version': '3.1'
     }
 
 # =========================
@@ -471,4 +466,4 @@ __all__ = [
 # =========================
 # INITIALIZATION LOG
 # =========================
-logger.info("✅ Meta CAPI v3.0 initialized - Optimized for Ruby Wings v4.0")
+logger.info("✅ Meta CAPI v3.1 initialized - Optimized for Ruby Wings v4.0 on Render")

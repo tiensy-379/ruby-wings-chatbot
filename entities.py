@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Optional, Tuple, Set, Union
 from datetime import datetime
 from enum import Enum
 import json
+import hashlib
 
 # ===== ENUMS =====
 class QuestionType(Enum):
@@ -357,8 +358,10 @@ class LeadData:
     @staticmethod
     def _hash_phone(phone: str) -> str:
         """Hash phone number for Meta"""
-        import hashlib
-        return hashlib.sha256(phone.strip().lower().encode()).hexdigest()
+        if not phone:
+            return ""
+        cleaned = phone.strip().lower()
+        return hashlib.sha256(cleaned.encode()).hexdigest()
 
 @dataclass
 class CacheEntry:
