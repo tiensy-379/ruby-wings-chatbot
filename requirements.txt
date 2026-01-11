@@ -1,8 +1,9 @@
-# requirements.txt - Optimized for Ruby Wings Chatbot v4.0 (Render compatible)
-# Python 3.10.12 compatible versions
-# Last updated: 2024-12-21
+# CORE BUILD
+pip>=23.2
+setuptools>=68.2.2
+wheel>=0.41.2
 
-# ===== CORE FRAMEWORK =====
+# Flask
 Flask==2.3.3
 Werkzeug==2.3.7
 Jinja2==3.1.2
@@ -10,42 +11,35 @@ MarkupSafe==2.1.3
 itsdangerous==2.1.2
 click==8.1.7
 
-# ===== WEB SERVER =====
+# Server
 gunicorn==21.2.0
 
-# ===== HTTP & NETWORKING =====
+# HTTP
 requests==2.31.0
 urllib3==2.0.7
-
-# ===== SECURITY =====
 idna==3.4
 certifi==2023.7.22
 charset-normalizer==3.2.0
 
-# ===== OPENAI =====
+# OpenAI
 openai==1.3.0
 
-# ===== NUMERICAL COMPUTING (Stable version) =====
-numpy==1.24.3  # Downgraded for Python 3.10 compatibility
+# NUMPY — dùng bản có WHEEL cho Linux
+numpy==1.26.4
 
-# ===== DATA VALIDATION =====
+# FAISS — Python 3.10 compatible
+faiss-cpu==1.7.4
+
+# Data / Validation
 pydantic==2.4.2
 pydantic_core==2.10.1
 annotated-types==0.5.0
 typing-extensions==4.8.0
 
-# ===== CORS =====
+# CORS
 Flask-CORS==4.0.0
 
-# ===== ASYNC & UTILITIES =====
-anyio==3.7.1
-sniffio==1.3.0
-exceptiongroup==1.1.3
-blinker==1.7.0
-colorama==0.4.6
-packaging==23.2
-
-# ===== GOOGLE SHEETS =====
+# Google Sheets
 gspread==5.12.0
 google-auth==2.23.4
 google-auth-oauthlib==1.0.0
@@ -54,24 +48,13 @@ cachetools==5.3.1
 pyasn1==0.5.0
 pyasn1_modules==0.3.0
 
-# ===== CONFIGURATION =====
+# Utils
 python-dotenv==1.0.0
-
-# ===== VIETNAMESE TEXT PROCESSING =====
 python-Levenshtein==0.23.0
 pyvi==0.1.1
-
-# ===== FAISS (CPU only, optional) =====
-faiss-cpu==1.7.4 ; python_version < "3.11"
-
-# ===== TESTING (Optional) =====
-pytest==7.4.3
-
-# ===== SETUPTOOLS & WHEEL =====
-setuptools==68.2.2
-wheel==0.41.2
-
-# ===== COMPATIBILITY NOTES =====
-# Python 3.10.12 recommended
-# Render Starter plan (512MB) compatible
-# FAISS disabled by default in low RAM mode
+colorama==0.4.6
+packaging==23.2
+anyio==3.7.1
+sniffio==1.3.0
+exceptiongroup==1.1.3
+blinker==1.7.0

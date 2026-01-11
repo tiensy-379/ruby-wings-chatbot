@@ -1,4 +1,3 @@
-# render.yaml - Ruby Wings Chatbot v4.0 - Optimized for 512MB RAM
 version: "1"
 
 services:
@@ -9,310 +8,170 @@ services:
     region: singapore
     autoDeploy: true
     branch: main
-    
-    # Health Check
+
     healthCheckPath: /api/health
     healthCheckTimeout: 30
     initialDelaySec: 60
-    
-    # Build Configuration
+
     buildCommand: |
-      echo "🚀 Starting build for Ruby Wings Chatbot v4.0..."
+      echo "🚀 Ruby Wings build started"
       
-      # Upgrade core packages first
       python -m pip install --upgrade pip setuptools wheel
       
-      # Install dependencies with specific versions for compatibility
+      echo "📦 Installing dependencies"
       pip install -r requirements.txt
       
-      # Create necessary directories
+      echo "📁 Prepare folders"
       mkdir -p data logs
       
-      # Check for knowledge.json
       if [ ! -f "knowledge.json" ]; then
-        echo "⚠️ Warning: knowledge.json not found, creating empty file"
         echo '{"tours": []}' > knowledge.json
       fi
       
-      echo "✅ Build completed successfully"
-    
-    # Startup Command
-    startCommand: |
-      echo "🚀 Starting Ruby Wings Chatbot v4.0..."
-      
-      # Check if gunicorn config exists, otherwise use optimized settings
-      if [ -f "gunicorn.conf.py" ]; then
-        echo "📁 Using gunicorn.conf.py configuration"
-        gunicorn app:app -c gunicorn.conf.py
+      # Build embeddings ONLY if FAISS is enabled
+      if [ "$FAISS_ENABLED" = "true" ]; then
+        echo "🧠 FAISS enabled – building index"
+        python build_index.py
       else
-        echo "⚙️ Using environment-based gunicorn configuration"
-        
-        # Set optimal gunicorn parameters for low memory (512MB)
+        echo "🧠 FAISS disabled – using numpy fallback only"
+      fi
+      
+      echo "✅ Build done"
+
+    startCommand: |
+      echo "🚀 Ruby Wings starting"
+
+      export RAM_PROFILE=${RAM_PROFILE:-512}
+
+      if [ "$RAM_PROFILE" = "2048" ]; then
+        echo "🚀 High-RAM mode (2GB)"
+        export GUNICORN_WORKERS=${GUNICORN_WORKERS:-2}
+        export GUNICORN_THREADS=${GUNICORN_THREADS:-4}
+        export FAISS_ENABLED=true
+      else
+        echo "🧠 Low-RAM mode (512MB)"
         export GUNICORN_WORKERS=${GUNICORN_WORKERS:-1}
         export GUNICORN_THREADS=${GUNICORN_THREADS:-2}
-        export GUNICORN_TIMEOUT=${TIMEOUT:-120}
-        
-        echo "🔧 Workers: $GUNICORN_WORKERS, Threads: $GUNICORN_THREADS, Timeout: $GUNICORN_TIMEOUT"
-        
-        # Start with optimized settings for low memory
-        exec gunicorn app:app \
-          --workers $GUNICORN_WORKERS \
-          --threads $GUNICORN_THREADS \
-          --bind=0.0.0.0:$PORT \
-          --timeout $GUNICORN_TIMEOUT \
-          --graceful-timeout ${GUNICORN_GRACEFUL_TIMEOUT:-30} \
-          --keepalive ${GUNICORN_KEEPALIVE:-5} \
-          --max-requests ${GUNICORN_MAX_REQUESTS:-1000} \
-          --max-requests-jitter ${GUNICORN_MAX_REQUESTS_JITTER:-50} \
-          --preload \
-          --worker-connections ${GUNICORN_WORKER_CONNECTIONS:-1000} \
-          --access-logfile - \
-          --error-logfile - \
-          --log-level ${GUNICORN_LOG_LEVEL:-info} \
-          --capture-output \
-          --enable-stdio-inheritance
+        export FAISS_ENABLED=false
       fi
-    
-    # Disk Storage for persistent data
+
+      gunicorn app:app \
+        --workers $GUNICORN_WORKERS \
+        --threads $GUNICORN_THREADS \
+        --bind=0.0.0.0:$PORT \
+        --timeout ${TIMEOUT:-120} \
+        --graceful-timeout ${GUNICORN_GRACEFUL_TIMEOUT:-30} \
+        --keepalive ${GUNICORN_KEEPALIVE:-5} \
+        --max-requests ${GUNICORN_MAX_REQUESTS:-1000} \
+        --max-requests-jitter ${GUNICORN_MAX_REQUESTS_JITTER:-50} \
+        --worker-connections ${GUNICORN_WORKER_CONNECTIONS:-1000} \
+        --log-level ${GUNICORN_LOG_LEVEL:-info} \
+        --access-logfile - \
+        --error-logfile -
+
     disk:
       name: ruby-wings-data
       mountPath: /opt/render/project/src/data
       sizeGB: 1
-    
-    # Environment Variables - COMPLETE SET FROM YOUR CONFIG
+
     envVars:
-      # ==== RAM & MEMORY PROFILE ====
+      # ===== RAM MODE =====
       - key: RAM_PROFILE
         value: "512"
-      
-      # ==== CORE API KEYS ====
+
+      # ===== AI =====
       - key: OPENAI_API_KEY
         sync: false
         required: true
-      
-      - key: OPENAI_BASE_URL
-        value: "https://api.openai.com/v1"
-      
-      # ==== GOOGLE SHEETS ====
+
+      - key: EMBEDDING_MODEL
+        value: "text-embedding-3-small"
+
+      - key: CHAT_MODEL
+        value: "gpt-4o-mini"
+
+      # ===== INDEX =====
+      - key: KNOWLEDGE_PATH
+        value: "knowledge.json"
+
+      - key: FAISS_ENABLED
+        value: "false"
+
+      - key: FAISS_INDEX_PATH
+        value: "data/faiss_index.bin"
+
+      - key: FAISS_MAPPING_PATH
+        value: "data/faiss_mapping.json"
+
+      - key: FALLBACK_VECTORS_PATH
+        value: "data/vectors.npz"
+
+      # ===== GOOGLE =====
       - key: ENABLE_GOOGLE_SHEETS
         value: "true"
-      
+
       - key: GOOGLE_SERVICE_ACCOUNT_JSON
         sync: false
         required: true
-      
+
       - key: GOOGLE_SHEET_ID
         value: "1SdVbwkuxb8l1meEW--ddyfh4WmUvSXXMOPQ5bCyPkdk"
-      
+
       - key: GOOGLE_SHEET_NAME
         value: "RBW_Lead_Raw_Inbox"
-      
-      # ==== META CAPI ====
+
+      # ===== META =====
       - key: ENABLE_META_CAPI_CALL
         value: "true"
-      
-      - key: ENABLE_META_CAPI_LEAD
-        value: "true"
-      
+
       - key: META_CAPI_TOKEN
         sync: false
-        required: false
-      
+
       - key: META_PIXEL_ID
         value: "862531473384426"
-      
-      - key: META_CAPI_ENDPOINT
-        value: "https://capig.datah04.com/events"
-      
-      - key: DEBUG_META_CAPI
-        value: "true"
-      
-      - key: META_TEST_EVENT_CODE
-        value: "TEST76123"
-      
-      # ==== KNOWLEDGE & INDEX ====
-      - key: KNOWLEDGE_PATH
-        value: "knowledge.json"
-      
-      - key: FAISS_ENABLED
-        value: "false"
-      
-      - key: AUTO_INSTALL_FAISS
-        value: "false"
-      
-      - key: FAISS_INDEX_PATH
-        value: "data/faiss_index.bin"
-      
-      - key: FAISS_MAPPING_PATH
-        value: "data/faiss_mapping.json"
-      
-      - key: FALLBACK_VECTORS_PATH
-        value: "data/vectors.npz"
-      
-      # ==== MODELS ====
-      - key: EMBEDDING_MODEL
-        value: "text-embedding-3-small"
-      
-      - key: CHAT_MODEL
-        value: "gpt-4o-mini"
-      
-      - key: TOP_K
-        value: "5"
-      
-      # ==== STORAGE ====
-      - key: ENABLE_FALLBACK_STORAGE
-        value: "true"
-      
-      - key: FALLBACK_STORAGE_PATH
-        value: "data/leads_fallback.json"
-      
-      # ==== SERVER CONFIG ====
+
+      # ===== SERVER =====
+      - key: PORT
+        value: "10000"
+
       - key: FLASK_ENV
         value: "production"
-      
+
       - key: DEBUG
         value: "false"
-      
+
       - key: SECRET_KEY
         sync: false
         generateValue: true
-      
-      - key: CORS_ORIGINS
-        value: "https://www.rubywings.vn,https://rubywings.vn,http://localhost:3000,http://localhost:5000"
-      
-      - key: HOST
-        value: "0.0.0.0"
-      
-      - key: PORT
-        value: "10000"
-      
-      # ==== ALL 10 UPGRADES ====
+
+      # ===== UPGRADES =====
       - key: UPGRADE_1_MANDATORY_FILTER
         value: "true"
-      
       - key: UPGRADE_2_DEDUPLICATION
         value: "true"
-      
       - key: UPGRADE_3_ENHANCED_FIELDS
         value: "true"
-      
       - key: UPGRADE_4_QUESTION_PIPELINE
         value: "true"
-      
       - key: UPGRADE_5_QUERY_SPLITTER
         value: "true"
-      
       - key: UPGRADE_6_FUZZY_MATCHING
         value: "true"
-      
       - key: UPGRADE_7_STATE_MACHINE
         value: "true"
-      
       - key: UPGRADE_8_SEMANTIC_ANALYSIS
         value: "true"
-      
       - key: UPGRADE_9_AUTO_VALIDATION
         value: "true"
-      
       - key: UPGRADE_10_TEMPLATE_SYSTEM
         value: "true"
-      
-      - key: ENABLE_CACHING
-        value: "true"
-      
-      - key: CACHE_TTL_SECONDS
-        value: "300"
-      
-      - key: ENABLE_QUERY_LOGGING
-        value: "true"
-      
-      # ==== ADMIN & SECURITY ====
-      - key: RBW_ALLOW_REINDEX
-        value: "0"
-      
-      - key: MAX_CONTENT_LENGTH
-        value: "16777216"
-      
-      # ==== GUNICORN PERFORMANCE ====
-      - key: GUNICORN_WORKERS
-        value: "1"
-      
-      - key: GUNICORN_THREADS
-        value: "2"
-      
-      - key: TIMEOUT
-        value: "120"
-      
-      - key: GUNICORN_GRACEFUL_TIMEOUT
-        value: "30"
-      
-      - key: GUNICORN_KEEPALIVE
-        value: "5"
-      
-      - key: GUNICORN_MAX_REQUESTS
-        value: "1000"
-      
-      - key: GUNICORN_MAX_REQUESTS_JITTER
-        value: "50"
-      
-      - key: GUNICORN_PRELOAD_APP
-        value: "true"
-      
-      - key: GUNICORN_WORKER_CONNECTIONS
-        value: "1000"
-      
-      - key: GUNICORN_LOG_LEVEL
-        value: "info"
-      
-      # ==== LOGGING ====
-      - key: LOG_LEVEL
-        value: "INFO"
-      
-      - key: PYTHONUNBUFFERED
-        value: "true"
-      
-      # ==== PYTHON OPTIMIZATION ====
-      - key: PYTHONPATH
-        value: "/opt/render/project/src"
-      
-      - key: PYTHONDONTWRITEBYTECODE
-        value: "1"
-      
-      - key: PYTHONIOENCODING
-        value: "UTF-8"
-      
-      # ==== DATACLASS COMPATIBILITY ====
-      - key: ENABLE_DATACLASSES
-        value: "true"
-      
-      - key: MEMORY_OPTIMIZED
-        value: "true"
-      
-      # ==== FALLBACK MODES ====
-      - key: ENABLE_NUMPY_FALLBACK
-        value: "true"
-      
-      - key: ENABLE_FAISS_FALLBACK
-        value: "true"
-    
-    # Advanced Settings
-    numInstances: 1
-    instanceType: starter
-    
-    # Resource Optimization
+
     resources:
       cpu: 1
       memoryMB: 512
-      
-    # Scaling
+
     scaling:
       minInstances: 1
-      maxInstances: 1
-      targetMemoryPercent: 80
+      maxInstances: 2
+      targetMemoryPercent: 75
       targetCPUPercent: 70
-
-# Persistent Disk for knowledge files
-# disks:
-#   - name: ruby-wings-storage
-#     mountPath: /opt/render/project/src/data
-#     sizeGB: 1
