@@ -1,5 +1,8 @@
 # app.py - Ruby Wings Chatbot v4.0 (Complete Rewrite with Dataclasses)
 # =========== IMPORTS ===========
+import logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("ruby-wings")
 import os
 import sys
 import json
@@ -19,6 +22,7 @@ from difflib import SequenceMatcher
 from enum import Enum
 # Try to import numpy with detailed error handling
 try:
+    
     import numpy as np
     NUMPY_AVAILABLE = True
     logger.info("✅ NumPy available")
