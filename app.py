@@ -1,3 +1,20 @@
+
+def safe_validate(reply):
+    try:
+        if not isinstance(reply, dict):
+            return reply
+        # Only validate when tour is selected
+        if not reply.get("tour_name"):
+            return reply
+        return AutoValidator.validate_response(reply)
+    except Exception as e:
+        try:
+            reply.setdefault("warnings", []).append(str(e))
+        except:
+            pass
+        return reply
+
+
 # app.py - Ruby Wings Chatbot v4.0 (Complete Rewrite with Dataclasses)
 # =========== IMPORTS ===========
 import logging
@@ -3382,7 +3399,7 @@ def chat_endpoint():
         
         # UPGRADE 9: AUTO-VALIDATION
         if UpgradeFlags.is_enabled("9_AUTO_VALIDATION"):
-            reply = AutoValidator.validate_response(reply)
+            reply = (lambda _v: _v if _v is not None else reply)(safe_validate(reply))
         
         # Update context
         context.last_action = "chat_response"

@@ -324,35 +324,34 @@ class ChatResponse:
             }
         }
 
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, field
+from typing import Optional, Dict, Any
+import time
 
-from dataclasses import dataclass
 
 @dataclass
 class LeadData:
-    name: str = ""
-    phone: str = ""
-    email: str = ""
-    source: str = ""
-    source_channel: str = ""   # <-- FIX: field backend đang gửi
-    tour: str = ""
-    message: str = ""
-    meta_event_id: str = ""
-    session_id: str = ""
-    timestamp: str = ""
+    name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    message: Optional[str] = None
+    tour_id: Optional[int] = None
+    created_at: float = field(default_factory=lambda: time.time())
 
-    def to_dict(self):
+    # === FIX for production ===
+    source_channel: Optional[str] = None   # web, fb, zalo, chatbot...
+    action_type: Optional[str] = None      # call, booking, callback, quote...
+
+    def to_dict(self) -> Dict[str, Any]:
         return {
-            "name": self.name or "",
-            "phone": self.phone or "",
-            "email": self.email or "",
-            "source": self.source or "",
-            "source_channel": self.source_channel or "",
-            "tour": self.tour or "",
-            "message": self.message or "",
-            "meta_event_id": self.meta_event_id or "",
-            "session_id": self.session_id or "",
-            "timestamp": self.timestamp or "",
+            "name": self.name,
+            "phone": self.phone,
+            "email": self.email,
+            "message": self.message,
+            "tour_id": self.tour_id,
+            "created_at": self.created_at,
+            "source_channel": self.source_channel,
+            "action_type": self.action_type,
         }
 
 
