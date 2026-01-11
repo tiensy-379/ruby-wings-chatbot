@@ -20,6 +20,7 @@ services:
       
       echo "📦 Installing dependencies"
       pip install -r requirements.txt
+
       
       echo "📁 Prepare folders"
       mkdir -p data logs

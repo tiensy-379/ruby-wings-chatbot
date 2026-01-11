@@ -18,7 +18,11 @@ echo "📁 Preparing folders"
 mkdir -p logs
 mkdir -p data
 
-echo "🚀 Running index builder"
-python build_index.py
+if [ "$FAISS_ENABLED" = "true" ]; then
+  echo "🚀 FAISS_ENABLED=true → Running index builder"
+  python build_index.py
+else
+  echo "⏭️  FAISS_ENABLED=false → Skipping build_index"
+fi
 
 echo "✅ Build completed successfully"
