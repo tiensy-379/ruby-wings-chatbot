@@ -87,8 +87,9 @@ def on_starting(server):
 
 def when_ready(server):
     """Called when workers are ready"""
-    server.log.info(f"✅ Gunicorn ready on {bind}")
-    server.log.info(f"  Workers: {len(server.workers)}")
+    server.log.info(" Gunicorn ready")
+
+
     
     # Log active upgrades
     upgrades = [k for k in os.environ if k.startswith('UPGRADE_') and os.environ.get(k) == 'true']
