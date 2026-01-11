@@ -326,12 +326,15 @@ class ChatResponse:
 
 from dataclasses import dataclass, asdict
 
+from dataclasses import dataclass
+
 @dataclass
 class LeadData:
     name: str = ""
     phone: str = ""
     email: str = ""
     source: str = ""
+    source_channel: str = ""   # <-- FIX: field backend đang gửi
     tour: str = ""
     message: str = ""
     meta_event_id: str = ""
@@ -339,18 +342,19 @@ class LeadData:
     timestamp: str = ""
 
     def to_dict(self):
-        """Safe serialization for Sheets, Meta CAPI, logging"""
         return {
             "name": self.name or "",
             "phone": self.phone or "",
             "email": self.email or "",
             "source": self.source or "",
+            "source_channel": self.source_channel or "",
             "tour": self.tour or "",
             "message": self.message or "",
             "meta_event_id": self.meta_event_id or "",
             "session_id": self.session_id or "",
             "timestamp": self.timestamp or "",
         }
+
 
     
     def to_row(self) -> List[str]:
