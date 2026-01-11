@@ -154,19 +154,31 @@ class SearchResult:
             return int(match.group(1))
         return None
 
+from dataclasses import dataclass, field
+from typing import List, Dict, Any, Optional, Set
+
 @dataclass
 class ConversationContext:
     """Conversation context for state management"""
     session_id: str
+
+    # Core state
     current_tours: List[int] = field(default_factory=list)
-    last_tour_indices: list[int] = field(default_factory=list)
+    last_tour_indices: List[int] = field(default_factory=list)   # FIX: required by StateMachine
+    last_successful_tours: List[int] = field(default_factory=list)
+
+    # Conversation memory
     last_question: Optional[str] = None
     last_response: Optional[str] = None
-    user_preferences: Dict[str, Any] = field(default_factory=dict)
     conversation_history: List[Dict[str, Any]] = field(default_factory=list)
+
+    # User modeling
+    user_preferences: Dict[str, Any] = field(default_factory=dict)
     mentioned_tours: Set[int] = field(default_factory=set)
+
+    # Dialogue control
     current_focus: Optional[str] = None
-    last_successful_tours: List[int] = field(default_factory=list)
+
    
    
 

@@ -2680,38 +2680,48 @@ def query_index(query: str, top_k: int = TOP_K) -> List[Tuple[float, Dict]]:
         return []
 
 class NumpyIndex:
-    """Simple numpy-based index with fallback support"""
+    """Simple numpy-based index with safe numpy handling"""
 
     def __init__(self, mat=None):
         if NUMPY_AVAILABLE:
             if mat is None:
                 self.mat = np.empty((0, 0), dtype="float32")
-                self.dim = 0
             else:
-                self.mat = mat.astype("float32")
-
-                # numpy-safe dimension detection
-                if self.mat.ndim == 2:
-                    self.dim = self.mat.shape[1]
-                else:
-                    self.dim = 0
+                # Force numpy float32 2D
+                self.mat = np.asarray(mat, dtype="float32")
+                if self.mat.ndim == 1:
+                    self.mat = self.mat.reshape(1, -1)
         else:
-            # Pure Python fallback
-            if mat is None:
-                self.mat = []
-                self.dim = 0
+            self.mat = mat if mat is not None else []
+
+        # SAFE dimension detection (no numpy truth check)
+        if NUMPY_AVAILABLE:
+            if self.mat.shape[0] > 0 and self.mat.ndim == 2:
+                self.dim = int(self.mat.shape[1])
             else:
-                self.mat = mat
-                self.dim = len(mat[0]) if len(mat) > 0 else 0
-
-        
-        # FIX: Check array size properly to avoid "truth value ambiguous" error
-        if NUMPY_AVAILABLE and isinstance(self.mat, np.ndarray):
-            self.dim = self.mat.shape[1] if self.mat.shape[0] > 0 else 0
-        elif self.mat and len(self.mat) > 0:
-            self.dim = len(self.mat[0])
+                self.dim = 0
+            self.size = int(self.mat.shape[0])
         else:
-            self.dim = 0
+            self.size = len(self.mat)
+            self.dim = len(self.mat[0]) if self.size > 0 else 0
+
+    def is_empty(self):
+        if NUMPY_AVAILABLE:
+            return self.mat.shape[0] == 0
+        return len(self.mat) == 0
+
+    def search(self, query_vec, k=5):
+        if self.is_empty():
+            return [], []
+
+        if NUMPY_AVAILABLE:
+            q = np.asarray(query_vec, dtype="float32").reshape(1, -1)
+            sims = np.dot(self.mat, q.T).reshape(-1)
+            topk = np.argsort(-sims)[:k]
+            return sims[topk].tolist(), topk.tolist()
+        else:
+            return [], []
+
     
     def search(self, qvec, k):
         if not self.mat or (NUMPY_AVAILABLE and self.mat.shape[0] == 0) or (not NUMPY_AVAILABLE and len(self.mat) == 0):
@@ -2851,21 +2861,36 @@ def normalize_text_simple(s: str) -> str:
     return s
 
 def get_session_context(session_id: str) -> ConversationContext:
-    """Get or create context for session using ConversationContext dataclass"""
-    with SESSION_LOCK:
-        if session_id not in SESSION_CONTEXTS:
-            SESSION_CONTEXTS[session_id] = ConversationContext(session_id=session_id)
-        
-        now = datetime.utcnow()
-        to_delete = []
-        for sid, ctx in SESSION_CONTEXTS.items():
-            if (now - ctx.last_updated).total_seconds() > SESSION_TIMEOUT:
-                to_delete.append(sid)
-        
-        for sid in to_delete:
-            del SESSION_CONTEXTS[sid]
-        
-        return SESSION_CONTEXTS[session_id]
+    """Get or create context for session using ConversationContext dataclass with auto-repair"""
+
+    ctx = SESSION_CONTEXTS.get(session_id)
+
+    if ctx is None:
+        ctx = ConversationContext(session_id=session_id)
+        SESSION_CONTEXTS[session_id] = ctx
+        return ctx
+
+    # ===== AUTO REPAIR FOR OLD CONTEXT OBJECTS =====
+    if not hasattr(ctx, "last_tour_indices"):
+        ctx.last_tour_indices = []
+
+    if not hasattr(ctx, "current_tours"):
+        ctx.current_tours = []
+
+    if not hasattr(ctx, "mentioned_tours"):
+        ctx.mentioned_tours = set()
+
+    if not hasattr(ctx, "last_successful_tours"):
+        ctx.last_successful_tours = []
+
+    if not hasattr(ctx, "conversation_history"):
+        ctx.conversation_history = []
+
+    if not hasattr(ctx, "user_preferences"):
+        ctx.user_preferences = {}
+
+    return ctx
+
 
 def extract_session_id(request_data: Dict, remote_addr: str) -> str:
     """Extract or create session ID"""
