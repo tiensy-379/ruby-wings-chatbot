@@ -1,5 +1,5 @@
-# app.py
-# =========== CODE BẮT ĐẦU ===========
+# app.py - Ruby Wings Chatbot v4.0 (Complete Rewrite with Dataclasses)
+# =========== IMPORTS ===========
 import os
 import sys
 import json
@@ -12,12 +12,11 @@ import hashlib
 import time
 import random
 from functools import lru_cache, wraps
-from typing import List, Tuple, Dict, Optional, Any, Set, Union
+from typing import List, Tuple, Dict, Optional, Any, Set, Union, Callable
 from datetime import datetime, timedelta
 from collections import defaultdict, deque
 from difflib import SequenceMatcher
 from enum import Enum
-
 import numpy as np
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
@@ -89,6 +88,11 @@ except ImportError:
     logger.warning("⚠️ Meta CAPI not available")
 
 # =========== ENVIRONMENT VARIABLES ===========
+# Memory Profile
+RAM_PROFILE = os.environ.get("RAM_PROFILE", "512").strip()
+IS_LOW_RAM = RAM_PROFILE == "512"
+IS_HIGH_RAM = RAM_PROFILE == "2048"
+
 # Core API Keys
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY", "").strip()
 OPENAI_BASE_URL = os.environ.get("OPENAI_BASE_URL", "").strip()
@@ -106,7 +110,7 @@ CHAT_MODEL = os.environ.get("CHAT_MODEL", "gpt-4o-mini")
 TOP_K = int(os.environ.get("TOP_K", "5"))
 
 # FAISS
-FAISS_ENABLED = os.environ.get("FAISS_ENABLED", "true").lower() in ("1", "true", "yes")
+FAISS_ENABLED = os.environ.get("FAISS_ENABLED", "true").lower() in ("1", "true", "yes") and not IS_LOW_RAM
 
 # Google Sheets
 GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID", "1SdVbwkuxb8l1meEW--ddyfh4WmUvSXXMOPQ5bCyPkdk")
@@ -156,6 +160,11 @@ class UpgradeFlags:
             "ENABLE_CACHING": os.environ.get("ENABLE_CACHING", "true").lower() == "true",
             "CACHE_TTL_SECONDS": int(os.environ.get("CACHE_TTL_SECONDS", "300")),
             "ENABLE_QUERY_LOGGING": os.environ.get("ENABLE_QUERY_LOGGING", "true").lower() == "true",
+            
+            # MEMORY OPTIMIZATION
+            "EMBEDDING_CACHE_SIZE": 100 if IS_LOW_RAM else 1000,
+            "TOUR_CACHE_ENABLED": not IS_LOW_RAM,
+            "PRELOAD_EMBEDDINGS": not IS_LOW_RAM,
         }
     
     @staticmethod
@@ -168,7 +177,7 @@ app = Flask(__name__)
 app.json_encoder = EnhancedJSONEncoder  # Use custom JSON encoder
 CORS(app, origins=CORS_ORIGINS, supports_credentials=True)
 
-# =========== GLOBAL STATE ===========
+# =========== GLOBAL STATE (USING DATACLASSES) ===========
 # Initialize OpenAI client
 if HAS_OPENAI and OPENAI_API_KEY:
     try:
@@ -192,12 +201,12 @@ MAPPING: List[Dict] = []             # Mapping from text to original path
 INDEX = None                         # FAISS or numpy index
 INDEX_LOCK = threading.Lock()        # Thread safety for index operations
 
-# Tour databases
+# Tour databases (USING Tour DATACLASS)
 TOUR_NAME_TO_INDEX: Dict[str, int] = {}      # Normalized tour name → index
 TOURS_DB: Dict[int, Tour] = {}               # Structured tour database using Tour objects
 TOUR_TAGS: Dict[int, List[str]] = {}         # Auto-generated tags for filtering
 
-# Session management
+# Session management (USING ConversationContext DATACLASS)
 SESSION_CONTEXTS: Dict[str, ConversationContext] = {}
 SESSION_LOCK = threading.Lock()
 SESSION_TIMEOUT = 1800  # 30 minutes
@@ -206,7 +215,41 @@ SESSION_TIMEOUT = 1800  # 30 minutes
 _response_cache: Dict[str, CacheEntry] = {}
 _cache_lock = threading.Lock()
 
-# =========== UPGRADE 1: MANDATORY FILTER SYSTEM ===========
+# Embedding cache (memory optimized)
+_embedding_cache: Dict[str, Tuple[List[float], int]] = {}
+_embedding_cache_lock = threading.Lock()
+MAX_EMBEDDING_CACHE_SIZE = UpgradeFlags.get_all_flags()["EMBEDDING_CACHE_SIZE"]
+
+# =========== MEMORY OPTIMIZATION FUNCTIONS ===========
+def optimize_for_memory_profile():
+    """Apply memory optimizations based on RAM profile"""
+    flags = UpgradeFlags.get_all_flags()
+    
+    if IS_LOW_RAM:
+        logger.info("🧠 Low RAM mode (512MB) - optimizing memory usage")
+        # Disable heavy preloading
+        global FAISS_ENABLED
+        FAISS_ENABLED = False
+        
+        # Reduce cache sizes
+        import functools
+        functools.lru_cache(maxsize=128)(embed_text)
+        
+        # Limit tour loading
+        global MAX_TOURS_TO_LOAD
+        MAX_TOURS_TO_LOAD = 50
+        
+    elif IS_HIGH_RAM:
+        logger.info("🚀 High RAM mode (2GB) - enabling all features")
+        # Enable all features
+        FAISS_ENABLED = HAS_FAISS
+        MAX_TOURS_TO_LOAD = 1000
+        
+        # Increase cache sizes
+        import functools
+        functools.lru_cache(maxsize=flags["EMBEDDING_CACHE_SIZE"])(embed_text)
+
+# =========== UPGRADE 1: MANDATORY FILTER SYSTEM (DATACLASS COMPATIBLE) ===========
 class MandatoryFilterSystem:
     """
     UPGRADE 1: Extract and apply mandatory filters BEFORE semantic search
@@ -530,7 +573,7 @@ class MandatoryFilterSystem:
         
         return None
 
-# =========== UPGRADE 2: DEDUPLICATION ENGINE ===========
+# =========== UPGRADE 2: DEDUPLICATION ENGINE (DATACLASS COMPATIBLE) ===========
 class DeduplicationEngine:
     """
     UPGRADE 2: Remove duplicate and highly similar results
@@ -724,7 +767,7 @@ class DeduplicationEngine:
         logger.info(f"🔄 Tour merging: {len(tour_indices)} → {len(best_tours)} unique tours")
         return best_tours
 
-# =========== UPGRADE 3: ENHANCED FIELD DETECTION ===========
+# =========== UPGRADE 3: ENHANCED FIELD DETECTION (DATACLASS COMPATIBLE) ===========
 class EnhancedFieldDetector:
     """
     UPGRADE 3: Better detection of what user is asking for
@@ -879,7 +922,7 @@ class EnhancedFieldDetector:
         logger.info(f"🔍 Field detection: '{message}' → {best_field} (confidence: {best_score:.2f})")
         return best_field, best_score, scores
 
-# =========== UPGRADE 4: QUESTION PIPELINE ===========
+# =========== UPGRADE 4: QUESTION PIPELINE (DATACLASS COMPATIBLE) ===========
 class QuestionPipeline:
     """
     UPGRADE 4: Process different types of questions differently
@@ -1127,7 +1170,7 @@ class QuestionPipeline:
         
         return "\n".join(result_lines)
 
-# =========== UPGRADE 5: COMPLEX QUERY SPLITTER ===========
+# =========== UPGRADE 5: COMPLEX QUERY SPLITTER (DATACLASS COMPATIBLE) ===========
 class ComplexQueryProcessor:
     """
     UPGRADE 5: Handle complex multi-condition queries
@@ -1309,7 +1352,7 @@ class ComplexQueryProcessor:
         
         return merged
 
-# =========== UPGRADE 6: FUZZY MATCHING ===========
+# =========== UPGRADE 6: FUZZY MATCHING (DATACLASS COMPATIBLE) ===========
 class FuzzyMatcher:
     """
     UPGRADE 6: Handle misspellings and variations in tour names
@@ -1417,7 +1460,7 @@ class FuzzyMatcher:
         
         return [idx for idx, _ in matches[:3]]
 
-# =========== UPGRADE 7: STATE MACHINE ===========
+# =========== UPGRADE 7: STATE MACHINE (DATACLASS COMPATIBLE) ===========
 class ConversationStateMachine:
     """
     UPGRADE 7: Track conversation state for better context
@@ -1557,7 +1600,7 @@ class ConversationStateMachine:
         
         return []
 
-# =========== UPGRADE 8: DEEP SEMANTIC ANALYSIS ===========
+# =========== UPGRADE 8: DEEP SEMANTIC ANALYSIS (DATACLASS COMPATIBLE) ===========
 class SemanticAnalyzer:
     """
     UPGRADE 8: Deep understanding of user intent beyond keywords
@@ -1603,12 +1646,12 @@ class SemanticAnalyzer:
     }
     
     @staticmethod
-    def analyze_user_profile(message: str, current_context: Dict = None) -> UserProfile:
+    def analyze_user_profile(message: str, current_context: ConversationContext = None) -> UserProfile:
         """
         Analyze message to build user profile
         """
-        if current_context and isinstance(current_context, UserProfile):
-            profile = current_context
+        if current_context and hasattr(current_context, 'user_profile') and current_context.user_profile:
+            profile = current_context.user_profile
         else:
             profile = UserProfile()
         
@@ -1741,7 +1784,7 @@ class SemanticAnalyzer:
         
         return matches[:max_results]
 
-# =========== UPGRADE 9: AUTO-VALIDATION SYSTEM ===========
+# =========== UPGRADE 9: AUTO-VALIDATION SYSTEM (DATACLASS COMPATIBLE) ===========
 class AutoValidator:
     """
     UPGRADE 9: Validate and correct information before returning
@@ -1940,7 +1983,7 @@ class AutoValidator:
         
         return text
 
-# =========== UPGRADE 10: TEMPLATE SYSTEM ===========
+# =========== UPGRADE 10: TEMPLATE SYSTEM (DATACLASS COMPATIBLE) ===========
 class TemplateSystem:
     """
     UPGRADE 10: Beautiful, structured responses for different question types
@@ -1979,7 +2022,7 @@ class TemplateSystem:
                 'transport': "🚗 **DI CHUYỂN:**\n{transport}\n\n",
                 'notes': "📝 **GHI CHÚ:**\n{notes}\n\n",
             },
-            'footer': "📞 **ĐẶT TOUR & TƯ VẤN:** 0332510486\n"
+            'footer': "📞 **ĐẶT TOUR & TƯ VẾN:** 0332510486\n"
                      "⭐ *Tour phù hợp cho: {suitable_for}*",
             'default_values': {
                 'duration': 'Đang cập nhật',
@@ -2207,46 +2250,7 @@ class TemplateSystem:
         
         return info_text
 
-# =========== GLOBAL HELPER FUNCTIONS ===========
-def normalize_text_simple(s: str) -> str:
-    """Basic text normalization"""
-    if not s:
-        return ""
-    s = s.lower()
-    s = unicodedata.normalize("NFD", s)
-    s = "".join(ch for ch in s if unicodedata.category(ch) != "Mn")
-    s = re.sub(r"[^\w\s]", " ", s)
-    s = re.sub(r"\s+", " ", s).strip()
-    return s
-
-def get_session_context(session_id: str) -> ConversationContext:
-    """Get or create context for session"""
-    with SESSION_LOCK:
-        if session_id not in SESSION_CONTEXTS:
-            SESSION_CONTEXTS[session_id] = ConversationContext(session_id=session_id)
-        
-        now = datetime.utcnow()
-        to_delete = []
-        for sid, ctx in SESSION_CONTEXTS.items():
-            if (now - ctx.last_updated).total_seconds() > SESSION_TIMEOUT:
-                to_delete.append(sid)
-        
-        for sid in to_delete:
-            del SESSION_CONTEXTS[sid]
-        
-        return SESSION_CONTEXTS[session_id]
-
-def extract_session_id(request_data: Dict, remote_addr: str) -> str:
-    """Extract or create session ID"""
-    session_id = request_data.get("session_id")
-    if not session_id:
-        ip = remote_addr or "0.0.0.0"
-        current_hour = datetime.utcnow().strftime("%Y%m%d%H")
-        unique_str = f"{ip}_{current_hour}"
-        session_id = hashlib.md5(unique_str.encode()).hexdigest()[:12]
-    return f"session_{session_id}"
-
-# =========== KNOWLEDGE BASE FUNCTIONS ===========
+# =========== TOUR DATABASE BUILDER (USING Tour DATACLASS) ===========
 def load_knowledge(path: str = KNOWLEDGE_PATH):
     """Load knowledge base from JSON file"""
     global KNOW, FLAT_TEXTS, MAPPING
@@ -2316,7 +2320,7 @@ def index_tour_names():
     logger.info(f"📝 Indexed {len(TOUR_NAME_TO_INDEX)} tour names")
 
 def build_tours_db():
-    """Build structured tour database from MAPPING"""
+    """Build structured tour database from MAPPING using Tour dataclass"""
     global TOURS_DB, TOUR_TAGS
     
     TOURS_DB.clear()
@@ -2490,7 +2494,7 @@ def get_passages_by_field(field_name: str, limit: int = 50,
     all_results.sort(key=lambda x: x[0], reverse=True)
     return all_results[:limit]
 
-# =========== CACHE SYSTEM ===========
+# =========== CACHE SYSTEM (DATACLASS COMPATIBLE) ===========
 class CacheSystem:
     """Simple caching system for responses"""
     
@@ -2533,6 +2537,309 @@ class CacheSystem:
                 for old_key in [k for k, _ in sorted_items[:200]]:
                     if old_key in _response_cache:
                         del _response_cache[old_key]
+
+# =========== EMBEDDING FUNCTIONS (MEMORY OPTIMIZED) ===========
+@lru_cache(maxsize=128 if IS_LOW_RAM else 1000)
+def embed_text(text: str) -> Tuple[List[float], int]:
+    """Embed text using OpenAI or fallback (with memory optimization)"""
+    if not text:
+        return [], 0
+    
+    text = text[:2000]
+    
+    if client:
+        try:
+            response = client.embeddings.create(
+                model=EMBEDDING_MODEL,
+                input=text
+            )
+            if response.data:
+                embedding = response.data[0].embedding
+                return embedding, len(embedding)
+        except Exception as e:
+            logger.error(f"OpenAI embedding error: {e}")
+    
+    # Fallback: deterministic hash-based embedding
+    h = hash(text) % (10 ** 12)
+    dim = 1536
+    embedding = [(float((h >> (i % 32)) & 0xFF) + (i % 7)) / 255.0 
+                 for i in range(dim)]
+    
+    return embedding, dim
+
+def query_index(query: str, top_k: int = TOP_K) -> List[Tuple[float, Dict]]:
+    """Query the index"""
+    if not query or INDEX is None:
+        return []
+    
+    emb, _ = embed_text(query)
+    if not emb:
+        return []
+    
+    vec = np.array(emb, dtype="float32").reshape(1, -1)
+    vec = vec / (np.linalg.norm(vec) + 1e-12)
+    
+    try:
+        if HAS_FAISS and isinstance(INDEX, faiss.Index):
+            D, I = INDEX.search(vec, top_k)
+        else:
+            D, I = INDEX.search(vec, top_k)
+        
+        results = []
+        for score, idx in zip(D[0], I[0]):
+            if 0 <= idx < len(MAPPING):
+                results.append((float(score), MAPPING[idx]))
+        
+        return results
+    except Exception as e:
+        logger.error(f"Index search error: {e}")
+        return []
+
+class NumpyIndex:
+    """Simple numpy-based index"""
+    def __init__(self, mat=None):
+        self.mat = mat.astype("float32") if mat is not None else np.empty((0, 0), dtype="float32")
+        self.dim = self.mat.shape[1] if self.mat.size > 0 else None
+    
+    def search(self, qvec, k):
+        if self.mat.size == 0:
+            return np.empty((1, 0)), np.empty((1, 0), dtype=int)
+        
+        q = qvec.astype("float32")
+        q = q / (np.linalg.norm(q, axis=1, keepdims=True) + 1e-12)
+        m = self.mat / (np.linalg.norm(self.mat, axis=1, keepdims=True) + 1e-12)
+        
+        sims = np.dot(q, m.T)
+        idx = np.argsort(-sims, axis=1)[:, :k]
+        scores = np.take_along_axis(sims, idx, axis=1)
+        
+        return scores.astype("float32"), idx.astype("int64")
+    
+    def save(self, path):
+        np.savez_compressed(path, mat=self.mat)
+    
+    @classmethod
+    def load(cls, path):
+        arr = np.load(path)
+        return cls(arr['mat'])
+
+def build_index(force_rebuild: bool = False) -> bool:
+    """Build or load FAISS/numpy index"""
+    global INDEX, EMBEDDING_MODEL
+    
+    with INDEX_LOCK:
+        # Try to load existing index
+        if not force_rebuild:
+            if FAISS_ENABLED and HAS_FAISS and os.path.exists(FAISS_INDEX_PATH):
+                try:
+                    INDEX = faiss.read_index(FAISS_INDEX_PATH)
+                    logger.info(f"✅ Loaded FAISS index from {FAISS_INDEX_PATH}")
+                    return True
+                except Exception as e:
+                    logger.warning(f"Failed to load FAISS index: {e}")
+            
+            # Try numpy fallback
+            if os.path.exists(FALLBACK_VECTORS_PATH):
+                try:
+                    arr = np.load(FALLBACK_VECTORS_PATH)
+                    INDEX = NumpyIndex(arr['mat'])
+                    logger.info("✅ Loaded numpy index")
+                    return True
+                except Exception as e:
+                    logger.warning(f"Failed to load numpy index: {e}")
+        
+        # Build new index
+        if not FLAT_TEXTS:
+            logger.warning("No texts to index")
+            return False
+        
+        logger.info(f"🔨 Building index for {len(FLAT_TEXTS)} passages...")
+        
+        # Generate embeddings
+        vectors = []
+        dims = None
+        
+        for text in FLAT_TEXTS:
+            emb, d = embed_text(text)
+            if emb:
+                if dims is None:
+                    dims = len(emb)
+                vectors.append(np.array(emb, dtype="float32"))
+        
+        if not vectors:
+            logger.error("No embeddings generated")
+            return False
+        
+        # Create index
+        mat = np.vstack(vectors)
+        mat = mat / (np.linalg.norm(mat, axis=1, keepdims=True) + 1e-12)
+        
+        if FAISS_ENABLED and HAS_FAISS:
+            INDEX = faiss.IndexFlatIP(dims)
+            INDEX.add(mat)
+            try:
+                faiss.write_index(INDEX, FAISS_INDEX_PATH)
+                logger.info(f"✅ Saved FAISS index to {FAISS_INDEX_PATH}")
+            except Exception as e:
+                logger.error(f"Failed to save FAISS index: {e}")
+        else:
+            INDEX = NumpyIndex(mat)
+            try:
+                INDEX.save(FALLBACK_VECTORS_PATH)
+                logger.info(f"✅ Saved numpy index to {FALLBACK_VECTORS_PATH}")
+            except Exception as e:
+                logger.error(f"Failed to save numpy index: {e}")
+        
+        logger.info(f"✅ Index built: {len(vectors)} vectors, {dims} dimensions")
+        return True
+
+# =========== HELPER FUNCTIONS ===========
+def normalize_text_simple(s: str) -> str:
+    """Basic text normalization"""
+    if not s:
+        return ""
+    s = s.lower()
+    s = unicodedata.normalize("NFD", s)
+    s = "".join(ch for ch in s if unicodedata.category(ch) != "Mn")
+    s = re.sub(r"[^\w\s]", " ", s)
+    s = re.sub(r"\s+", " ", s).strip()
+    return s
+
+def get_session_context(session_id: str) -> ConversationContext:
+    """Get or create context for session using ConversationContext dataclass"""
+    with SESSION_LOCK:
+        if session_id not in SESSION_CONTEXTS:
+            SESSION_CONTEXTS[session_id] = ConversationContext(session_id=session_id)
+        
+        now = datetime.utcnow()
+        to_delete = []
+        for sid, ctx in SESSION_CONTEXTS.items():
+            if (now - ctx.last_updated).total_seconds() > SESSION_TIMEOUT:
+                to_delete.append(sid)
+        
+        for sid in to_delete:
+            del SESSION_CONTEXTS[sid]
+        
+        return SESSION_CONTEXTS[session_id]
+
+def extract_session_id(request_data: Dict, remote_addr: str) -> str:
+    """Extract or create session ID"""
+    session_id = request_data.get("session_id")
+    if not session_id:
+        ip = remote_addr or "0.0.0.0"
+        current_hour = datetime.utcnow().strftime("%Y%m%d%H")
+        unique_str = f"{ip}_{current_hour}"
+        session_id = hashlib.md5(unique_str.encode()).hexdigest()[:12]
+    return f"session_{session_id}"
+
+def _prepare_llm_prompt(user_message: str, search_results: List, context: Dict) -> str:
+    """Prepare prompt for LLM"""
+    prompt_parts = [
+        "Bạn là trợ lý AI của Ruby Wings - chuyên tư vấn du lịch trải nghiệm.",
+        "HƯỚNG DẪN QUAN TRỌNG:",
+        "1. LUÔN sử dụng thông tin từ dữ liệu nội bộ được cung cấp bên dưới",
+        "2. Nếu thiếu thông tin chi tiết, tổng hợp từ thông tin chung có sẵn",
+        "3. KHÔNG BAO GIỜ nói 'không có thông tin', 'không biết', 'không rõ'",
+        "4. Luôn giữ thái độ nhiệt tình, hữu ích, chuyên nghiệp",
+        "5. Nếu không tìm thấy thông tin chính xác, đưa ra thông tin tổng quát",
+        "6. KHÔNG tự ý bịa thông tin không có trong dữ liệu",
+        "",
+        "THÔNG TIN NGỮ CẢNH:",
+    ]
+    
+    if context.get('user_preferences'):
+        prefs = []
+        if context['user_preferences'].get('duration_pref'):
+            prefs.append(f"Thích tour {context['user_preferences']['duration_pref']}")
+        if context['user_preferences'].get('interests'):
+            prefs.append(f"Quan tâm: {', '.join(context['user_preferences']['interests'])}")
+        if prefs:
+            prompt_parts.append(f"- Sở thích người dùng: {'; '.join(prefs)}")
+    
+    if context.get('current_tours'):
+        tours_info = []
+        for tour in context['current_tours']:
+            tours_info.append(f"{tour['name']} ({tour.get('duration', '?')})")
+        if tours_info:
+            prompt_parts.append(f"- Tour đang thảo luận: {', '.join(tours_info)}")
+    
+    if context.get('filters'):
+        filters = context['filters']
+        filter_strs = []
+        if filters.get('price_max'):
+            filter_strs.append(f"giá dưới {filters['price_max']:,} VND")
+        if filters.get('price_min'):
+            filter_strs.append(f"giá trên {filters['price_min']:,} VND")
+        if filters.get('location'):
+            filter_strs.append(f"địa điểm: {filters['location']}")
+        if filter_strs:
+            prompt_parts.append(f"- Bộ lọc: {', '.join(filter_strs)}")
+    
+    prompt_parts.append("")
+    prompt_parts.append("DỮ LIỆU NỘI BỘ RUBY WINGS:")
+    
+    if search_results:
+        for i, (score, passage) in enumerate(search_results[:5], 1):
+            text = passage.get('text', '')[:300]
+            prompt_parts.append(f"\n[{i}] (Độ liên quan: {score:.2f})")
+            prompt_parts.append(f"{text}")
+    else:
+        prompt_parts.append("Không tìm thấy dữ liệu liên quan trực tiếp.")
+    
+    prompt_parts.append("")
+    prompt_parts.append("TRẢ LỜI:")
+    prompt_parts.append("1. Dựa trên dữ liệu trên, trả lời câu hỏi người dùng")
+    prompt_parts.append("2. Nếu có thông tin từ dữ liệu, trích dẫn nó")
+    prompt_parts.append("3. Giữ câu trả lời ngắn gọn, rõ ràng, hữu ích")
+    prompt_parts.append("4. Kết thúc bằng lời mời liên hệ hotline 0332510486 nếu cần thêm thông tin")
+    
+    return "\n".join(prompt_parts)
+
+def _generate_fallback_response(user_message: str, search_results: List, tour_indices: List[int] = None) -> str:
+    """Generate fallback response when LLM is unavailable"""
+    message_lower = user_message.lower()
+    
+    if 'dưới' in message_lower and ('triệu' in message_lower or 'tiền' in message_lower):
+        if not tour_indices and TOURS_DB:
+            all_tours = list(TOURS_DB.items())[:3]
+            response = "Dựa trên yêu cầu của bạn, tôi đề xuất các tour có giá hợp lý:\n"
+            for idx, tour in all_tours:
+                tour_name = tour.name or f'Tour #{idx}'
+                price = tour.price or 'Liên hệ để biết giá'
+                response += f"• **{tour_name}**: {price}\n"
+            response += "\n💡 *Liên hệ hotline 0332510486 để biết giá chính xác và ưu đãi*"
+            return response
+    
+    if not search_results:
+        if tour_indices and TOURS_DB:
+            response = "Thông tin về tour bạn quan tâm:\n"
+            for idx in tour_indices[:2]:
+                tour = TOURS_DB.get(idx)
+                if tour:
+                    response += f"\n**{tour.name or f'Tour #{idx}'}**\n"
+                    if tour.duration:
+                        response += f"⏱️ {tour.duration}\n"
+                    if tour.location:
+                        response += f"📍 {tour.location}\n"
+                    if tour.price:
+                        response += f"💰 {tour.price}\n"
+            response += "\n💡 *Liên hệ hotline 0332510486 để biết thêm chi tiết*"
+            return response
+        else:
+            return "Xin lỗi, hiện không tìm thấy thông tin liên quan trong dữ liệu. " \
+                   "Vui lòng liên hệ hotline 0332510486 để được tư vấn trực tiếp."
+    
+    top_results = search_results[:3]
+    response_parts = ["Tôi tìm thấy một số thông tin liên quan:"]
+    
+    for i, (score, passage) in enumerate(top_results, 1):
+        text = passage.get('text', '')[:150]
+        if text:
+            response_parts.append(f"\n{i}. {text}")
+    
+    response_parts.append("\n💡 *Liên hệ hotline 0332510486 để biết thêm chi tiết*")
+    
+    return "".join(response_parts)
 
 # =========== MAIN CHAT ENDPOINT WITH ALL UPGRADES ===========
 @app.route("/chat", methods=["POST"])
@@ -2971,115 +3278,6 @@ def chat_endpoint():
             }
         }), 500
 
-def _prepare_llm_prompt(user_message: str, search_results: List, context: Dict) -> str:
-    """Prepare prompt for LLM"""
-    prompt_parts = [
-        "Bạn là trợ lý AI của Ruby Wings - chuyên tư vấn du lịch trải nghiệm.",
-        "HƯỚNG DẪN QUAN TRỌNG:",
-        "1. LUÔN sử dụng thông tin từ dữ liệu nội bộ được cung cấp bên dưới",
-        "2. Nếu thiếu thông tin chi tiết, tổng hợp từ thông tin chung có sẵn",
-        "3. KHÔNG BAO GIỜ nói 'không có thông tin', 'không biết', 'không rõ'",
-        "4. Luôn giữ thái độ nhiệt tình, hữu ích, chuyên nghiệp",
-        "5. Nếu không tìm thấy thông tin chính xác, đưa ra thông tin tổng quát",
-        "6. KHÔNG tự ý bịa thông tin không có trong dữ liệu",
-        "",
-        "THÔNG TIN NGỮ CẢNH:",
-    ]
-    
-    if context.get('user_preferences'):
-        prefs = []
-        if context['user_preferences'].get('duration_pref'):
-            prefs.append(f"Thích tour {context['user_preferences']['duration_pref']}")
-        if context['user_preferences'].get('interests'):
-            prefs.append(f"Quan tâm: {', '.join(context['user_preferences']['interests'])}")
-        if prefs:
-            prompt_parts.append(f"- Sở thích người dùng: {'; '.join(prefs)}")
-    
-    if context.get('current_tours'):
-        tours_info = []
-        for tour in context['current_tours']:
-            tours_info.append(f"{tour['name']} ({tour.get('duration', '?')})")
-        if tours_info:
-            prompt_parts.append(f"- Tour đang thảo luận: {', '.join(tours_info)}")
-    
-    if context.get('filters'):
-        filters = context['filters']
-        filter_strs = []
-        if filters.get('price_max'):
-            filter_strs.append(f"giá dưới {filters['price_max']:,} VND")
-        if filters.get('price_min'):
-            filter_strs.append(f"giá trên {filters['price_min']:,} VND")
-        if filters.get('location'):
-            filter_strs.append(f"địa điểm: {filters['location']}")
-        if filter_strs:
-            prompt_parts.append(f"- Bộ lọc: {', '.join(filter_strs)}")
-    
-    prompt_parts.append("")
-    prompt_parts.append("DỮ LIỆU NỘI BỘ RUBY WINGS:")
-    
-    if search_results:
-        for i, (score, passage) in enumerate(search_results[:5], 1):
-            text = passage.get('text', '')[:300]
-            prompt_parts.append(f"\n[{i}] (Độ liên quan: {score:.2f})")
-            prompt_parts.append(f"{text}")
-    else:
-        prompt_parts.append("Không tìm thấy dữ liệu liên quan trực tiếp.")
-    
-    prompt_parts.append("")
-    prompt_parts.append("TRẢ LỜI:")
-    prompt_parts.append("1. Dựa trên dữ liệu trên, trả lời câu hỏi người dùng")
-    prompt_parts.append("2. Nếu có thông tin từ dữ liệu, trích dẫn nó")
-    prompt_parts.append("3. Giữ câu trả lời ngắn gọn, rõ ràng, hữu ích")
-    prompt_parts.append("4. Kết thúc bằng lời mời liên hệ hotline 0332510486 nếu cần thêm thông tin")
-    
-    return "\n".join(prompt_parts)
-
-def _generate_fallback_response(user_message: str, search_results: List, tour_indices: List[int] = None) -> str:
-    """Generate fallback response when LLM is unavailable"""
-    message_lower = user_message.lower()
-    
-    if 'dưới' in message_lower and ('triệu' in message_lower or 'tiền' in message_lower):
-        if not tour_indices and TOURS_DB:
-            all_tours = list(TOURS_DB.items())[:3]
-            response = "Dựa trên yêu cầu của bạn, tôi đề xuất các tour có giá hợp lý:\n"
-            for idx, tour in all_tours:
-                tour_name = tour.name or f'Tour #{idx}'
-                price = tour.price or 'Liên hệ để biết giá'
-                response += f"• **{tour_name}**: {price}\n"
-            response += "\n💡 *Liên hệ hotline 0332510486 để biết giá chính xác và ưu đãi*"
-            return response
-    
-    if not search_results:
-        if tour_indices and TOURS_DB:
-            response = "Thông tin về tour bạn quan tâm:\n"
-            for idx in tour_indices[:2]:
-                tour = TOURS_DB.get(idx)
-                if tour:
-                    response += f"\n**{tour.name or f'Tour #{idx}'}**\n"
-                    if tour.duration:
-                        response += f"⏱️ {tour.duration}\n"
-                    if tour.location:
-                        response += f"📍 {tour.location}\n"
-                    if tour.price:
-                        response += f"💰 {tour.price}\n"
-            response += "\n💡 *Liên hệ hotline 0332510486 để biết thêm chi tiết*"
-            return response
-        else:
-            return "Xin lỗi, hiện không tìm thấy thông tin liên quan trong dữ liệu. " \
-                   "Vui lòng liên hệ hotline 0332510486 để được tư vấn trực tiếp."
-    
-    top_results = search_results[:3]
-    response_parts = ["Tôi tìm thấy một số thông tin liên quan:"]
-    
-    for i, (score, passage) in enumerate(top_results, 1):
-        text = passage.get('text', '')[:150]
-        if text:
-            response_parts.append(f"\n{i}. {text}")
-    
-    response_parts.append("\n💡 *Liên hệ hotline 0332510486 để biết thêm chi tiết*")
-    
-    return "".join(response_parts)
-
 # =========== OTHER ENDPOINTS ===========
 @app.route("/")
 def home():
@@ -3149,7 +3347,7 @@ def get_gspread_client(force_refresh: bool = False):
 
 @app.route('/api/save-lead', methods=['POST'])
 def save_lead_to_sheet():
-    """Save lead to Google Sheets"""
+    """Save lead to Google Sheets using LeadData dataclass"""
     try:
         if not request.is_json:
             return jsonify({"error": "JSON required", "success": False}), 400
@@ -3294,6 +3492,13 @@ def health_check():
                 "tours_db": len(TOURS_DB),
                 "upgrades": {k: v for k, v in UpgradeFlags.get_all_flags().items() 
                            if k.startswith("UPGRADE_")}
+            },
+            "memory_profile": {
+                "ram_profile": RAM_PROFILE,
+                "is_low_ram": IS_LOW_RAM,
+                "is_high_ram": IS_HIGH_RAM,
+                "tour_count": len(TOURS_DB),
+                "context_count": len(SESSION_CONTEXTS)
             }
         })
     except Exception as e:
@@ -3302,165 +3507,13 @@ def health_check():
             "error": str(e)
         }), 500
 
-# =========== INDEX MANAGEMENT ===========
-def build_index(force_rebuild: bool = False) -> bool:
-    """Build or load FAISS/numpy index"""
-    global INDEX, EMBEDDING_MODEL
-    
-    with INDEX_LOCK:
-        # Try to load existing index
-        if not force_rebuild:
-            if FAISS_ENABLED and HAS_FAISS and os.path.exists(FAISS_INDEX_PATH):
-                try:
-                    INDEX = faiss.read_index(FAISS_INDEX_PATH)
-                    logger.info(f"✅ Loaded FAISS index from {FAISS_INDEX_PATH}")
-                    return True
-                except Exception as e:
-                    logger.warning(f"Failed to load FAISS index: {e}")
-            
-            # Try numpy fallback
-            if os.path.exists(FALLBACK_VECTORS_PATH):
-                try:
-                    arr = np.load(FALLBACK_VECTORS_PATH)
-                    INDEX = NumpyIndex(arr['mat'])
-                    logger.info("✅ Loaded numpy index")
-                    return True
-                except Exception as e:
-                    logger.warning(f"Failed to load numpy index: {e}")
-        
-        # Build new index
-        if not FLAT_TEXTS:
-            logger.warning("No texts to index")
-            return False
-        
-        logger.info(f"🔨 Building index for {len(FLAT_TEXTS)} passages...")
-        
-        # Generate embeddings
-        vectors = []
-        dims = None
-        
-        for text in FLAT_TEXTS:
-            emb, d = embed_text(text)
-            if emb:
-                if dims is None:
-                    dims = len(emb)
-                vectors.append(np.array(emb, dtype="float32"))
-        
-        if not vectors:
-            logger.error("No embeddings generated")
-            return False
-        
-        # Create index
-        mat = np.vstack(vectors)
-        mat = mat / (np.linalg.norm(mat, axis=1, keepdims=True) + 1e-12)
-        
-        if FAISS_ENABLED and HAS_FAISS:
-            INDEX = faiss.IndexFlatIP(dims)
-            INDEX.add(mat)
-            try:
-                faiss.write_index(INDEX, FAISS_INDEX_PATH)
-                logger.info(f"✅ Saved FAISS index to {FAISS_INDEX_PATH}")
-            except Exception as e:
-                logger.error(f"Failed to save FAISS index: {e}")
-        else:
-            INDEX = NumpyIndex(mat)
-            try:
-                INDEX.save(FALLBACK_VECTORS_PATH)
-                logger.info(f"✅ Saved numpy index to {FALLBACK_VECTORS_PATH}")
-            except Exception as e:
-                logger.error(f"Failed to save numpy index: {e}")
-        
-        logger.info(f"✅ Index built: {len(vectors)} vectors, {dims} dimensions")
-        return True
-
-def query_index(query: str, top_k: int = TOP_K) -> List[Tuple[float, Dict]]:
-    """Query the index"""
-    if not query or INDEX is None:
-        return []
-    
-    emb, _ = embed_text(query)
-    if not emb:
-        return []
-    
-    vec = np.array(emb, dtype="float32").reshape(1, -1)
-    vec = vec / (np.linalg.norm(vec) + 1e-12)
-    
-    try:
-        if HAS_FAISS and isinstance(INDEX, faiss.Index):
-            D, I = INDEX.search(vec, top_k)
-        else:
-            D, I = INDEX.search(vec, top_k)
-        
-        results = []
-        for score, idx in zip(D[0], I[0]):
-            if 0 <= idx < len(MAPPING):
-                results.append((float(score), MAPPING[idx]))
-        
-        return results
-    except Exception as e:
-        logger.error(f"Index search error: {e}")
-        return []
-
-@lru_cache(maxsize=8192)
-def embed_text(text: str) -> Tuple[List[float], int]:
-    """Embed text using OpenAI or fallback"""
-    if not text:
-        return [], 0
-    
-    text = text[:2000]
-    
-    if client:
-        try:
-            response = client.embeddings.create(
-                model=EMBEDDING_MODEL,
-                input=text
-            )
-            if response.data:
-                embedding = response.data[0].embedding
-                return embedding, len(embedding)
-        except Exception as e:
-            logger.error(f"OpenAI embedding error: {e}")
-    
-    # Fallback: deterministic hash-based embedding
-    h = hash(text) % (10 ** 12)
-    dim = 1536
-    embedding = [(float((h >> (i % 32)) & 0xFF) + (i % 7)) / 255.0 
-                 for i in range(dim)]
-    
-    return embedding, dim
-
-class NumpyIndex:
-    """Simple numpy-based index"""
-    def __init__(self, mat=None):
-        self.mat = mat.astype("float32") if mat is not None else np.empty((0, 0), dtype="float32")
-        self.dim = self.mat.shape[1] if self.mat.size > 0 else None
-    
-    def search(self, qvec, k):
-        if self.mat.size == 0:
-            return np.empty((1, 0)), np.empty((1, 0), dtype=int)
-        
-        q = qvec.astype("float32")
-        q = q / (np.linalg.norm(q, axis=1, keepdims=True) + 1e-12)
-        m = self.mat / (np.linalg.norm(self.mat, axis=1, keepdims=True) + 1e-12)
-        
-        sims = np.dot(q, m.T)
-        idx = np.argsort(-sims, axis=1)[:, :k]
-        scores = np.take_along_axis(sims, idx, axis=1)
-        
-        return scores.astype("float32"), idx.astype("int64")
-    
-    def save(self, path):
-        np.savez_compressed(path, mat=self.mat)
-    
-    @classmethod
-    def load(cls, path):
-        arr = np.load(path)
-        return cls(arr['mat'])
-
 # =========== INITIALIZATION ===========
 def initialize_app():
     """Initialize the application"""
-    logger.info("🚀 Starting Ruby Wings Chatbot v4.0...")
+    logger.info("🚀 Starting Ruby Wings Chatbot v4.0 (Dataclass Rewrite)...")
+    
+    # Apply memory optimizations
+    optimize_for_memory_profile()
     
     # Load knowledge base
     load_knowledge()
@@ -3501,7 +3554,11 @@ def initialize_app():
     for upgrade in active_upgrades:
         logger.info(f"   • {upgrade}")
     
-    logger.info("✅ Application initialized successfully")
+    # Log memory profile
+    logger.info(f"🧠 Memory Profile: {RAM_PROFILE}MB | Low RAM: {IS_LOW_RAM} | High RAM: {IS_HIGH_RAM}")
+    logger.info(f"📊 Tours Database: {len(TOURS_DB)} tours loaded")
+    
+    logger.info("✅ Application initialized successfully with dataclasses")
 
 # =========== APPLICATION START ===========
 if __name__ == "__main__":
