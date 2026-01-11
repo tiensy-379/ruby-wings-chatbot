@@ -253,20 +253,30 @@ CORS(app, origins=CORS_ORIGINS, supports_credentials=True)
 
 # =========== GLOBAL STATE (USING DATACLASSES) ===========
 # Initialize OpenAI client
-if HAS_OPENAI and OPENAI_API_KEY:
-    try:
-        client = OpenAI(
-            api_key=OPENAI_API_KEY,
-            timeout=30.0,
-            max_retries=3
-        )
-        logger.info("✅ OpenAI client initialized successfully")
-    except Exception as e:
-        logger.error(f"❌ OpenAI client initialization failed: {e}")
-        client = None
-else:
-    client = None
-    logger.warning("⚠️ OpenAI client not available - using fallback responses")
+# ==== OpenAI client (SDK 1.x safe, Render compatible) ====
+from openai import OpenAI
+import httpx
+import os
+
+def create_openai_client():
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY is not set")
+
+    # Render-safe HTTP client (no proxies param in OpenAI 1.x)
+    http_client = httpx.Client(
+        timeout=60.0,
+        follow_redirects=True
+    )
+
+    return OpenAI(
+        api_key=api_key,
+        http_client=http_client
+    )
+
+# Create global OpenAI client
+client = create_openai_client()
+
 
 # Knowledge base state
 KNOW: Dict = {}                      # Raw knowledge.json data
@@ -2671,19 +2681,40 @@ def query_index(query: str, top_k: int = TOP_K) -> List[Tuple[float, Dict]]:
 
 class NumpyIndex:
     """Simple numpy-based index with fallback support"""
+
     def __init__(self, mat=None):
         if NUMPY_AVAILABLE:
-            self.mat = mat.astype("float32") if mat is not None else np.empty((0, 0), dtype="float32")
-        else:
-            # Fallback implementation
-            if mat is not None:
-                self.mat = mat
+            if mat is None:
+                self.mat = np.empty((0, 0), dtype="float32")
+                self.dim = 0
             else:
+                self.mat = mat.astype("float32")
+
+                # numpy-safe dimension detection
+                if self.mat.ndim == 2:
+                    self.dim = self.mat.shape[1]
+                else:
+                    self.dim = 0
+        else:
+            # Pure Python fallback
+            if mat is None:
                 self.mat = []
-        self.dim = len(self.mat[0]) if self.mat else 0
+                self.dim = 0
+            else:
+                self.mat = mat
+                self.dim = len(mat[0]) if len(mat) > 0 else 0
+
+        
+        # FIX: Check array size properly to avoid "truth value ambiguous" error
+        if NUMPY_AVAILABLE and isinstance(self.mat, np.ndarray):
+            self.dim = self.mat.shape[1] if self.mat.shape[0] > 0 else 0
+        elif self.mat and len(self.mat) > 0:
+            self.dim = len(self.mat[0])
+        else:
+            self.dim = 0
     
     def search(self, qvec, k):
-        if not self.mat or len(self.mat) == 0:
+        if not self.mat or (NUMPY_AVAILABLE and self.mat.shape[0] == 0) or (not NUMPY_AVAILABLE and len(self.mat) == 0):
             # Return empty results
             return np.array([[]]), np.array([[]], dtype=np.int64)
         
@@ -3068,7 +3099,7 @@ def chat_endpoint():
         # UPGRADE 7: STATE MACHINE PROCESSING
         if UpgradeFlags.is_enabled("7_STATE_MACHINE") and context.state_machine:
             placeholder_response = "Processing your request..."
-            context.state_machine.update(user_message, placeholder_response, context.last_tour_indices)
+            context.state_machine.update(user_message, placeholder_response, tour_indices if 'tour_indices' in locals() else [])
         
         # TOUR RESOLUTION
         tour_indices = context.last_tour_indices or []

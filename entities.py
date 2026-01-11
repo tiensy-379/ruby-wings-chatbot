@@ -159,6 +159,7 @@ class ConversationContext:
     """Conversation context for state management"""
     session_id: str
     current_tours: List[int] = field(default_factory=list)
+    last_tour_indices: list[int] = field(default_factory=list)
     last_question: Optional[str] = None
     last_response: Optional[str] = None
     user_preferences: Dict[str, Any] = field(default_factory=dict)
@@ -166,6 +167,9 @@ class ConversationContext:
     mentioned_tours: Set[int] = field(default_factory=set)
     current_focus: Optional[str] = None
     last_successful_tours: List[int] = field(default_factory=list)
+   
+   
+
     
     # Timestamps
     created_at: datetime = field(default_factory=datetime.utcnow)
