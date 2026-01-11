@@ -1,177 +1,231 @@
+# render.yaml - Optimized for Ruby Wings Chatbot v4.0
 services:
   - type: web
-    name: ruby-wings-chatbot
+    name: ruby-wings-chatbot-v4
     env: python
-    plan: free
-
-    buildCommand: "pip install --no-cache-dir -r requirements.txt"
-    startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 300"
-
-    envVars:
-      # ===== CORE CONFIGURATION =====
-      - key: OPENAI_API_KEY
-        sync: false  # Đặt trong Render Dashboard
-
-      - key: OPENAI_BASE_URL
-        value: "https://api.openai.com/v1"
-
-      - key: FLASK_ENV
-        value: "production"
-
-      - key: PORT
-        value: "10000"
-
-      # ===== FAISS & CHATBOT CONFIG =====
-      - key: FAISS_ENABLED
-        value: "true"
-
-      - key: RBW_ALLOW_REINDEX
-        value: "0"
-
-      - key: KNOWLEDGE_PATH
-        value: "knowledge.json"
-
-      - key: FALLBACK_VECTORS_PATH
-        value: "vectors.npz"
-
-      - key: FAISS_MAPPING_PATH
-        value: "faiss_mapping.json"
-
-      - key: FAISS_INDEX_PATH
-        value: "faiss_index.bin"
-
-      # ===== AI MODELS =====
-      - key: EMBEDDING_MODEL
-        value: "text-embedding-3-small"
-
-      - key: CHAT_MODEL
-        value: "gpt-4o-mini"
-
-      - key: TOP_K
-        value: "5"
-
-      # ===== GOOGLE SHEETS INTEGRATION =====
-      - key: ENABLE_GOOGLE_SHEETS
-        value: "true"
-
-      - key: GOOGLE_SERVICE_ACCOUNT_JSON
-        sync: false  # Đặt trong Render Dashboard với JSON đầy đủ
-
-      - key: GOOGLE_SHEET_ID
-        value: "1SdVbwkuxb8l1meEW--ddyfh4WmUvSXXMOPQ5bCyPkdk"
-
-      - key: GOOGLE_SHEET_NAME
-        value: "RBW_Lead_Raw_Inbox"
-
-      # ===== FALLBACK STORAGE =====
-      - key: ENABLE_FALLBACK_STORAGE
-        value: "true"
-
-      - key: FALLBACK_STORAGE_PATH
-        value: "leads_fallback.json"
-
-      # ===== PERFORMANCE =====
-      - key: WORKERS
-        value: "1"
-
-      - key: TIMEOUT
-        value: "300"
-
-      - key: DEBUG
-        value: "false"
-
-      - key: LOG_LEVEL
-        value: "INFO"
-
-      # ===== META CONVERSION API (CAPI) =====
-      - key: META_PIXEL_ID
-        value: "862531473384426"
-
-      - key: META_CAPI_TOKEN
-        sync: false  # Đặt trong Render Dashboard
-
-      - key: META_TEST_EVENT_CODE
-        value: ""  # TEST12345 khi cần test, để trống khi production
-
-      # ===== META CAPI FEATURE FLAGS =====
-      - key: ENABLE_META_CAPI_LEAD
-        value: "true"  # Bật tracking lead qua /api/save-lead
-
-      - key: ENABLE_META_CAPI_CALL
-        value: "true"  # Bật tracking cho nút gọi điện (FIXED VERSION)
-
-      - key: DEBUG_META_CAPI
-        value: "true"  # Bật log debug cho Meta CAPI
-
-      # ===== SECURITY =====
-      - key: SECRET_KEY
-        generateValue: true
-
-      - key: CORS_ORIGINS
-        value: "https://www.rubywings.vn,https://rubywings.vn"
-
-      # ===== SYSTEM =====
-      - key: HOST
-        value: "0.0.0.0"
-
-      - key: MAX_CONTENT_LENGTH
-        value: "16777216"  # 16MB
-
-    healthCheckPath: "/api/health"
-    healthCheckTimeout: 30
-
+    plan: starter
+    region: singapore
     autoDeploy: true
     branch: main
-
+    
+    # Health Check
+    healthCheckPath: /api/health
+    initialDelaySec: 30
+    
+    # Build Configuration
+    buildCommand: |
+      pip install --upgrade pip
+      pip install -r requirements.txt
+      if [ "$AUTO_INSTALL_FAISS" = "true" ] && [ "$FAISS_ENABLED" = "true" ]; then
+        pip install faiss-cpu==1.7.4
+        echo "✅ FAISS installed"
+      fi
+      
+    # Startup Command
+    startCommand: |
+      if [ -f "gunicorn.conf.py" ]; then
+        gunicorn app:app -c gunicorn.conf.py
+      else
+        gunicorn app:app --workers $GUNICORN_WORKERS --threads $GUNICORN_THREADS --bind=0.0.0.0:$PORT --timeout $TIMEOUT --access-logfile - --error-logfile -
+      fi
+    
+    # Disk Storage
     disk:
-      name: chatbot-storage
-      mountPath: /data
+      name: data
+      mountPath: /opt/render/project/src/data
       sizeGB: 1
-
-    # Build cache optimization
-    buildFilter:
-      paths:
-        - "*.py"
-        - "requirements.txt"
-        - "knowledge.json"
-        - "*.json"
-        - "render.yaml"
-      ignoredPaths:
-        - "__pycache__/"
-        - "*.pyc"
-        - ".git/"
-        - "logs/"
-        - "*.log"
-
-    # Advanced configuration for better performance
-    scaling:
-      minInstances: 1
-      maxInstances: 1
-
-    # Header configuration for security
-    headers:
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /*
-        name: X-Frame-Options
-        value: DENY
-      - path: /*
-        name: X-XSS-Protection
-        value: 1; mode=block
-
-    # CORS configuration
-    cors:
-      allowedOrigins:
-        - "https://www.rubywings.vn"
-        - "https://rubywings.vn"
-      allowedMethods:
-        - GET
-        - POST
-        - OPTIONS
-      allowedHeaders:
-        - Content-Type
-        - Authorization
-        - X-Requested-With
-      allowCredentials: true
-      maxAge: 86400
+    
+    # Environment Variables
+    envVars:
+      # ===== CORE API KEYS =====
+      - key: OPENAI_API_KEY
+        sync: false
+        required: true
+      
+      - key: OPENAI_BASE_URL
+        value: "https://api.openai.com/v1"
+      
+      # ===== GOOGLE SHEETS =====
+      - key: ENABLE_GOOGLE_SHEETS
+        value: "false"  # Disabled by default
+      
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+        sync: false
+        required: false
+      
+      - key: GOOGLE_SHEET_ID
+        value: "1SdVbwkuxb8l1meEW--ddyfh4WmUvSXXMOPQ5bCyPkdk"
+      
+      - key: GOOGLE_SHEET_NAME
+        value: "RBW_Lead_Raw_Inbox"
+      
+      # ===== META CAPI =====
+      - key: ENABLE_META_CAPI_CALL
+        value: "true"
+      
+      - key: ENABLE_META_CAPI_LEAD
+        value: "false"  # Disabled by default
+      
+      - key: META_CAPI_TOKEN
+        sync: false
+        required: false
+      
+      - key: META_PIXEL_ID
+        value: "862531473384426"
+      
+      - key: META_CAPI_ENDPOINT
+        value: "https://graph.facebook.com/v18.0/"
+      
+      - key: DEBUG_META_CAPI
+        value: "false"
+      
+      - key: META_TEST_EVENT_CODE
+        value: "TEST76123"
+      
+      # ===== KNOWLEDGE & INDEX =====
+      - key: KNOWLEDGE_PATH
+        value: "knowledge.json"
+      
+      - key: FAISS_ENABLED
+        value: "false"
+      
+      - key: AUTO_INSTALL_FAISS
+        value: "false"
+      
+      - key: FAISS_INDEX_PATH
+        value: "data/faiss_index.bin"
+      
+      - key: FAISS_MAPPING_PATH
+        value: "data/faiss_mapping.json"
+      
+      - key: FALLBACK_VECTORS_PATH
+        value: "data/vectors.npz"
+      
+      # ===== MODELS =====
+      - key: EMBEDDING_MODEL
+        value: "text-embedding-3-small"
+      
+      - key: CHAT_MODEL
+        value: "gpt-4o-mini"
+      
+      - key: TOP_K
+        value: "5"
+      
+      # ===== STORAGE =====
+      - key: ENABLE_FALLBACK_STORAGE
+        value: "true"
+      
+      - key: FALLBACK_STORAGE_PATH
+        value: "data/leads_fallback.json"
+      
+      # ===== SERVER CONFIG =====
+      - key: FLASK_ENV
+        value: "production"
+      
+      - key: DEBUG
+        value: "false"
+      
+      - key: SECRET_KEY
+        sync: false
+        generateValue: true
+      
+      - key: CORS_ORIGINS
+        value: "https://www.rubywings.vn,https://rubywings.vn,http://localhost:3000,http://localhost:5000"
+      
+      - key: HOST
+        value: "0.0.0.0"
+      
+      - key: PORT
+        value: "10000"
+      
+      # ===== UPGRADE FEATURE FLAGS =====
+      - key: UPGRADE_1_MANDATORY_FILTER
+        value: "true"
+      
+      - key: UPGRADE_2_DEDUPLICATION
+        value: "true"
+      
+      - key: UPGRADE_3_ENHANCED_FIELDS
+        value: "true"
+      
+      - key: UPGRADE_4_QUESTION_PIPELINE
+        value: "true"
+      
+      - key: UPGRADE_5_QUERY_SPLITTER
+        value: "true"
+      
+      - key: UPGRADE_6_FUZZY_MATCHING
+        value: "true"
+      
+      - key: UPGRADE_7_STATE_MACHINE
+        value: "true"
+      
+      - key: UPGRADE_8_SEMANTIC_ANALYSIS
+        value: "true"
+      
+      - key: UPGRADE_9_AUTO_VALIDATION
+        value: "true"
+      
+      - key: UPGRADE_10_TEMPLATE_SYSTEM
+        value: "true"
+      
+      - key: ENABLE_CACHING
+        value: "true"
+      
+      - key: CACHE_TTL_SECONDS
+        value: "300"
+      
+      - key: ENABLE_QUERY_LOGGING
+        value: "true"
+      
+      # ===== ADMIN & SECURITY =====
+      - key: RBW_ALLOW_REINDEX
+        value: "0"
+      
+      - key: MAX_CONTENT_LENGTH
+        value: "16777216"
+      
+      # ===== PERFORMANCE =====
+      - key: GUNICORN_WORKERS
+        value: "1"
+      
+      - key: GUNICORN_THREADS
+        value: "2"
+      
+      - key: TIMEOUT
+        value: "120"
+      
+      - key: GUNICORN_TIMEOUT
+        value: "120"
+      
+      - key: GUNICORN_GRACEFUL_TIMEOUT
+        value: "30"
+      
+      - key: GUNICORN_KEEPALIVE
+        value: "2"
+      
+      - key: GUNICORN_MAX_REQUESTS
+        value: "1000"
+      
+      - key: GUNICORN_MAX_REQUESTS_JITTER
+        value: "50"
+      
+      - key: GUNICORN_PRELOAD_APP
+        value: "true"
+      
+      - key: GUNICORN_WORKER_CONNECTIONS
+        value: "1000"
+      
+      - key: GUNICORN_LOG_LEVEL
+        value: "info"
+      
+      # ===== LOGGING =====
+      - key: LOG_LEVEL
+        value: "INFO"
+      
+      - key: PYTHONUNBUFFERED
+        value: "true"
+    
+    # Advanced Settings
+    numInstances: 1
+    instanceType: starter

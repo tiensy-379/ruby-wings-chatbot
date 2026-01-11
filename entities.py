@@ -1,208 +1,405 @@
-#!/usr/bin/env python3
-"""
-entities.py - Build and query a simple tour <-> alias index.
-
-Features:
-- Extract aliases from mapping entries (tour_name, location, summary, includes)
-- Save/load tour_entities.json
-- Fuzzy matching using rapidfuzz (optional)
-- Optional semantic fallback via provided function (e.g., query_index)
-"""
-
+# entities.py - Core Data Models for Ruby Wings Chatbot v4.0
+from dataclasses import dataclass, field
+from typing import List, Dict, Any, Optional, Tuple, Set, Union
+from datetime import datetime
+from enum import Enum
 import json
-import re
-from typing import Dict, List, Set, Tuple, Optional
-from collections import defaultdict
-import os
 
-# reuse normalization from common_utils
-try:
-    from common_utils import normalize_text_simple
-except Exception:
-    # fallback local normalizer
-    def normalize_text_simple(s: str) -> str:
-        import unicodedata, re
-        if not s:
-            return ""
-        s = s.lower()
-        s = unicodedata.normalize("NFD", s)
-        s = "".join(ch for ch in s if unicodedata.category(ch) != "Mn")
-        s = re.sub(r"[^\w\s]", " ", s)
-        s = re.sub(r"\s+", " ", s).strip()
-        return s
+# ===== ENUMS =====
+class QuestionType(Enum):
+    """Types of user questions"""
+    INFORMATION = "information"
+    COMPARISON = "comparison"
+    RECOMMENDATION = "recommendation"
+    LISTING = "listing"
+    CALCULATION = "calculation"
+    CONFIRMATION = "confirmation"
+    GREETING = "greeting"
+    FAREWELL = "farewell"
+    COMPLEX = "complex"
 
-# optional dependency
-try:
-    from rapidfuzz import process, fuzz  # type: ignore
-except Exception:
-    process = None
-    fuzz = None
+class ConversationState(Enum):
+    """Conversation states for state machine"""
+    INITIAL = "initial"
+    TOUR_SELECTED = "tour_selected"
+    COMPARING = "comparing"
+    ASKING_DETAILS = "asking_details"
+    RECOMMENDATION = "recommendation"
+    BOOKING = "booking"
+    FAREWELL = "farewell"
 
-# default path can be overridden by env TOUR_ENTITIES_PATH
-ENTITY_PATH_DEFAULT = os.environ.get("TOUR_ENTITIES_PATH", "tour_entities.json")
+class PriceLevel(Enum):
+    """Price level categories"""
+    BUDGET = "budget"
+    MIDRANGE = "midrange"
+    PREMIUM = "premium"
 
-def extract_ngrams(tokens: List[str], min_n: int = 1, max_n: int = 3) -> Set[str]:
-    out = set()
-    n_tokens = len(tokens)
-    for n in range(min_n, max_n + 1):
-        for i in range(0, n_tokens - n + 1):
-            ng = " ".join(tokens[i:i+n])
-            out.add(ng)
-    return out
+class DurationType(Enum):
+    """Duration categories"""
+    SHORT = "short"      # 1 day
+    MEDIUM = "medium"    # 2-3 days
+    LONG = "long"        # 4+ days
 
-def build_entity_index(mapping: List[dict], out_path: str = ENTITY_PATH_DEFAULT,
-                       min_ngram: int = 1, max_ngram: int = 3,
-                       fields_to_scan: Optional[List[str]] = None) -> Dict[str, dict]:
-    """
-    Build index: alias_norm -> {"tours": [indices], "examples": [paths], "aliases": [originals]}
-    mapping: list of {"path":..., "text": ...}
-    fields_to_scan: list of field substrings to consider (default tour_name, location, summary, includes)
-    """
-    if fields_to_scan is None:
-        fields_to_scan = ["tour_name", "location", "summary", "includes", "itinerary", "location_name"]
+# ===== CORE DATA MODELS =====
+@dataclass
+class Tour:
+    """Tour data model"""
+    index: int
+    name: str = ""
+    duration: str = ""
+    location: str = ""
+    price: str = ""
+    summary: str = ""
+    includes: List[str] = field(default_factory=list)
+    accommodation: str = ""
+    meals: str = ""
+    transport: str = ""
+    notes: str = ""
+    style: str = ""
+    
+    # Metadata
+    tags: List[str] = field(default_factory=list)
+    completeness_score: float = 0.0
+    popularity_score: float = 0.5
+    last_mentioned: Optional[datetime] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary"""
+        return {
+            "index": self.index,
+            "tour_name": self.name,
+            "duration": self.duration,
+            "location": self.location,
+            "price": self.price,
+            "summary": self.summary,
+            "includes": self.includes,
+            "accommodation": self.accommodation,
+            "meals": self.meals,
+            "transport": self.transport,
+            "notes": self.notes,
+            "style": self.style,
+            "tags": self.tags,
+            "completeness_score": self.completeness_score,
+            "popularity_score": self.popularity_score,
+            "last_mentioned": self.last_mentioned.isoformat() if self.last_mentioned else None
+        }
+    
+    @classmethod
+    def from_dict(cls, index: int, data: Dict[str, Any]) -> 'Tour':
+        """Create Tour from dictionary"""
+        return cls(
+            index=index,
+            name=data.get("tour_name", ""),
+            duration=data.get("duration", ""),
+            location=data.get("location", ""),
+            price=data.get("price", ""),
+            summary=data.get("summary", ""),
+            includes=data.get("includes", []),
+            accommodation=data.get("accommodation", ""),
+            meals=data.get("meals", ""),
+            transport=data.get("transport", ""),
+            notes=data.get("notes", ""),
+            style=data.get("style", ""),
+            tags=data.get("tags", []),
+            completeness_score=data.get("completeness_score", 0.0),
+            popularity_score=data.get("popularity_score", 0.5)
+        )
 
-    alias_to_tours = defaultdict(set)
-    alias_examples = defaultdict(set)
-    alias_raw = defaultdict(set)
+@dataclass
+class UserProfile:
+    """User profile for semantic analysis"""
+    age_group: Optional[str] = None  # young, middle_aged, senior, family_with_kids
+    group_type: Optional[str] = None  # solo, couple, family, friends, corporate
+    interests: List[str] = field(default_factory=list)  # nature, history, culture, spiritual, wellness, adventure, food
+    budget_level: Optional[str] = None  # budget, midrange, premium
+    physical_level: Optional[str] = None  # easy, moderate, challenging
+    special_needs: List[str] = field(default_factory=list)
+    
+    # Confidence scores
+    confidence_scores: Dict[str, float] = field(default_factory=dict)
+    
+    def get_overall_confidence(self) -> float:
+        """Calculate overall confidence"""
+        if not self.confidence_scores:
+            return 0.0
+        return sum(self.confidence_scores.values()) / len(self.confidence_scores)
+    
+    def to_summary(self) -> str:
+        """Get summary string"""
+        parts = []
+        if self.age_group:
+            parts.append(f"Độ tuổi: {self.age_group}")
+        if self.group_type:
+            parts.append(f"Nhóm: {self.group_type}")
+        if self.interests:
+            parts.append(f"Sở thích: {', '.join(self.interests)}")
+        if self.budget_level:
+            parts.append(f"Ngân sách: {self.budget_level}")
+        return "; ".join(parts)
 
-    # helper to extract index int from path like root.tours[2].tour_name
-    def extract_index(path: str) -> Optional[int]:
-        m = re.search(r"\[(\d+)\]", path)
-        if m:
-            return int(m.group(1))
+@dataclass
+class SearchResult:
+    """Search result from vector index"""
+    score: float
+    text: str
+    path: str
+    metadata: Dict[str, Any] = field(default_factory=dict)
+    
+    def get_tour_index(self) -> Optional[int]:
+        """Extract tour index from path"""
+        import re
+        match = re.search(r'tours\[(\d+)\]', self.path)
+        if match:
+            return int(match.group(1))
         return None
 
-    for entry in mapping:
-        path = entry.get("path","")
-        text = (entry.get("text") or "").strip()
-        if not text:
-            continue
-        path_lower = path.lower()
-        # only scan entries that look like tour-related fields
-        interesting = any(f.lower() in path_lower for f in fields_to_scan)
-        if not interesting:
-            continue
-        ti = extract_index(path)
-        norm_text = normalize_text_simple(text)
-        if not norm_text:
-            continue
-        tokens = norm_text.split()
-        # add whole text as alias
-        alias_raw[norm_text].add(text)
-        if ti is not None:
-            alias_to_tours[norm_text].add(ti)
-            alias_examples[norm_text].add(path)
-        # add ngrams as potential aliases
-        for ng in extract_ngrams(tokens, min_n=min_ngram, max_n=max_ngram):
-            alias_raw[ng].add(ng)
-            if ti is not None:
-                alias_to_tours[ng].add(ti)
-                alias_examples[ng].add(path)
+@dataclass
+class ConversationContext:
+    """Conversation context for state management"""
+    session_id: str
+    current_tours: List[int] = field(default_factory=list)
+    last_question: Optional[str] = None
+    last_response: Optional[str] = None
+    user_preferences: Dict[str, Any] = field(default_factory=dict)
+    conversation_history: List[Dict[str, Any]] = field(default_factory=list)
+    mentioned_tours: Set[int] = field(default_factory=set)
+    current_focus: Optional[str] = None
+    last_successful_tours: List[int] = field(default_factory=list)
+    
+    # Timestamps
+    created_at: datetime = field(default_factory=datetime.utcnow)
+    last_updated: datetime = field(default_factory=datetime.utcnow)
+    
+    def update(self, user_message: str, bot_response: str, tour_indices: List[int] = None):
+        """Update context with new interaction"""
+        self.last_updated = datetime.utcnow()
+        self.last_question = user_message
+        self.last_response = bot_response
+        
+        # Update conversation history
+        self.conversation_history.append({
+            'timestamp': self.last_updated.isoformat(),
+            'user': user_message,
+            'bot': bot_response,
+            'tours': tour_indices or []
+        })
+        
+        # Keep only last 10 messages
+        if len(self.conversation_history) > 10:
+            self.conversation_history = self.conversation_history[-10:]
+        
+        # Update mentioned tours
+        if tour_indices:
+            self.mentioned_tours.update(tour_indices)
+            self.current_tours = tour_indices
+            self.last_successful_tours = tour_indices
 
-    # build final dict
-    idx_map: Dict[str, dict] = {}
-    for a in alias_to_tours:
-        idx_map[a] = {
-            "tours": sorted(list(alias_to_tours[a])),
-            "examples": sorted(list(alias_examples.get(a, []))),
-            "aliases": sorted(list(alias_raw.get(a, [])))
+@dataclass
+class FilterSet:
+    """Filter set for tour filtering"""
+    price_min: Optional[float] = None
+    price_max: Optional[float] = None
+    duration_min: Optional[int] = None
+    duration_max: Optional[int] = None
+    location: Optional[str] = None
+    near_location: Optional[str] = None
+    month: Optional[int] = None
+    weekend: bool = False
+    holiday: Optional[str] = None
+    group_type: Optional[str] = None
+    
+    def is_empty(self) -> bool:
+        """Check if filter set is empty"""
+        return all(
+            getattr(self, field) is None or getattr(self, field) is False
+            for field in self.__dataclass_fields__
+            if field not in ['weekend']
+        )
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary"""
+        return {
+            'price_min': self.price_min,
+            'price_max': self.price_max,
+            'duration_min': self.duration_min,
+            'duration_max': self.duration_max,
+            'location': self.location,
+            'near_location': self.near_location,
+            'month': self.month,
+            'weekend': self.weekend,
+            'holiday': self.holiday,
+            'group_type': self.group_type
         }
 
-    # persist to out_path
-    try:
-        with open(out_path, "w", encoding="utf-8") as f:
-            json.dump(idx_map, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
+@dataclass
+class LLMRequest:
+    """LLM request data"""
+    user_message: str
+    context: Dict[str, Any]
+    search_results: List[SearchResult]
+    tour_indices: List[int]
+    question_type: QuestionType
+    requested_field: Optional[str]
+    user_profile: UserProfile
+    
+    def build_prompt(self) -> str:
+        """Build prompt for LLM"""
+        prompt_parts = [
+            "Bạn là trợ lý AI của Ruby Wings - chuyên tư vấn du lịch trải nghiệm.",
+            "HƯỚNG DẪN QUAN TRỌNG:",
+            "1. LUÔN sử dụng thông tin từ dữ liệu nội bộ được cung cấp",
+            "2. Nếu thiếu thông tin chi tiết, tổng hợp từ thông tin chung",
+            "3. KHÔNG BAO GIỜ nói 'không có thông tin', 'không biết', 'không rõ'",
+            "4. Luôn giữ thái độ nhiệt tình, hữu ích, chuyên nghiệp",
+            "5. Nếu không tìm thấy thông tin chính xác, đưa ra thông tin tổng quát",
+            "6. KHÔNG tự ý bịa thông tin không có trong dữ liệu",
+            "",
+            "THÔNG TIN NGỮ CẢNH:",
+        ]
+        
+        # Add user profile if available
+        if self.user_profile.to_summary():
+            prompt_parts.append(f"- Sở thích người dùng: {self.user_profile.to_summary()}")
+        
+        # Add current tours if available
+        if self.tour_indices:
+            prompt_parts.append(f"- Tour đang thảo luận: {len(self.tour_indices)} tour")
+        
+        prompt_parts.append("")
+        prompt_parts.append("DỮ LIỆU NỘI BỘ RUBY WINGS:")
+        
+        if self.search_results:
+            for i, result in enumerate(self.search_results[:5], 1):
+                prompt_parts.append(f"\n[{i}] (Độ liên quan: {result.score:.2f})")
+                prompt_parts.append(f"{result.text[:300]}...")
+        else:
+            prompt_parts.append("Không tìm thấy dữ liệu liên quan trực tiếp.")
+        
+        prompt_parts.append("")
+        prompt_parts.append("TRẢ LỜI:")
+        prompt_parts.append("1. Dựa trên dữ liệu trên, trả lời câu hỏi người dùng")
+        prompt_parts.append("2. Nếu có thông tin từ dữ liệu, trích dẫn nó")
+        prompt_parts.append("3. Giữ câu trả lời ngắn gọn, rõ ràng, hữu ích")
+        prompt_parts.append("4. Kết thúc bằng lời mời liên hệ hotline 0332510486")
+        
+        return "\n".join(prompt_parts)
 
-    return idx_map
+@dataclass
+class ChatResponse:
+    """Chatbot response"""
+    reply: str
+    sources: List[Dict[str, Any]]
+    context: Dict[str, Any]
+    tour_indices: List[int]
+    processing_time_ms: int
+    from_memory: bool = False
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for API response"""
+        return {
+            "reply": self.reply,
+            "sources": self.sources,
+            "context": {
+                "tour_indices": self.tour_indices,
+                "processing_time_ms": self.processing_time_ms,
+                "from_memory": self.from_memory,
+                **self.context
+            }
+        }
 
-def load_entity_index(path: str = ENTITY_PATH_DEFAULT) -> Dict[str, dict]:
-    if not os.path.exists(path):
-        return {}
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-            return data
-    except Exception:
-        return {}
+@dataclass
+class LeadData:
+    """Lead data for Google Sheets/Meta CAPI"""
+    timestamp: datetime
+    source_channel: str
+    action_type: str
+    page_url: str
+    contact_name: str
+    phone: str
+    service_interest: str
+    note: str
+    status: str
+    
+    def to_row(self) -> List[str]:
+        """Convert to Google Sheets row"""
+        return [
+            self.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+            self.source_channel,
+            self.action_type,
+            self.page_url,
+            self.contact_name,
+            self.phone,
+            self.service_interest,
+            self.note,
+            self.status
+        ]
+    
+    def to_meta_event(self, request, event_name: str = "Lead") -> Dict[str, Any]:
+        """Convert to Meta CAPI event"""
+        return {
+            "event_name": event_name,
+            "event_time": int(self.timestamp.timestamp()),
+            "event_id": str(hash(f"{self.phone}{self.timestamp}")),
+            "event_source_url": self.page_url,
+            "action_source": "website",
+            "user_data": {
+                "ph": self._hash_phone(self.phone) if self.phone else "",
+                "client_ip_address": request.remote_addr if hasattr(request, 'remote_addr') else "",
+                "client_user_agent": request.headers.get("User-Agent", "") if hasattr(request, 'headers') else ""
+            },
+            "custom_data": {
+                "value": 200000,
+                "currency": "VND",
+                "content_name": "Ruby Wings Lead"
+            }
+        }
+    
+    @staticmethod
+    def _hash_phone(phone: str) -> str:
+        """Hash phone number for Meta"""
+        import hashlib
+        return hashlib.sha256(phone.strip().lower().encode()).hexdigest()
 
-def find_tours_by_place(query: str,
-                        index: Dict[str, dict],
-                        top_k: int = 5,
-                        fuzzy_threshold: int = 70,
-                        use_fuzzy: bool = True,
-                        semantic_fallback_fn = None) -> List[Tuple[int, float, List[str]]]:
-    """
-    Return list of tuples: (tour_index, score, matched_paths)
-    Steps:
-     - normalize query
-     - exact match on keys
-     - substring match on keys
-     - fuzzy match via rapidfuzz (partial_ratio) if available
-     - if no result and semantic_fallback_fn provided, call it (should return list of (score, mapping_entry))
-    """
-    qn = normalize_text_simple(query)
-    if not qn:
-        return []
+@dataclass
+class CacheEntry:
+    """Cache entry for response caching"""
+    key: str
+    value: Any
+    created_at: datetime
+    ttl_seconds: int
+    
+    def is_expired(self) -> bool:
+        """Check if cache entry is expired"""
+        return (datetime.utcnow() - self.created_at).total_seconds() > self.ttl_seconds
 
-    results = {}
-    # exact match
-    if qn in index:
-        for ti in index[qn]["tours"]:
-            results[ti] = max(results.get(ti, 0.0), 100.0)
+# ===== SERIALIZATION HELPERS =====
+class EnhancedJSONEncoder(json.JSONEncoder):
+    """Enhanced JSON encoder for custom objects"""
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        if isinstance(obj, Enum):
+            return obj.value
+        if hasattr(obj, 'to_dict'):
+            return obj.to_dict()
+        if hasattr(obj, '__dict__'):
+            return obj.__dict__
+        return super().default(obj)
 
-    # substring matches on keys (fast)
-    if not results:
-        for k in index.keys():
-            if qn in k:
-                for ti in index[k]["tours"]:
-                    results[ti] = max(results.get(ti, 0.0), 90.0)
-
-    # fuzzy match
-    if use_fuzzy and process is not None and not results:
-        choices = list(index.keys())
-        try:
-            extracted = process.extract(qn, choices, scorer=fuzz.partial_ratio, limit=top_k)
-            for choice, score, _ in extracted:
-                if score >= fuzzy_threshold:
-                    for ti in index[choice]["tours"]:
-                        results[ti] = max(results.get(ti, 0.0), float(score))
-        except Exception:
-            # fallback: ignore fuzzy if rapidfuzz errors
-            pass
-
-    # semantic fallback
-    if not results and semantic_fallback_fn is not None:
-        try:
-            sem = semantic_fallback_fn(query, top_k)
-            for score, m in sem:
-                p = m.get("path","")
-                mm = re.search(r"\[(\d+)\]", p)
-                if mm:
-                    m_idx = int(mm.group(1))
-                    # convert score to 0-100 like scale if necessary
-                    s = float(score) * 100.0 if score <= 1.0 else float(score)
-                    results[m_idx] = max(results.get(m_idx, 0.0), s)
-        except Exception:
-            pass
-
-    # prepare sorted list
-    # collect examples per tour from index (if available)
-    tour_examples = {}
-    for k, v in index.items():
-        for ti in v.get("tours", []):
-            tour_examples.setdefault(ti, set()).update(v.get("examples", []))
-
-    out_list = sorted(((ti, s, sorted(list(tour_examples.get(ti, [])))) for ti, s in results.items()), key=lambda x: -x[1])
-    # dedupe & limit
-    final = []
-    seen = set()
-    for ti, score, examples in out_list:
-        if ti in seen:
-            continue
-        seen.add(ti)
-        final.append((ti, score, examples))
-        if len(final) >= top_k:
-            break
-    return final
+# ===== EXPORTS =====
+__all__ = [
+    'QuestionType',
+    'ConversationState',
+    'PriceLevel',
+    'DurationType',
+    'Tour',
+    'UserProfile',
+    'SearchResult',
+    'ConversationContext',
+    'FilterSet',
+    'LLMRequest',
+    'ChatResponse',
+    'LeadData',
+    'CacheEntry',
+    'EnhancedJSONEncoder'
+]
