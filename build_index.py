@@ -57,7 +57,28 @@ except Exception:
                 except Exception:
                     pass
         scan(data, "root")
-        return mapping
+        # FIX: Đảm bảo tất cả phần tử trong mapping là dictionary
+        # Trong trường hợp có lỗi, lọc chỉ lấy dict
+        valid_mapping = []
+        for item in mapping:
+            if isinstance(item, dict):
+                # Đảm bảo có cả 'path' và 'text'
+                if 'path' in item and 'text' in item:
+                    valid_mapping.append(item)
+                else:
+                    # Nếu thiếu, thêm giá trị mặc định
+                    valid_mapping.append({
+                        'path': item.get('path', ''),
+                        'text': item.get('text', '')
+                    })
+            else:
+                # Nếu không phải dict, bỏ qua hoặc chuyển đổi
+                try:
+                    if hasattr(item, '__dict__'):
+                        valid_mapping.append(item.__dict__)
+                except:
+                    pass
+        return valid_mapping
 
 # Try to import entities.build_entity_index to persist tour_entities.json
 try:

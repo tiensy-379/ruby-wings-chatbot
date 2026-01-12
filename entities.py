@@ -154,9 +154,6 @@ class SearchResult:
             return int(match.group(1))
         return None
 
-from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional, Set
-
 @dataclass
 class ConversationContext:
     """Conversation context for state management"""
@@ -179,10 +176,6 @@ class ConversationContext:
     # Dialogue control
     current_focus: Optional[str] = None
 
-   
-   
-
-    
     # Timestamps
     created_at: datetime = field(default_factory=datetime.utcnow)
     last_updated: datetime = field(default_factory=datetime.utcnow)
@@ -324,42 +317,37 @@ class ChatResponse:
             }
         }
 
-from dataclasses import dataclass, field
-from typing import Optional, Dict, Any
-import time
-
-
 @dataclass
 class LeadData:
-    name: Optional[str] = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    message: Optional[str] = None
-    tour_id: Optional[int] = None
-    created_at: float = field(default_factory=lambda: time.time())
-
-    # === FIX for production ===
-    source_channel: Optional[str] = None   # web, fb, zalo, chatbot...
-    action_type: Optional[str] = None      # call, booking, callback, quote...
-
+    """Lead data for Google Sheets and Meta CAPI"""
+    timestamp: datetime = field(default_factory=datetime.utcnow)
+    source_channel: str = "Website"
+    action_type: str = "Click Call"
+    page_url: str = ""
+    contact_name: str = ""
+    phone: str = ""
+    service_interest: str = ""
+    note: str = ""
+    status: str = "New"
+    
     def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary"""
         return {
-            "name": self.name,
-            "phone": self.phone,
-            "email": self.email,
-            "message": self.message,
-            "tour_id": self.tour_id,
-            "created_at": self.created_at,
+            "timestamp": self.timestamp.isoformat() if isinstance(self.timestamp, datetime) else self.timestamp,
             "source_channel": self.source_channel,
             "action_type": self.action_type,
+            "page_url": self.page_url,
+            "contact_name": self.contact_name,
+            "phone": self.phone,
+            "service_interest": self.service_interest,
+            "note": self.note,
+            "status": self.status
         }
-
-
     
     def to_row(self) -> List[str]:
         """Convert to Google Sheets row"""
         return [
-            self.timestamp.strftime("%Y-%m-%d %H:%M:%S"),
+            self.timestamp.strftime("%Y-%m-%d %H:%M:%S") if isinstance(self.timestamp, datetime) else str(self.timestamp),
             self.source_channel,
             self.action_type,
             self.page_url,
@@ -374,7 +362,7 @@ class LeadData:
         """Convert to Meta CAPI event"""
         return {
             "event_name": event_name,
-            "event_time": int(self.timestamp.timestamp()),
+            "event_time": int(self.timestamp.timestamp()) if isinstance(self.timestamp, datetime) else int(time.time()),
             "event_id": str(hash(f"{self.phone}{self.timestamp}")),
             "event_source_url": self.page_url,
             "action_source": "website",
