@@ -162,3 +162,11 @@ ruby_wings.*.log
 !data/.gitkeep
 !entities.py
 !meta_capi.py
+
+# ===== AI INDEX FILES =====
+!vectors.npz
+!faiss_index.bin
+!index.faiss
+!faiss_mapping.json
+!index_metadata.json
+!tour_entities.json

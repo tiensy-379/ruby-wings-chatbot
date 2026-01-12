@@ -9,20 +9,19 @@ pip install -r requirements.txt
 
 echo "🧠 Verifying numpy & faiss"
 python - << 'EOF'
-import numpy, faiss
+import numpy
+try:
+    import faiss
+    print("faiss:", faiss.__version__)
+except Exception as e:
+    print("faiss not available:", e)
 print("numpy:", numpy.__version__)
-print("faiss:", faiss.__version__)
 EOF
 
 echo "📁 Preparing folders"
 mkdir -p logs
 mkdir -p data
 
-if [ "$FAISS_ENABLED" = "true" ]; then
-  echo "🚀 FAISS_ENABLED=true → Running index builder"
-  python build_index.py
-else
-  echo "⏭️  FAISS_ENABLED=false → Skipping build_index"
-fi
+echo "⏭️  Skipping index build on Render (using prebuilt indexes from repo)"
 
 echo "✅ Build completed successfully"
