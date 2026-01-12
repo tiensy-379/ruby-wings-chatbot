@@ -2,170 +2,166 @@ version: "1"
 
 services:
   - type: web
-    name: ruby-wings-chatbot-v4
-    env: python
+    name: ruby-wings-chatbot-v5
+    env: docker  # QUAN TRỌNG: Đổi từ python sang docker
     plan: starter
     region: singapore
     autoDeploy: true
     branch: main
+    dockerfilePath: ./Dockerfile  # Chỉ định đường dẫn Dockerfile
 
-    healthCheckPath: /api/health
+    healthCheckPath: /health
     healthCheckTimeout: 30
     initialDelaySec: 60
 
     buildCommand: |
-      echo "🚀 Ruby Wings build started"
+      echo "🚀 Ruby Wings v5.2 Docker build started"
+      echo "📦 Building Docker image..."
+      # Build command sẽ được thực hiện bởi Docker, không cần buildCommand chi tiết
+      # Render sẽ tự động chạy: docker build -t ruby-wings .
       
-      python -m pip install --upgrade pip setuptools wheel
-      
-      echo "📦 Installing dependencies"
-      pip install -r requirements.txt
-
-      
-      echo "📁 Prepare folders"
-      mkdir -p data logs
-      
-      if [ ! -f "knowledge.json" ]; then
-        echo '{"tours": []}' > knowledge.json
-      fi
-      
-      # Build embeddings ONLY if FAISS is enabled
-      if [ "$FAISS_ENABLED" = "true" ]; then
-        echo "🧠 FAISS enabled – building index"
-        python build_index.py
-      else
-        echo "🧠 FAISS disabled – using numpy fallback only"
-      fi
-      
-      echo "✅ Build done"
-
     startCommand: |
-      echo "🚀 Ruby Wings starting"
-
-      export RAM_PROFILE=${RAM_PROFILE:-512}
-
-      if [ "$RAM_PROFILE" = "2048" ]; then
-        echo "🚀 High-RAM mode (2GB)"
-        export GUNICORN_WORKERS=${GUNICORN_WORKERS:-2}
-        export GUNICORN_THREADS=${GUNICORN_THREADS:-4}
-        export FAISS_ENABLED=true
-      else
-        echo "🧠 Low-RAM mode (512MB)"
-        export GUNICORN_WORKERS=${GUNICORN_WORKERS:-1}
-        export GUNICORN_THREADS=${GUNICORN_THREADS:-2}
-        export FAISS_ENABLED=false
-      fi
-
-      gunicorn app:app \
-        --workers $GUNICORN_WORKERS \
-        --threads $GUNICORN_THREADS \
-        --bind=0.0.0.0:$PORT \
-        --timeout ${TIMEOUT:-120} \
-        --graceful-timeout ${GUNICORN_GRACEFUL_TIMEOUT:-30} \
-        --keepalive ${GUNICORN_KEEPALIVE:-5} \
-        --max-requests ${GUNICORN_MAX_REQUESTS:-1000} \
-        --max-requests-jitter ${GUNICORN_MAX_REQUESTS_JITTER:-50} \
-        --worker-connections ${GUNICORN_WORKER_CONNECTIONS:-1000} \
-        --log-level ${GUNICORN_LOG_LEVEL:-info} \
-        --access-logfile - \
-        --error-logfile -
+      echo "🚀 Ruby Wings v5.2 starting..."
+      echo "📊 System Configuration:"
+      echo "  - RAM Profile: $RAM_PROFILE"
+      echo "  - OpenAI: $([ -n "$OPENAI_API_KEY" ] && echo "Available" || echo "Not Available")"
+      echo "  - FAISS: $([ "$FAISS_ENABLED" = "true" ] && echo "Enabled" || echo "Disabled")"
+      echo "  - State Machine: $([ "$STATE_MACHINE_ENABLED" = "true" ] && echo "Enabled" || echo "Disabled")"
+      
+      # Chạy ứng dụng từ Docker container
+      # Container đã được build với CMD trong Dockerfile
+      # Không cần startCommand phức tạp, Docker sẽ tự động chạy CMD
 
     disk:
-      name: ruby-wings-data
-      mountPath: /opt/render/project/src/data
+      name: ruby-wings-data-v5
+      mountPath: /app/data
       sizeGB: 1
 
     envVars:
-      # ===== RAM MODE =====
+      # ===== APP VERSION =====
+      - key: APP_VERSION
+        value: "5.2"
+      
+      # ===== RAM OPTIMIZATION =====
       - key: RAM_PROFILE
         value: "512"
 
-      # ===== AI =====
-      - key: OPENAI_API_KEY
-        sync: false
-        required: true
-
-      - key: EMBEDDING_MODEL
-        value: "text-embedding-3-small"
-
-      - key: CHAT_MODEL
-        value: "gpt-4o-mini"
-
-      # ===== INDEX =====
-      - key: KNOWLEDGE_PATH
-        value: "knowledge.json"
-
+      # ===== FEATURE TOGGLES (v5.2) =====
+      - key: ENABLE_INTENT_DETECTION
+        value: "true"
+      - key: ENABLE_PHONE_DETECTION
+        value: "true"
+      - key: ENABLE_LEAD_CAPTURE
+        value: "true"
+      - key: ENABLE_LLM_FALLBACK
+        value: "true"
+      - key: ENABLE_CACHING
+        value: "true"
+      - key: ENABLE_GOOGLE_SHEETS
+        value: "true"
+      - key: ENABLE_META_CAPI
+        value: "false"
       - key: FAISS_ENABLED
         value: "false"
 
-      - key: FAISS_INDEX_PATH
-        value: "data/faiss_index.bin"
-
-      - key: FAISS_MAPPING_PATH
-        value: "data/faiss_mapping.json"
-
-      - key: FALLBACK_VECTORS_PATH
-        value: "data/vectors.npz"
-
-      # ===== GOOGLE =====
-      - key: ENABLE_GOOGLE_SHEETS
+      # ===== STATE MACHINE (v5.2 NEW) =====
+      - key: STATE_MACHINE_ENABLED
+        value: "true"
+      - key: CONVERSATION_HISTORY_LIMIT
+        value: "10"
+      - key: AUTO_STAGE_TRANSITION
         value: "true"
 
-      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+      # ===== RESPONSE FORMATTING (v5.2 NEW) =====
+      - key: MAX_TOURS_PER_RESPONSE
+        value: "3"
+      - key: ENABLE_TOUR_LABELS
+        value: "true"
+      - key: ENABLE_LOCATION_CONTEXT
+        value: "true"
+      - key: LOCATION_FILTER_STRICT
+        value: "true"
+      - key: ENABLE_REGION_FALLBACK
+        value: "true"
+
+      # ===== INTENT DETECTION (v5.2 NEW) =====
+      - key: INTENT_CONFIDENCE_THRESHOLD
+        value: "0.6"
+      - key: ENABLE_FUZZY_MATCHING
+        value: "true"
+      - key: ENABLE_PHONE_VALIDATION
+        value: "true"
+
+      # ===== PERFORMANCE TUNING =====
+      - key: MAX_SESSIONS
+        value: "100"
+      - key: MAX_EMBEDDING_CACHE
+        value: "50"
+      - key: CACHE_TTL_SECONDS
+        value: "300"
+
+      # ===== OPENAI CONFIGURATION =====
+      - key: OPENAI_API_KEY
         sync: false
         required: true
+      - key: OPENAI_EMBEDDING_MODEL
+        value: "text-embedding-3-small"
+      - key: OPENAI_CHAT_MODEL
+        value: "gpt-4o-mini"
 
+      # ===== FILE PATHS =====
+      - key: KNOWLEDGE_PATH
+        value: "/app/data/knowledge.json"
+      - key: FAISS_INDEX_PATH
+        value: "/app/data/faiss_index.bin"
+      - key: FAISS_MAPPING_PATH
+        value: "/app/data/faiss_mapping.json"
+      - key: FALLBACK_VECTORS_PATH
+        value: "/app/data/vectors.npz"
+      - key: TOUR_ENTITIES_PATH
+        value: "/app/data/tour_entities.json"
+
+      # ===== GOOGLE SHEETS =====
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+        sync: false
       - key: GOOGLE_SHEET_ID
         value: "1SdVbwkuxb8l1meEW--ddyfh4WmUvSXXMOPQ5bCyPkdk"
-
       - key: GOOGLE_SHEET_NAME
         value: "RBW_Lead_Raw_Inbox"
 
-      # ===== META =====
-      - key: ENABLE_META_CAPI_CALL
-        value: "true"
-
+      # ===== META CAPI =====
       - key: META_CAPI_TOKEN
         sync: false
-
       - key: META_PIXEL_ID
         value: "862531473384426"
 
-      # ===== SERVER =====
+      # ===== SERVER CONFIGURATION =====
       - key: PORT
         value: "10000"
-
+      - key: HOST
+        value: "0.0.0.0"
       - key: FLASK_ENV
         value: "production"
-
-      - key: DEBUG
-        value: "false"
-
       - key: SECRET_KEY
         sync: false
         generateValue: true
+      - key: ADMIN_SECRET
+        sync: false
+        generateValue: true
 
-      # ===== UPGRADES =====
-      - key: UPGRADE_1_MANDATORY_FILTER
+      # ===== SESSION CONFIGURATION =====
+      - key: SESSION_TYPE
+        value: "filesystem"
+      - key: SESSION_PERMANENT
+        value: "false"
+      - key: SESSION_USE_SIGNER
         value: "true"
-      - key: UPGRADE_2_DEDUPLICATION
-        value: "true"
-      - key: UPGRADE_3_ENHANCED_FIELDS
-        value: "true"
-      - key: UPGRADE_4_QUESTION_PIPELINE
-        value: "true"
-      - key: UPGRADE_5_QUERY_SPLITTER
-        value: "true"
-      - key: UPGRADE_6_FUZZY_MATCHING
-        value: "true"
-      - key: UPGRADE_7_STATE_MACHINE
-        value: "true"
-      - key: UPGRADE_8_SEMANTIC_ANALYSIS
-        value: "true"
-      - key: UPGRADE_9_AUTO_VALIDATION
-        value: "true"
-      - key: UPGRADE_10_TEMPLATE_SYSTEM
-        value: "true"
+      - key: SESSION_KEY_PREFIX
+        value: "ruby_wings_v5_"
+
+      # ===== CORS =====
+      - key: CORS_ORIGINS
+        value: "*"
 
     resources:
       cpu: 1

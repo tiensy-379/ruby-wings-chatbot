@@ -1,6 +1,12 @@
+# ============================================
+# RUBY WINGS AI CHATBOT v5.2 - GIT IGNORE
+# ============================================
+# Updated for v5.2 with state machine, enhanced intents, and location filtering
+
 # ===== PYTHON =====
 __pycache__/
 *.py[cod]
+*$py.class
 *.so
 .Python
 venv/
@@ -16,6 +22,8 @@ pip-wheel-metadata/
 *.egg-info/
 .eggs/
 .venv/
+pip-selfcheck.json
+pyvenv.cfg
 
 # ===== BUILD / DIST =====
 build/
@@ -30,135 +38,328 @@ wheelhouse/
 .coverage
 htmlcov/
 .tox/
+nox/
+.pytest_cache/
+.mypy_cache/
+*.egg
+MANIFEST
 
-# ===== DATA FILES =====
-data/
-*.log
-ruby_wings.log
-logs/
-*.sqlite
-*.sqlite3
-*.db
-*.db-journal
-
-# ===== FAISS / INDEX =====
+# ===== DATA FILES & INDEXES (v5.2 SPECIFIC) =====
+# FAISS and vector indexes
 faiss_index.bin
-index.faiss
 faiss_index_meta.json
 faiss_mapping.json
+faiss_mapping_index.json
 vectors.npz
+vectors_fallback.npz
 *.index
 *.npy
 *.npz
 
-# ===== RUNTIME STORAGE =====
+# Tour entities and generated files
+tour_entities.json
+tour_index.json
+entity_index.json
+
+# Session and cache data
+*.session
+*.cache
+cache/
+sessions/
+temp/
+
+# Log files
+*.log
+ruby_wings.log
+ruby_wings_*.log
+logs/
+log/
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+leads.db
+sessions.db
+
+# Backup and fallback storage
 leads_fallback.json
-*.jsonl
-*.csv
-*.tsv
-*.xlsx
-*.xls
+leads_backup.json
+state_backup.json
+session_backup.json
 
-# ===== ENV / SECRETS =====
-.env
-.env.*
-.env.local
-.env.development
-.env.production
-.env.staging
-.env.test
-*.key
-*.pem
-*.crt
-secrets.json
-credentials.json
-config.yaml
-config.yml
-config.json
-service_account.json
-
-# ===== IDE / EDITOR =====
-.vscode/
-.idea/
+# ===== RUNTIME & TEMPORARY FILES =====
+*.tmp
+*.temp
 *.swp
 *.swo
-*.swn
 *~
 .DS_Store
 Thumbs.db
 desktop.ini
-.project
-.settings/
-*.sublime-*
-*.code-workspace
+Icon?
+ehthumbs.db
 
-# ===== DEPLOYMENT =====
+# Temporary embeddings
+emb_tmp.bin
+tmp_embeddings.npy
+
+# ===== ENVIRONMENT & SECRETS =====
+.env
+.env.*
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.staging
+secrets/
+credentials/
+*.key
+*.pem
+*.crt
+*.cer
+secrets.json
+credentials.json
+service_account.json
+google_creds.json
+meta_creds.json
+config.yaml
+config.yml
+config.json
+settings.json
+
+# ===== DEPLOYMENT & DOCKER =====
 .render/
 .render-cloud/
 Dockerfile
-docker-compose.yml
 .dockerignore
 *.dockerfile
-Procfile
-Pipfile
-Pipfile.lock
-poetry.lock
-pyproject.toml
+docker-compose*.yml
+docker-compose*.yaml
+compose.yml
+compose.yaml
+.docker/
+docker/
+.kubernetes/
+k8s/
+
+# Render specific
 render.yaml.bak
 render-*.yaml
 render-cloud.yaml
+render.yaml.local
 
-# ===== TEMPORARY FILES =====
-*.tmp
-*.temp
-*.cache
-.cache/
+# Cloud deployment
+Procfile
+Procfile.dev
+Procfile.local
+.cloudignore
+.gitlab-ci.yml
+.github/
+.gitlab/
+.bitbucket/
+.circleci/
+.travis.yml
+azure-pipelines.yml
+Jenkinsfile
+
+# ===== IDE & EDITOR =====
+.vscode/
+.idea/
+*.sw[op]
+*.swn
+*.swo
+.project
+.classpath
+.settings/
+*.code-workspace
+*.sublime-*
+*.sublime-project
+*.sublime-workspace
+
+# JetBrains IDEs
+*.iml
+*.ipr
+*.iws
+
+# VS Code
+.history/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# ===== PACKAGE MANAGERS =====
 node_modules/
+.npm/
 .yarn/
+.yarnrc
+yarn.lock
+package-lock.json
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+bower_components/
 
-# ===== TEST & COVERAGE =====
+# ===== TEST & DEVELOPMENT =====
 .coverage
 .coverage.*
-htmlcov/
+.cache
 .pytest_cache/
 .mypy_cache/
+test_output/
+test-reports/
+junit/
 *.cover
 .hypothesis/
+.installed.cfg
+.pytest/
 
-# ===== JUPYTER =====
+# ===== JUPYTER & NOTEBOOKS =====
 *.ipynb
 .ipynb_checkpoints/
-experiments/
 notebooks/
+experiments/
+demos/
+samples/
 
-# ===== SYSTEM =====
-*.pid
-*.pid.lock
-*.lock
-*.sock
-*.state
-*.seed
+# ===== DOCUMENTATION =====
+docs/_build/
+_build/
+site/
+.mkdocs.yml
 
-# ===== ARCHIVES =====
+# ===== SYSTEM & OS SPECIFIC =====
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Windows
+[Hh]umbs.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+
+# ===== ARCHIVES & COMPRESSED =====
 *.7z
+*.bz2
+*.gz
 *.rar
+*.tar
+*.tgz
 *.zip
-*.tar.gz
+*.zst
 
 # ===== LOG ROTATION =====
 *.log.*
 *.log-*
-ruby_wings.*.log
+*.log[0-9]
+*.log[0-9][0-9]
+logfile.*
 
-# ===== EXCEPTIONS (KEEP THESE) =====
+# ===== AI/ML SPECIFIC =====
+# Model files
+*.pt
+*.pth
+*.h5
+*.keras
+*.model
+*.joblib
+*.pkl
+
+# Training data
+training_data/
+datasets/
+models/
+
+# ===== STATE MACHINE SPECIFIC (v5.2) =====
+state_dump.json
+session_store.json
+conversation_states.json
+user_profiles.json
+
+# ===== EXCEPTIONS (KEEP THESE FILES) =====
+# Critical application files
 !knowledge.json
+!app.py
+!entities.py
+!response_guard.py
+!build_index.py
+!gunicorn.conf.py
+
+# Configuration templates
+!requirements.txt
+!requirements-minimal.txt
+!.env.example
+!render.yaml
+!Dockerfile.example
+!docker-compose.example.yml
+
+# Documentation
 !README.md
+!README_*.md
+!CONTRIBUTING.md
+!CHANGELOG.md
 !LICENSE
+
+# Git keepers
 !.gitkeep
 !.gitignore
+!.gitattributes
+
+# Directory keepers
 !data/.gitkeep
-!entities.py
-!meta_capi.py
+!logs/.gitkeep
+!tests/.gitkeep
+!docs/.gitkeep
+
+# Utility scripts
+!setup.py
+!setup.sh
+!deploy.sh
+!run.sh
+!test.sh
+
+# ===== TEMPLATES & EXAMPLES =====
+!*.example
+!*.template
+!*.sample
+
+# ===== META FILES =====
+!.editorconfig
+!.pre-commit-config.yaml
+.codeclimate.yml
+.clang-format
+.clang-tidy
+
+# ===== VERSION SPECIFIC =====
+# v5.2 specific generated files
+!knowledge_v5.json.example
+!entities_v5.py.backup
+!app_v5_backup.py
+
+# ============================================
+# NOTES FOR RUBY WINGS v5.2:
+# ============================================
+# 1. Keep all source code files (.py)
+# 2. Keep configuration templates (.example, .template)
+# 3. Keep documentation files (.md, .txt)
+# 4. Ignore all generated files (indexes, logs, caches)
+# 5. Ignore all secret/credentials files
+# 6. Ignore IDE and editor files
+# 7. Ignore deployment and Docker files in development
+# ============================================
