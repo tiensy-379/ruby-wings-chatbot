@@ -5,6 +5,7 @@ from datetime import datetime
 from enum import Enum
 import json
 import hashlib
+import re
 
 # ===== ENUMS =====
 class QuestionType(Enum):
@@ -40,6 +41,159 @@ class DurationType(Enum):
     SHORT = "short"      # 1 day
     MEDIUM = "medium"    # 2-3 days
     LONG = "long"        # 4+ days
+
+# ===== INTENT CLASSIFICATION =====
+class Intent(Enum):
+    """User intent classification"""
+    # Existing intents
+    GREETING = "greeting"
+    FAREWELL = "farewell"
+    TOUR_INQUIRY = "tour_inquiry"
+    TOUR_COMPARISON = "tour_comparison"
+    TOUR_RECOMMENDATION = "tour_recommendation"
+    PRICE_ASK = "price_ask"
+    BOOKING_INQUIRY = "booking_inquiry"
+    
+    # New intents
+    PROVIDE_PHONE = "provide_phone"
+    CALLBACK_REQUEST = "callback_request"
+    BOOKING_CONFIRM = "booking_confirm"
+    MODIFY_REQUEST = "modify_request"
+    SMALLTALK = "smalltalk"
+    LEAD_CAPTURED = "lead_captured"
+    
+    # Fallback
+    UNKNOWN = "unknown"
+
+# Intent keywords for matching
+INTENT_KEYWORDS = {
+    Intent.PROVIDE_PHONE: [
+        "số điện thoại", "điện thoại", "số của tôi", "số tôi", "phone", "số",
+        "liên lạc qua", "gọi cho tôi số", "số liên hệ", "sdt", "đt",
+        "số của tôi là", "số tôi là", "số phone", "điện thoại của tôi",
+        "090", "091", "092", "093", "094", "096", "097", "098", "032", "033", "034", "035", "036", "037", "038", "039"
+    ],
+    
+    Intent.CALLBACK_REQUEST: [
+        "gọi lại", "gọi cho tôi", "callback", "liên hệ lại", "gọi điện",
+        "tư vấn qua điện thoại", "gọi ngay", "gọi lại cho tôi",
+        "cho tôi xin cuộc gọi", "muốn được gọi", "nhờ gọi lại",
+        "alô", "alo", "call back", "call lại", "phone lại"
+    ],
+    
+    Intent.BOOKING_CONFIRM: [
+        "xác nhận đặt", "đã đặt", "booking confirm", "xác nhận booking",
+        "confirm tour", "xác nhận chuyến đi", "đặt tour thành công",
+        "đã thanh toán", "đã book", "book rồi", "đặt rồi",
+        "xác nhận lịch trình", "confirm lịch trình", "đặt xong"
+    ],
+    
+    Intent.MODIFY_REQUEST: [
+        "thay đổi", "chỉnh sửa", "modify", "đổi", "hủy", "cancel",
+        "đổi tour", "thay đổi booking", "chỉnh sửa đặt chỗ",
+        "hoãn tour", "dời lịch", "đổi ngày", "đổi lịch trình",
+        "hủy đặt", "cancel booking", "chỉnh sửa thông tin"
+    ],
+    
+    Intent.SMALLTALK: [
+        "chào", "hello", "hi", "bạn khỏe", "cảm ơn", "thanks", "tạm biệt",
+        "khỏe không", "ổn không", "good morning", "good afternoon", "good evening",
+        "xin chào", "chào bạn", "chào admin", "cám ơn", "thank you",
+        "bye", "goodbye", "hẹn gặp", "chúc ngủ ngon", "chúc vui vẻ"
+    ],
+    
+    Intent.LEAD_CAPTURED: [
+        "đăng ký", "tư vấn", "lead", "nhận thông tin", "muốn biết thêm",
+        "liên hệ tư vấn", "cần tư vấn", "muốn đăng ký", "đăng ký tour",
+        "để lại thông tin", "lưu thông tin", "lead capture",
+        "tôi muốn đặt", "tôi muốn book", "cần book tour"
+    ],
+    
+    Intent.GREETING: [
+        "xin chào", "chào", "hello", "hi", "chào bạn", "chào anh", "chào chị"
+    ],
+    
+    Intent.FAREWELL: [
+        "tạm biệt", "bye", "goodbye", "hẹn gặp", "cảm ơn", "thanks"
+    ],
+    
+    Intent.TOUR_INQUIRY: [
+        "tour", "du lịch", "chuyến đi", "trải nghiệm", "giá", "thông tin"
+    ]
+}
+
+def detect_phone_number(text: str) -> Optional[str]:
+    """
+    Detect phone number using regex pattern (9-11 digits)
+    Vietnamese phone formats: 09x xxxx xxx, 03x xxxx xxx, +84 3x xxxx xxx
+    """
+    # Pattern for Vietnamese phone numbers (9-11 digits, may include +84 or 0 prefix)
+    patterns = [
+        r'(?:\+84|0)(?:3|5|7|8|9)(?:\d{8})',  # Standard Vietnam mobile
+        r'(?:\+84|0)(?:\d{9,10})',  # General 9-10 digits
+        r'(?:0\d{9,10})',  # Local format
+        r'(?:\d{10,11})'  # Just digits
+    ]
+    
+    for pattern in patterns:
+        matches = re.findall(pattern, text)
+        if matches:
+            # Clean the phone number
+            phone = matches[0]
+            # Remove non-digits
+            phone_digits = re.sub(r'\D', '', phone)
+            # Check length (9-11 digits)
+            if 9 <= len(phone_digits) <= 11:
+                # Format to standard Vietnam format: 0xxxxxxxxx
+                if phone_digits.startswith('84'):
+                    phone_digits = '0' + phone_digits[2:]
+                elif len(phone_digits) == 9:
+                    phone_digits = '0' + phone_digits
+                return phone_digits
+    
+    return None
+
+def detect_intent(text: str) -> Tuple[Intent, Dict[str, Any]]:
+    """
+    Detect user intent from text using keyword matching
+    Returns: (intent, metadata)
+    """
+    text_lower = text.lower().strip()
+    
+    # First check for phone number
+    phone_number = detect_phone_number(text_lower)
+    
+    # Then check keywords
+    detected_intent = Intent.UNKNOWN
+    confidence = 0.0
+    metadata = {"phone_number": phone_number}
+    
+    for intent, keywords in INTENT_KEYWORDS.items():
+        for keyword in keywords:
+            if keyword in text_lower:
+                detected_intent = intent
+                confidence = max(confidence, 0.8)  # High confidence for keyword match
+                break
+    
+    # Special cases
+    if phone_number:
+        if detected_intent == Intent.UNKNOWN:
+            detected_intent = Intent.PROVIDE_PHONE
+            confidence = 0.9
+        else:
+            # If phone found but other intent detected, mark as lead captured
+            if detected_intent in [Intent.BOOKING_CONFIRM, Intent.TOUR_INQUIRY, Intent.LEAD_CAPTURED]:
+                metadata["has_phone"] = True
+    
+    # Fallback: check for question patterns
+    if detected_intent == Intent.UNKNOWN:
+        question_patterns = ["bao nhiêu", "thế nào", "là gì", "ở đâu", "khi nào"]
+        if any(pattern in text_lower for pattern in question_patterns):
+            detected_intent = Intent.TOUR_INQUIRY
+            confidence = 0.6
+    
+    metadata["confidence"] = confidence
+    return detected_intent, metadata
 
 # ===== CORE DATA MODELS =====
 @dataclass
@@ -412,12 +566,91 @@ class EnhancedJSONEncoder(json.JSONEncoder):
             return obj.__dict__
         return super().default(obj)
 
+# ===== BUILD ENTITY INDEX =====
+def build_entity_index(mapping: List[Dict[str, Any]], out_path: str = "tour_entities.json") -> Dict[str, Any]:
+    """
+    Build entity index from mapping for quick lookup
+    """
+    entity_index = {
+        "tours_by_name": {},
+        "tours_by_location": {},
+        "tours_by_duration": {},
+        "tours_by_price_range": {},
+        "keywords": {}
+    }
+    
+    for item in mapping:
+        if "tours[" in item["path"]:
+            # Extract tour index
+            match = re.search(r'tours\[(\d+)\]', item["path"])
+            if match:
+                tour_idx = int(match.group(1))
+                
+                # Get text content
+                text = item.get("text", "")
+                
+                # Parse tour name from text
+                if "Tên tour:" in text:
+                    lines = text.split("\n")
+                    for line in lines:
+                        if line.startswith("Tên tour:"):
+                            tour_name = line.replace("Tên tour:", "").strip()
+                            entity_index["tours_by_name"][tour_name] = tour_idx
+                            break
+                
+                # Extract location
+                if "Địa điểm:" in text:
+                    lines = text.split("\n")
+                    for line in lines:
+                        if line.startswith("Địa điểm:"):
+                            location = line.replace("Địa điểm:", "").strip()
+                            if location not in entity_index["tours_by_location"]:
+                                entity_index["tours_by_location"][location] = []
+                            entity_index["tours_by_location"][location].append(tour_idx)
+                            break
+                
+                # Extract duration
+                if "Thời lượng:" in text:
+                    lines = text.split("\n")
+                    for line in lines:
+                        if line.startswith("Thời lượng:"):
+                            duration = line.replace("Thời lượng:", "").strip()
+                            if duration not in entity_index["tours_by_duration"]:
+                                entity_index["tours_by_duration"][duration] = []
+                            entity_index["tours_by_duration"][duration].append(tour_idx)
+                            break
+                
+                # Extract price and create price ranges
+                if "Giá:" in text:
+                    lines = text.split("\n")
+                    for line in lines:
+                        if line.startswith("Giá:"):
+                            price_text = line.replace("Giá:", "").strip()
+                            # Simple price range detection
+                            if "triệu" in price_text or "VND" in price_text:
+                                entity_index["tours_by_price_range"]["premium"] = entity_index["tours_by_price_range"].get("premium", [])
+                                entity_index["tours_by_price_range"]["premium"].append(tour_idx)
+                            elif "nghìn" in price_text or price_text.endswith("k"):
+                                entity_index["tours_by_price_range"]["midrange"] = entity_index["tours_by_price_range"].get("midrange", [])
+                                entity_index["tours_by_price_range"]["midrange"].append(tour_idx)
+                            break
+    
+    # Save to file
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(entity_index, f, ensure_ascii=False, indent=2)
+    
+    return entity_index
+
 # ===== EXPORTS =====
 __all__ = [
     'QuestionType',
     'ConversationState',
     'PriceLevel',
     'DurationType',
+    'Intent',
+    'INTENT_KEYWORDS',
+    'detect_phone_number',
+    'detect_intent',
     'Tour',
     'UserProfile',
     'SearchResult',
@@ -427,5 +660,6 @@ __all__ = [
     'ChatResponse',
     'LeadData',
     'CacheEntry',
-    'EnhancedJSONEncoder'
+    'EnhancedJSONEncoder',
+    'build_entity_index'
 ]

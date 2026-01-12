@@ -27,58 +27,85 @@ try:
 except Exception:
     OpenAI = None
 
-# import shared flatten
-try:
-    from common_utils import flatten_json
-except Exception:
-    def flatten_json(path: str) -> List[dict]:
-        # fallback simple flattener (used only if common_utils missing)
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"{path} not found")
-        with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
-        mapping = []
-        def scan(obj, prefix="root"):
-            if isinstance(obj, dict):
-                for k,v in obj.items():
-                    scan(v, f"{prefix}.{k}")
-            elif isinstance(obj, list):
-                for i,v in enumerate(obj):
-                    scan(v, f"{prefix}[{i}]")
-            elif isinstance(obj, str):
-                t = obj.strip()
-                if t:
-                    mapping.append({"path": prefix, "text": t})
-            else:
-                try:
-                    s = str(obj).strip()
-                    if s:
-                        mapping.append({"path": prefix, "text": s})
-                except Exception:
-                    pass
-        scan(data, "root")
-        # FIX: Đảm bảo tất cả phần tử trong mapping là dictionary
-        # Trong trường hợp có lỗi, lọc chỉ lấy dict
-        valid_mapping = []
-        for item in mapping:
-            if isinstance(item, dict):
-                # Đảm bảo có cả 'path' và 'text'
-                if 'path' in item and 'text' in item:
-                    valid_mapping.append(item)
-                else:
-                    # Nếu thiếu, thêm giá trị mặc định
-                    valid_mapping.append({
-                        'path': item.get('path', ''),
-                        'text': item.get('text', '')
-                    })
-            else:
-                # Nếu không phải dict, bỏ qua hoặc chuyển đổi
-                try:
-                    if hasattr(item, '__dict__'):
-                        valid_mapping.append(item.__dict__)
-                except:
-                    pass
-        return valid_mapping
+# We use our own flatten_json that groups each tour into a single passage
+# The function is defined below
+def flatten_json(path: str) -> List[dict]:
+    # fallback simple flattener - mỗi tour là 1 passage duy nhất
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"{path} not found")
+    with open(path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+    
+    mapping = []
+    
+    # Xử lý about_company (giữ nguyên)
+    about = data.get("about_company", {})
+    for key, value in about.items():
+        if isinstance(value, str) and value.strip():
+            mapping.append({
+                "path": f"root.about_company.{key}",
+                "text": value
+            })
+    
+    # Xử lý tours - MỖI TOUR LÀ 1 PASSAGE DUY NHẤT
+    tours = data.get("tours", [])
+    for i, tour in enumerate(tours):
+        tour_text_parts = []
+        
+        # Thêm các trường quan trọng
+        fields_to_include = [
+            ("tour_name", "Tên tour"),
+            ("summary", "Tóm tắt"),
+            ("location", "Địa điểm"),
+            ("duration", "Thời lượng"),
+            ("price", "Giá"),
+            ("notes", "Lưu ý"),
+            ("style", "Phong cách"),
+            ("transport", "Phương tiện"),
+            ("accommodation", "Chỗ ở"),
+            ("meals", "Bữa ăn"),
+            ("event_support", "Hỗ trợ sự kiện")
+        ]
+        
+        for field_key, field_label in fields_to_include:
+            if field_key in tour:
+                value = tour[field_key]
+                if isinstance(value, list):
+                    tour_text_parts.append(f"{field_label}: {', '.join(str(v) for v in value)}")
+                elif value and str(value).strip():
+                    tour_text_parts.append(f"{field_label}: {value}")
+        
+        # Xử lý includes
+        if "includes" in tour and tour["includes"]:
+            includes_text = "Dịch vụ bao gồm: " + "; ".join(str(item) for item in tour["includes"])
+            tour_text_parts.append(includes_text)
+        
+        # Gộp thành 1 passage
+        full_tour_text = "\n".join(tour_text_parts)
+        
+        mapping.append({
+            "path": f"root.tours[{i}]",
+            "text": full_tour_text
+        })
+    
+    # Xử lý FAQ và contact (giữ nguyên)
+    faq = data.get("faq", {})
+    for key, value in faq.items():
+        if isinstance(value, str) and value.strip():
+            mapping.append({
+                "path": f"root.faq.{key}",
+                "text": value
+            })
+    
+    contact = data.get("contact", {})
+    for key, value in contact.items():
+        if isinstance(value, str) and value.strip():
+            mapping.append({
+                "path": f"root.contact.{key}",
+                "text": value
+            })
+    
+    return mapping
 
 # Try to import entities.build_entity_index to persist tour_entities.json
 try:
