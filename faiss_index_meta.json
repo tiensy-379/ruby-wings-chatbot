@@ -1,5 +1,5 @@
 {
-  "created_at": "2026-01-13T05:22:58.826100Z",
+  "created_at": "2026-01-16T09:07:16.144813Z",
   "num_passages": 40,
   "num_tours": 32,
   "embedding_model": "text-embedding-3-small",
@@ -13,6 +13,7 @@
     "price_parsing": true,
     "duration_parsing": true,
     "popularity_scoring": true,
-    "value_scoring": true
+    "value_scoring": true,
+    "event_support_field": true
   }
 }

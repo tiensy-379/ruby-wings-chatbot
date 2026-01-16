@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-META CONVERSION API - PHIÊN BẢN HOÀN THIỆN
-Version: 3.2 Professional
-Created: 2026-01-13
+META CONVERSION API - RUBY WINGS v5.2
+Version: 5.2.0 Professional
+Created: 2025-01-16
 Author: Ruby Wings AI Team
 
 MÔ TẢ: Server-side Meta Conversion API tracking với đầy đủ tính năng
 - PageView tracking cho mọi request
-- Lead tracking cho form submissions
+- Lead tracking cho form submissions  
 - Call Button tracking cho hotline clicks
 - Enhanced user data với PII hashing
 - Retry mechanism với exponential backoff
 - Connection pooling cho performance
 - Comprehensive error handling
+- Tích hợp với entities.py LeadData
 
 TÍCH HỢP: Hoàn toàn tương thích với Ruby Wings Chatbot v5.2
+ĐỒNG BỘ: entities.py v5.2, .env.example.ini, app.py v5.2
 """
 
 import os
@@ -38,21 +40,22 @@ try:
     REQUESTS_AVAILABLE = True
 except ImportError:
     REQUESTS_AVAILABLE = False
-    logging.error("Requests library not available")
+    logging.warning("⚠️ Requests library not available - Meta CAPI will be disabled")
 
 # ==================== CONFIGURATION ====================
 logger = logging.getLogger("meta-capi")
 
 @dataclass
 class MetaCAPIConfig:
-    """Meta CAPI configuration"""
+    """Meta CAPI configuration - Đồng bộ với .env.example.ini"""
     pixel_id: str = ""
     access_token: str = ""
     api_version: str = "v18.0"
     endpoint: str = "https://graph.facebook.com"
     test_event_code: str = ""
     
-    # Feature toggles
+    # Feature toggles (đồng bộ với .env)
+    enabled: bool = False  # ENABLE_META_CAPI từ .env
     enable_pageview: bool = True
     enable_lead: bool = True
     enable_call_button: bool = True
@@ -77,21 +80,31 @@ class MetaCAPIConfig:
     
     @classmethod
     def from_env(cls):
-        """Load configuration from environment variables"""
+        """Load configuration from environment variables - Đồng bộ với .env.example.ini"""
         return cls(
+            # Đồng bộ với .env.example.ini: META_CAPI_TOKEN và META_PIXEL_ID
             pixel_id=os.environ.get("META_PIXEL_ID", "").strip(),
             access_token=os.environ.get("META_CAPI_TOKEN", "").strip(),
             api_version=os.environ.get("META_API_VERSION", "v18.0"),
             test_event_code=os.environ.get("META_TEST_EVENT_CODE", "").strip(),
+            
+            # Feature toggle: ENABLE_META_CAPI từ .env
+            enabled=os.environ.get("ENABLE_META_CAPI", "false").lower() == "true",
             enable_pageview=os.environ.get("ENABLE_META_CAPI_PAGEVIEW", "true").lower() == "true",
             enable_lead=os.environ.get("ENABLE_META_CAPI_LEAD", "true").lower() == "true",
             enable_call_button=os.environ.get("ENABLE_META_CAPI_CALL", "true").lower() == "true",
+            
+            # Debug mode
             debug_mode=os.environ.get("DEBUG_META_CAPI", "false").lower() == "true"
         )
     
     def is_valid(self) -> bool:
         """Check if configuration is valid"""
-        return bool(self.pixel_id and self.access_token)
+        return bool(self.enabled and self.pixel_id and self.access_token)
+    
+    def is_enabled(self) -> bool:
+        """Check if Meta CAPI is enabled"""
+        return self.enabled and self.is_valid()
 
 # Global configuration
 config = MetaCAPIConfig.from_env()
@@ -114,7 +127,12 @@ class MetaCAPIHTTPClient:
         """Initialize HTTP client"""
         if not REQUESTS_AVAILABLE:
             self.session = None
-            logger.error("Requests library not available")
+            logger.warning("⚠️ Requests library not available - Meta CAPI disabled")
+            return
+        
+        if not config.is_enabled():
+            self.session = None
+            logger.info("ℹ️ Meta CAPI disabled in configuration")
             return
         
         # Create session với connection pooling
@@ -128,7 +146,8 @@ class MetaCAPIHTTPClient:
                 max_retries=Retry(
                     total=config.max_retries,
                     backoff_factor=config.retry_backoff_factor,
-                    status_forcelist=[500, 502, 503, 504]
+                    status_forcelist=[500, 502, 503, 504],
+                    allowed_methods=["POST"]  # Updated from method_whitelist
                 )
             )
             
@@ -138,7 +157,7 @@ class MetaCAPIHTTPClient:
         
         # Set default headers
         self.session.headers.update({
-            'User-Agent': 'RubyWings-MetaCAPI/3.2',
+            'User-Agent': 'RubyWings-MetaCAPI/5.2',
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         })
@@ -148,7 +167,6 @@ class MetaCAPIHTTPClient:
     def post(self, url: str, payload: Dict, timeout: int = None) -> Optional[requests.Response]:
         """Send POST request với error handling"""
         if not self.session:
-            logger.error("HTTP client not initialized")
             return None
         
         if timeout is None:
@@ -172,13 +190,13 @@ class MetaCAPIHTTPClient:
             return response
             
         except requests.exceptions.Timeout:
-            logger.error(f"Meta CAPI timeout after {timeout}s")
+            logger.error(f"❌ Meta CAPI timeout after {timeout}s")
             return None
         except requests.exceptions.ConnectionError:
-            logger.error("Meta CAPI connection error")
+            logger.error("❌ Meta CAPI connection error")
             return None
         except Exception as e:
-            logger.error(f"Meta CAPI request error: {str(e)}")
+            logger.error(f"❌ Meta CAPI request error: {str(e)}")
             return None
     
     def close(self):
@@ -306,15 +324,19 @@ class EventBuilder:
             return ""
         
         try:
-            # Normalize: lowercase, trim whitespace
+            # Normalize: lowercase, trim whitespace, remove non-digits for phone
             normalized = value.lower().strip()
+            
+            # For phone numbers: remove all non-digits
+            if any(char.isdigit() for char in normalized):
+                normalized = ''.join(filter(str.isdigit, normalized))
             
             if algorithm == "sha256":
                 return hashlib.sha256(normalized.encode()).hexdigest()
             elif algorithm == "md5":
                 return hashlib.md5(normalized.encode()).hexdigest()
             else:
-                logger.warning(f"Unsupported hash algorithm: {algorithm}")
+                logger.warning(f"Unsupported hash algorithm: {algorithm}, using sha256")
                 return hashlib.sha256(normalized.encode()).hexdigest()
         except Exception as e:
             logger.error(f"Hash error: {e}")
@@ -348,7 +370,7 @@ class EventValidator:
         
         # Validate action_source
         if "action_source" in event:
-            valid_sources = ["website", "app", "phone_call", "chat", "physical_store"]
+            valid_sources = ["website", "app", "phone_call", "chat", "physical_store", "email", "other"]
             if event["action_source"] not in valid_sources:
                 errors.append(f"Invalid action_source: {event['action_source']}")
         
@@ -388,6 +410,46 @@ class EventValidator:
         
         return sanitized
 
+# ==================== TÍCH HỢP VỚI ENTITIES.PY ====================
+def send_meta_lead_from_entities(request, lead_data: 'LeadData') -> Optional[Dict[str, Any]]:
+    """
+    Send Lead event từ entities.LeadData object
+    Tích hợp với app.py v5.2
+    
+    Args:
+        request: Flask request object
+        lead_data: LeadData object từ entities.py
+    
+    Returns:
+        Meta API response or None
+    """
+    if not config.is_enabled():
+        return None
+    
+    try:
+        # Convert LeadData to Meta CAPI format
+        return send_meta_lead(
+            request=request,
+            event_name="Lead",
+            event_id=lead_data.session_id if hasattr(lead_data, 'session_id') else None,
+            phone=lead_data.phone if hasattr(lead_data, 'phone') else None,
+            email=None,  # Email không có trong LeadData hiện tại
+            value=200000,  # Estimated lead value
+            currency="VND",
+            content_name="Ruby Wings Lead",
+            contact_name=lead_data.contact_name if hasattr(lead_data, 'contact_name') else None,
+            lead_source=lead_data.source_channel if hasattr(lead_data, 'source_channel') else "Website",
+            lead_status=lead_data.status if hasattr(lead_data, 'status') else "New",
+            action_type=lead_data.action_type if hasattr(lead_data, 'action_type') else "Click Call",
+            service_interest=lead_data.service_interest if hasattr(lead_data, 'service_interest') else "",
+            tour_id=str(lead_data.tour_id) if hasattr(lead_data, 'tour_id') and lead_data.tour_id else None,
+            intent=lead_data.intent if hasattr(lead_data, 'intent') else None,
+            stage=lead_data.stage if hasattr(lead_data, 'stage') else None
+        )
+    except Exception as e:
+        logger.error(f"❌ Meta CAPI from LeadData error: {str(e)}")
+        return None
+
 # ==================== MAIN CAPI FUNCTIONS ====================
 def send_meta_pageview(request) -> Optional[Dict[str, Any]]:
     """
@@ -399,11 +461,7 @@ def send_meta_pageview(request) -> Optional[Dict[str, Any]]:
     Returns:
         Meta API response or None
     """
-    if not config.enable_pageview:
-        return None
-    
-    if not config.is_valid():
-        logger.warning("Meta CAPI not configured")
+    if not config.enable_pageview or not config.is_enabled():
         return None
     
     try:
@@ -480,11 +538,7 @@ def send_meta_lead(
     Returns:
         Meta API response or None
     """
-    if not config.enable_lead:
-        return None
-    
-    if not config.is_valid():
-        logger.warning("Meta CAPI not configured")
+    if not config.enable_lead or not config.is_enabled():
         return None
     
     try:
@@ -507,9 +561,9 @@ def send_meta_lead(
         
         # Add custom data
         custom_data_kwargs = {
-            "value": value,
+            "value": value or 200000,  # Default lead value
             "currency": currency,
-            "content_name": content_name,
+            "content_name": content_name or "Ruby Wings Lead",
             "lead_source": lead_source,
             "lead_status": lead_status
         }
@@ -576,11 +630,7 @@ def send_meta_call_button(
     Returns:
         Meta API response or None
     """
-    if not config.enable_call_button:
-        return None
-    
-    if not config.is_valid():
-        logger.warning("Meta CAPI not configured")
+    if not config.enable_call_button or not config.is_enabled():
         return None
     
     try:
@@ -668,22 +718,8 @@ def send_meta_custom_event(
 ) -> Optional[Dict[str, Any]]:
     """
     Send custom event to Meta CAPI
-    
-    Args:
-        request: Flask request object
-        event_name: Custom event name
-        user_data: User data dictionary
-        custom_data: Custom data dictionary
-        event_id: Custom event ID
-        event_source_url: Event source URL
-        action_source: Action source
-        **kwargs: Additional event fields
-    
-    Returns:
-        Meta API response or None
     """
-    if not config.is_valid():
-        logger.warning("Meta CAPI not configured")
+    if not config.is_enabled():
         return None
     
     try:
@@ -741,6 +777,190 @@ def send_meta_custom_event(
         logger.error(f"Meta CAPI custom event error: {str(e)}")
         return None
 
+# ==================== HELPER FUNCTIONS ====================
+def _send_to_meta(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Send payload to Meta CAPI
+    
+    Args:
+        payload: Event payload
+    
+    Returns:
+        Meta API response or None
+    """
+    if not config.is_enabled():
+        return None
+    
+    # Build URL
+    url = f"{config.endpoint}/{config.api_version}/{config.pixel_id}/events"
+    
+    # Add access token
+    url_with_token = f"{url}?access_token={config.access_token}"
+    
+    # Send request
+    response = http_client.post(url_with_token, payload)
+    
+    if response is None:
+        return None
+    
+    # Parse response
+    if response.status_code == 200:
+        try:
+            result = response.json()
+            
+            if config.debug_mode:
+                logger.debug(f"Meta CAPI Response: {json.dumps(result, indent=2)}")
+            
+            return result
+        except json.JSONDecodeError:
+            logger.error(f"Meta CAPI invalid JSON response: {response.text[:200]}")
+            return None
+    else:
+        logger.error(f"Meta CAPI error {response.status_code}: {response.text[:200]}")
+        return None
+
+def check_meta_capi_health() -> Dict[str, Any]:
+    """
+    Check Meta CAPI health status
+    
+    Returns:
+        Health status dictionary
+    """
+    health = {
+        "status": "unknown",
+        "timestamp": datetime.now().isoformat(),
+        "config": {
+            "enabled": config.enabled,
+            "pixel_id_set": bool(config.pixel_id),
+            "token_set": bool(config.access_token),
+            "api_version": config.api_version,
+            "endpoint": config.endpoint
+        },
+        "features": {
+            "pageview": config.enable_pageview,
+            "lead": config.enable_lead,
+            "call_button": config.enable_call_button
+        },
+        "performance": {
+            "connection_pooling": config.enable_connection_pooling,
+            "max_retries": config.max_retries,
+            "timeout": config.timeout
+        },
+        "privacy": {
+            "hash_pii": config.hash_pii,
+            "hash_algorithm": config.hash_algorithm
+        }
+    }
+    
+    # Determine overall status
+    if not config.enabled:
+        health["status"] = "disabled"
+        health["message"] = "Meta CAPI is disabled in configuration (ENABLE_META_CAPI=false)"
+    elif not config.is_valid():
+        health["status"] = "unconfigured"
+        health["message"] = "Meta CAPI credentials not configured"
+    elif not REQUESTS_AVAILABLE:
+        health["status"] = "missing_dependencies"
+        health["message"] = "Requests library not installed"
+    else:
+        health["status"] = "configured"
+        health["message"] = "Meta CAPI is configured and ready"
+    
+    return health
+
+def get_meta_capi_config() -> Dict[str, Any]:
+    """
+    Get Meta CAPI configuration (for debugging)
+    
+    Returns:
+        Configuration dictionary (sanitized)
+    """
+    # Return safe configuration (without token)
+    safe_config = {
+        "enabled": config.enabled,
+        "pixel_id": config.pixel_id[:6] + "..." + config.pixel_id[-4:] if len(config.pixel_id) > 10 else config.pixel_id,
+        "api_version": config.api_version,
+        "endpoint": config.endpoint,
+        "test_mode": bool(config.test_event_code),
+        "debug_mode": config.debug_mode,
+        "features": {
+            "pageview": config.enable_pageview,
+            "lead": config.enable_lead,
+            "call_button": config.enable_call_button
+        },
+        "privacy": {
+            "hash_pii": config.hash_pii,
+            "hash_algorithm": config.hash_algorithm,
+            "remove_ip_after_hash": config.remove_ip_after_hash
+        },
+        "performance": {
+            "timeout": config.timeout,
+            "max_retries": config.max_retries,
+            "connection_pooling": config.enable_connection_pooling
+        }
+    }
+    
+    return safe_config
+
+def get_meta_capi_stats() -> Dict[str, Any]:
+    """
+    Get Meta CAPI statistics
+    
+    Returns:
+        Statistics dictionary
+    """
+    stats = {
+        "timestamp": datetime.now().isoformat(),
+        "http_client": {
+            "initialized": http_client.session is not None,
+            "requests_available": REQUESTS_AVAILABLE
+        },
+        "config": {
+            "enabled": config.enabled,
+            "is_valid": config.is_valid(),
+            "features_enabled": {
+                "pageview": config.enable_pageview,
+                "lead": config.enable_lead,
+                "call_button": config.enable_call_button
+            }
+        }
+    }
+    
+    return stats
+
+# ==================== CLEANUP ====================
+def cleanup():
+    """Cleanup resources"""
+    http_client.close()
+    logger.info("Meta CAPI cleanup completed")
+
+# ==================== UTILITY DECORATORS ====================
+def meta_capi_enabled(func):
+    """
+    Decorator to check if Meta CAPI is enabled before executing function
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not config.is_enabled():
+            logger.debug(f"Meta CAPI disabled, skipping {func.__name__}")
+            return None
+        return func(*args, **kwargs)
+    return wrapper
+
+def meta_capi_safe(func):
+    """
+    Decorator to safely execute Meta CAPI functions with error handling
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Meta CAPI error in {func.__name__}: {str(e)}")
+            return None
+    return wrapper
+
+# ==================== BATCH OPERATIONS ====================
 def send_meta_bulk_events(
     request,
     events: List[Dict],
@@ -757,8 +977,7 @@ def send_meta_bulk_events(
     Returns:
         Meta API response or None
     """
-    if not config.is_valid():
-        logger.warning("Meta CAPI not configured")
+    if not config.is_enabled():
         return None
     
     if not events:
@@ -816,132 +1035,70 @@ def send_meta_bulk_events(
         logger.error(f"Meta CAPI bulk events error: {str(e)}")
         return None
 
-# ==================== HELPER FUNCTIONS ====================
-def _send_to_meta(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-    """
-    Send payload to Meta CAPI
-    
-    Args:
-        payload: Event payload
-    
-    Returns:
-        Meta API response or None
-    """
-    if not config.is_valid():
-        return None
-    
-    # Build URL
-    url = f"{config.endpoint}/{config.api_version}/{config.pixel_id}/events"
-    
-    # Add access token
-    url_with_token = f"{url}?access_token={config.access_token}"
-    
-    # Send request
-    response = http_client.post(url_with_token, payload)
-    
-    if response is None:
-        return None
-    
-    # Parse response
-    if response.status_code == 200:
-        try:
-            result = response.json()
-            
-            if config.debug_mode:
-                logger.debug(f"Meta CAPI Response: {json.dumps(result, indent=2)}")
-            
-            return result
-        except json.JSONDecodeError:
-            logger.error(f"Meta CAPI invalid JSON response: {response.text[:200]}")
-            return None
-    else:
-        logger.error(f"Meta CAPI error {response.status_code}: {response.text[:200]}")
-        return None
-
-def check_meta_capi_health() -> Dict[str, Any]:
-    """
-    Check Meta CAPI health status
-    
-    Returns:
-        Health status dictionary
-    """
-    health = {
-        "status": "unknown",
-        "timestamp": datetime.now().isoformat(),
-        "config": {
-            "pixel_id_set": bool(config.pixel_id),
-            "token_set": bool(config.access_token),
-            "api_version": config.api_version,
-            "endpoint": config.endpoint
-        },
-        "features": {
-            "pageview": config.enable_pageview,
-            "lead": config.enable_lead,
-            "call_button": config.enable_call_button
-        },
-        "performance": {
-            "connection_pooling": config.enable_connection_pooling,
-            "max_retries": config.max_retries,
-            "timeout": config.timeout
-        }
-    }
-    
-    # Determine overall status
-    if not config.is_valid():
-        health["status"] = "unconfigured"
-    elif not REQUESTS_AVAILABLE:
-        health["status"] = "missing_dependencies"
-    else:
-        # Try to make a test request
-        test_url = f"{config.endpoint}/{config.api_version}/{config.pixel_id}"
-        test_response = http_client.post(f"{test_url}?access_token={config.access_token}&fields=id", {})
-        
-        if test_response and test_response.status_code == 200:
-            health["status"] = "healthy"
-            health["test_response"] = "success"
-        else:
-            health["status"] = "unreachable"
-            health["test_response"] = "failed"
-    
-    return health
-
-def get_meta_capi_config() -> Dict[str, Any]:
-    """
-    Get Meta CAPI configuration (for debugging)
-    
-    Returns:
-        Configuration dictionary
-    """
-    # Return safe configuration (without token)
-    safe_config = {
-        "pixel_id": config.pixel_id[:4] + "..." + config.pixel_id[-4:] if config.pixel_id else "",
-        "api_version": config.api_version,
-        "endpoint": config.endpoint,
-        "test_mode": bool(config.test_event_code),
-        "debug_mode": config.debug_mode,
-        "hash_pii": config.hash_pii,
-        "timeout": config.timeout
-    }
-    
-    return safe_config
-
-# ==================== CLEANUP ====================
-def cleanup():
-    """Cleanup resources"""
-    http_client.close()
-    logger.info("Meta CAPI cleanup completed")
-
 # ==================== INITIALIZATION ====================
-# Log initialization
-logger.info("=" * 60)
-logger.info("🚀 META CAPI v3.2 PROFESSIONAL INITIALIZED")
-logger.info("=" * 60)
-logger.info(f"📊 Pixel ID: {config.pixel_id[:6]}...{config.pixel_id[-4:] if len(config.pixel_id) > 10 else ''}")
-logger.info(f"🔧 Features: PageView={config.enable_pageview}, Lead={config.enable_lead}, Call={config.enable_call_button}")
-logger.info(f"⚡ Performance: Pooling={config.enable_connection_pooling}, Retries={config.max_retries}")
-logger.info(f"🔒 Privacy: Hash PII={config.hash_pii}, Remove IP after hash={config.remove_ip_after_hash}")
-logger.info("=" * 60)
+def initialize_meta_capi():
+    """
+    Initialize Meta CAPI system
+    Called at app startup
+    """
+    logger.info("=" * 60)
+    logger.info("🚀 META CAPI v5.2 PROFESSIONAL INITIALIZED")
+    logger.info("=" * 60)
+    
+    if not config.enabled:
+        logger.warning("⚠️ Meta CAPI is DISABLED in configuration")
+        logger.info("   Set ENABLE_META_CAPI=true in .env to enable")
+    elif not config.is_valid():
+        logger.warning("⚠️ Meta CAPI is NOT CONFIGURED")
+        logger.info("   Set META_PIXEL_ID and META_CAPI_TOKEN in .env")
+    else:
+        pixel_masked = f"{config.pixel_id[:6]}...{config.pixel_id[-4:]}" if len(config.pixel_id) > 10 else config.pixel_id
+        logger.info(f"✅ Meta CAPI is ENABLED")
+        logger.info(f"📊 Pixel ID: {pixel_masked}")
+        logger.info(f"🔧 Features: PageView={config.enable_pageview}, Lead={config.enable_lead}, Call={config.enable_call_button}")
+        logger.info(f"⚡ Performance: Pooling={config.enable_connection_pooling}, Retries={config.max_retries}, Timeout={config.timeout}s")
+        logger.info(f"🔒 Privacy: Hash PII={config.hash_pii} ({config.hash_algorithm}), Remove IP={config.remove_ip_after_hash}")
+        
+        if config.debug_mode:
+            logger.info("🐛 Debug mode: ENABLED")
+            if config.test_event_code:
+                logger.info(f"🧪 Test event code: {config.test_event_code[:4]}...")
+    
+    logger.info("=" * 60)
+
+# Initialize at import
+initialize_meta_capi()
 
 # Register cleanup on exit
 import atexit
 atexit.register(cleanup)
+
+# ==================== EXPORTS ====================
+__all__ = [
+    # Configuration
+    'MetaCAPIConfig',
+    'config',
+    
+    # Main functions
+    'send_meta_pageview',
+    'send_meta_lead',
+    'send_meta_lead_from_entities',
+    'send_meta_call_button',
+    'send_meta_custom_event',
+    'send_meta_bulk_events',
+    
+    # Utilities
+    'check_meta_capi_health',
+    'get_meta_capi_config',
+    'get_meta_capi_stats',
+    'initialize_meta_capi',
+    'cleanup',
+    
+    # Decorators
+    'meta_capi_enabled',
+    'meta_capi_safe',
+    
+    # Builders
+    'EventBuilder',
+    'EventValidator'
+]
