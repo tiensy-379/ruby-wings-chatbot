@@ -363,3 +363,4 @@ user_profiles.json
 # 6. Ignore IDE and editor files
 # 7. Ignore deployment and Docker files in development
 # ============================================
+google_sa.json

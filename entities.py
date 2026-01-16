@@ -147,6 +147,21 @@ INTENT_KEYWORDS = {
         "hành trình", "tour nào", "có tour nào", "tour du lịch",
         "trải nghiệm ruby wings", "tour ruby wings", "chương trình",
         "tour gì", "có những tour nào", "giới thiệu tour"
+    ],
+    
+    Intent.TOUR_COMPARISON: [
+        "so sánh", "khác nhau", "giống nhau", "compare", "khác gì",
+        "so với", "hơn", "tốt hơn", "khác biệt", "nên chọn"
+    ],
+    
+    Intent.TOUR_RECOMMENDATION: [
+        "gợi ý", "đề xuất", "recommend", "nên đi", "phù hợp",
+        "tư vấn", "chọn tour", "tour nào hay", "tour nào tốt"
+    ],
+    
+    Intent.PRICE_ASK: [
+        "giá", "bao nhiêu", "chi phí", "price", "cost",
+        "giá tour", "giá bao nhiêu", "hết bao nhiêu"
     ]
 }
 
@@ -332,6 +347,7 @@ class Tour:
     transport: str = ""
     notes: str = ""
     style: str = ""
+    event_support: str = ""
     
     # Metadata
     tags: List[str] = field(default_factory=list)
@@ -355,6 +371,7 @@ class Tour:
             "transport": self.transport,
             "notes": self.notes,
             "style": self.style,
+            "event_support": self.event_support,
             "tags": self.tags,
             "completeness_score": self.completeness_score,
             "popularity_score": self.popularity_score,
@@ -388,6 +405,7 @@ class Tour:
             transport=data.get("transport", ""),
             notes=data.get("notes", ""),
             style=data.get("style", ""),
+            event_support=data.get("event_support", ""),
             tags=data.get("tags", []),
             completeness_score=data.get("completeness_score", 0.0),
             popularity_score=data.get("popularity_score", 0.5),
@@ -961,11 +979,11 @@ __all__ = [
     'DurationType',
     'Intent',
     'INTENT_KEYWORDS',
-    'ConversationStage',  # Thêm mới
+    'ConversationStage',
     'detect_phone_number',
     'detect_intent',
-    'extract_location_from_query',  # Thêm mới
-    'get_region_from_location',  # Thêm mới
+    'extract_location_from_query',
+    'get_region_from_location',
     'Tour',
     'UserProfile',
     'SearchResult',

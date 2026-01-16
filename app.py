@@ -42,6 +42,9 @@ from enum import Enum, auto
 from concurrent.futures import ThreadPoolExecutor, Future
 import warnings
 warnings.filterwarnings("ignore")
+from dotenv import load_dotenv
+load_dotenv()
+
 
 # ==================== PLATFORM DETECTION ====================
 import platform
@@ -64,6 +67,39 @@ logging.basicConfig(
     ]
 )
 logger = logging.getLogger("ruby-wings-pro")
+# ==================== JSON LOG HELPER ====================
+def log_event(event: str, level: str = "info", **data):
+    """
+    Structured JSON log for AI & production analysis
+    """
+    payload = {
+        "ts": datetime.utcnow().isoformat(),
+        "event": event,
+        "service": "ruby-wings-chatbot",
+        "env": "production" if IS_PRODUCTION else "development",
+    }
+
+    # Add runtime context if available
+    try:
+        from flask import g
+        payload["request_id"] = getattr(g, "request_id", None)
+    except Exception:
+        payload["request_id"] = None
+
+    payload.update(data)
+
+    try:
+        message = json.dumps(payload, ensure_ascii=False)
+    except Exception:
+        message = str(payload)
+
+    if level == "error":
+        logger.error(message)
+    elif level == "warning":
+        logger.warning(message)
+    else:
+        logger.info(message)
+
 
 # ==================== ENVIRONMENT VARIABLES ====================
 class Config:
@@ -71,7 +107,7 @@ class Config:
     
     # RAM & Performance
     RAM_PROFILE = os.environ.get("RAM_PROFILE", "512")
-    IS_LOW_RAM = RAM_PROFILE == "512"
+    IS_LOW_RAM = False  # FORCE ENABLE LLM ON 512MB (FAISS vẫn tắt)
     
     # Feature Toggles
     ENABLE_STATE_MACHINE = os.environ.get("ENABLE_STATE_MACHINE", "true").lower() == "true"
@@ -410,6 +446,8 @@ app.config['SESSION_PERMANENT'] = False
 app.config['SESSION_USE_SIGNER'] = True
 app.config['SESSION_KEY_PREFIX'] = 'ruby_wings_'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max upload
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
 
 # CORS configuration
 CORS(app, origins=os.environ.get("CORS_ORIGINS", "*").split(","))
@@ -429,7 +467,21 @@ def before_request():
         try:
             send_meta_pageview(request)
         except Exception as e:
+            log_event(
+    "system_error",
+    level="error",
+    error=str(e),
+    traceback=traceback.format_exc()[:500],
+)
+
             logger.error(f"Meta CAPI pageview error: {e}")
+            log_event(
+    "request_received",
+    method=request.method,
+    path=request.path,
+    ip=request.remote_addr,
+)
+
 
 @app.after_request
 def after_request(response):
@@ -1052,6 +1104,13 @@ class IntentDetectionEngine:
             
             # Apply threshold
             if confidence >= Config.INTENT_CONFIDENCE_THRESHOLD:
+                log_event(
+    "intent_detected",
+    intent=best_intent[0].name,
+    confidence=confidence,
+    keywords=metadata.get("keywords_found", []),
+)
+
                 return best_intent[0], confidence, metadata
         
         # Fallback to keyword-based detection
@@ -1229,6 +1288,13 @@ class StateMachineEngine:
         for transition_intent, next_state in transitions.items():
             if transition_intent == intent_key:
                 logger.info(f"🔄 State transition: {current_state} -> {next_state} (trigger: {intent_key})")
+                log_event(
+        "state_transition",
+        from_state=current_state,
+        to_state=next_state,
+        intent=intent.name,
+    )
+
                 return next_state
         
         # Default: stay in current state
@@ -1320,6 +1386,13 @@ def load_knowledge_base():
                             state.tour_name_to_index[word] = idx
                 
             except Exception as e:
+                log_event(
+    "system_error",
+    level="error",
+    error=str(e),
+    traceback=traceback.format_exc()[:500],
+)
+
                 logger.error(f"❌ Error loading tour {idx}: {e}")
                 continue
         
@@ -1328,9 +1401,16 @@ def load_knowledge_base():
         # Load mapping for search
         load_search_mapping()
         
-        return True
+        return False
         
     except Exception as e:
+        log_event(
+    "system_error",
+    level="error",
+    error=str(e),
+    traceback=traceback.format_exc()[:500],
+)
+
         logger.error(f"❌ Failed to load knowledge base: {e}")
         traceback.print_exc()
         return False
@@ -1388,8 +1468,15 @@ def load_search_mapping():
         return True
         
     except Exception as e:
+        log_event(
+    "system_error",
+    level="error",
+    error=str(e),
+    traceback=traceback.format_exc()[:500],
+)
+
         logger.error(f"❌ Failed to load search mapping: {e}")
-        return False
+        return True
 
 def save_mapping_to_disk():
     """Save mapping to disk"""
@@ -1398,6 +1485,13 @@ def save_mapping_to_disk():
             json.dump(state.mapping, f, ensure_ascii=False, indent=2)
         logger.info(f"💾 Saved mapping to {Config.FAISS_MAPPING_PATH}")
     except Exception as e:
+        log_event(
+    "system_error",
+    level="error",
+    error=str(e),
+    traceback=traceback.format_exc()[:500],
+)
+
         logger.error(f"❌ Failed to save mapping: {e}")
 
 # ==================== EMBEDDING & SEARCH ENGINE ====================
@@ -1414,6 +1508,13 @@ class EmbeddingEngine:
                 self.client = OpenAI(api_key=Config.OPENAI_API_KEY)
                 logger.info("✅ OpenAI client initialized")
             except Exception as e:
+                log_event(
+    "system_error",
+    level="error",
+    error=str(e),
+    traceback=traceback.format_exc()[:500],
+)
+
                 logger.error(f"❌ Failed to initialize OpenAI: {e}")
     
     @lru_cache(maxsize=1024)
@@ -1451,6 +1552,13 @@ class EmbeddingEngine:
                 return embedding, dim
                 
             except Exception as e:
+                log_event(
+    "system_error",
+    level="error",
+    error=str(e),
+    traceback=traceback.format_exc()[:500],
+)
+
                 logger.error(f"OpenAI embedding error: {e}")
         
         # Fallback: deterministic embedding
@@ -1536,6 +1644,13 @@ class SearchEngine:
             self.index_loaded = False
             
         except Exception as e:
+            log_event(
+    "system_error",
+    level="error",
+    error=str(e),
+    traceback=traceback.format_exc()[:500],
+)
+
             logger.error(f"❌ Failed to load index: {e}")
             self.index_loaded = False
     
@@ -1590,6 +1705,13 @@ class SearchEngine:
                 return self._text_search(query, top_k, filters)
                 
         except Exception as e:
+            log_event(
+    "system_error",
+    level="error",
+    error=str(e),
+    traceback=traceback.format_exc()[:500],
+)
+
             logger.error(f"❌ Search error: {e}")
             return self._text_search(query, top_k, filters)
     
@@ -1692,6 +1814,13 @@ class ResponseGenerator:
             try:
                 self.llm_client = OpenAI(api_key=Config.OPENAI_API_KEY)
             except Exception as e:
+                log_event(
+    "system_error",
+    level="error",
+    error=str(e),
+    traceback=traceback.format_exc()[:500],
+)
+
                 logger.error(f"❌ Failed to initialize LLM client: {e}")
     
     def generate_response(self, 
@@ -1716,6 +1845,11 @@ class ResponseGenerator:
         
         # Check if we have search results
         if not search_results:
+            log_event(
+    "no_search_result",
+    user_message=user_message[:200],
+    stage=context.stage,
+)
             return self._generate_no_results_response(user_message, context)
         
         # Group results by tour
@@ -1790,6 +1924,13 @@ class ResponseGenerator:
                     )
                     logger.info(f"📞 Lead captured: {phone}")
                 except Exception as e:
+                    log_event(
+    "system_error",
+    level="error",
+    error=str(e),
+    traceback=traceback.format_exc()[:500],
+)
+
                     logger.error(f"Meta CAPI lead error: {e}")
             
             responses = [
@@ -2101,6 +2242,13 @@ class ChatProcessor:
             return result
             
         except Exception as e:
+            log_event(
+    "system_error",
+    level="error",
+    error=str(e),
+    traceback=traceback.format_exc()[:500],
+)
+
             logger.error(f"❌ Chat processing error: {e}")
             traceback.print_exc()
             
@@ -2177,6 +2325,9 @@ def health_check():
     health_status["status"] = "healthy" if all_healthy else "degraded"
     
     return jsonify(health_status)
+logger.info("=== CHAT HIT ===")
+logger.info(f"Headers: {dict(request.headers)}")
+logger.info(f"JSON: {request.get_json(silent=True)}")
 
 @app.route("/chat", methods=["POST", "OPTIONS"])
 def chat_endpoint():
@@ -2209,13 +2360,23 @@ def chat_endpoint():
         return jsonify(result)
         
     except Exception as e:
+        log_event(
+    "system_error",
+    level="error",
+    error=str(e),
+    traceback=traceback.format_exc()[:500],
+)
+
         logger.error(f"❌ Chat endpoint error: {e}")
         return jsonify({
             "reply": "Xin lỗi, có lỗi xảy ra. Vui lòng thử lại sau.",
             "error": str(e),
             "timestamp": datetime.now().isoformat()
         }), 500
-
+    
+logger.info("=== SAVE LEAD HIT ===")
+logger.info(f"Headers: {dict(request.headers)}")
+logger.info(f"JSON: {request.get_json(silent=True)}")
 @app.route("/api/save-lead", methods=["POST", "OPTIONS"])
 def save_lead():
     """Save lead data with Meta CAPI tracking"""
@@ -2264,6 +2425,13 @@ def save_lead():
                 )
                 logger.info(f"✅ Lead sent to Meta CAPI: {phone}")
             except Exception as e:
+                log_event(
+    "system_error",
+    level="error",
+    error=str(e),
+    traceback=traceback.format_exc()[:500],
+)
+
                 logger.error(f"Meta CAPI lead error: {e}")
         
         # Save to Google Sheets if enabled
@@ -2288,6 +2456,13 @@ def save_lead():
                             ws.append_row(lead_data.to_row())
                             logger.info(f"✅ Lead saved to Google Sheets: {phone}")
             except Exception as e:
+                log_event(
+    "system_error",
+    level="error",
+    error=str(e),
+    traceback=traceback.format_exc()[:500],
+)
+
                 logger.error(f"Google Sheets error: {e}")
         
         # Update statistics
@@ -2305,6 +2480,13 @@ def save_lead():
         })
         
     except Exception as e:
+        log_event(
+    "system_error",
+    level="error",
+    error=str(e),
+    traceback=traceback.format_exc()[:500],
+)
+
         logger.error(f"❌ Save lead error: {e}")
         return jsonify({"error": str(e)}), 500
 
@@ -2331,6 +2513,13 @@ def reindex():
                 load_search_mapping()
                 logger.info("✅ Index reloaded")
             except Exception as e:
+                log_event(
+    "system_error",
+    level="error",
+    error=str(e),
+    traceback=traceback.format_exc()[:500],
+)
+
                 logger.error(f"❌ Index rebuild error: {e}")
         
         threading.Thread(target=rebuild_task, daemon=True).start()
@@ -2343,6 +2532,13 @@ def reindex():
         })
         
     except Exception as e:
+        log_event(
+    "system_error",
+    level="error",
+    error=str(e),
+    traceback=traceback.format_exc()[:500],
+)
+
         return jsonify({"error": str(e)}), 500
 
 @app.route("/stats", methods=["GET"])
