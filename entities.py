@@ -233,10 +233,10 @@ def detect_phone_number(text: str) -> Optional[str]:
     
     return None
 
-def detect_intent(text: str) -> Tuple[Intent, Dict[str, Any]]:
+def detect_intent(text: str) -> Tuple[Intent, float, Dict[str, Any]]:
     """
     Detect user intent from text using keyword matching - ĐÃ CẢI THIỆN LOGIC
-    Returns: (intent, metadata)
+    Returns: (intent, confidence, metadata)
     """
     text_lower = text.lower().strip()
     
@@ -246,7 +246,7 @@ def detect_intent(text: str) -> Tuple[Intent, Dict[str, Any]]:
     
     # Special case: if text contains only digits (likely phone number)
     if re.fullmatch(r'\d{9,11}', text_lower.strip()):
-        return Intent.PROVIDE_PHONE, metadata
+        return Intent.PROVIDE_PHONE, 0.95, metadata
     
     # Check keywords with priority
     detected_intent = Intent.UNKNOWN
@@ -318,7 +318,7 @@ def detect_intent(text: str) -> Tuple[Intent, Dict[str, Any]]:
             confidence = 0.8
     
     metadata["confidence"] = confidence
-    return detected_intent, metadata
+    return detected_intent, confidence, metadata
 
 # ===== STATE MACHINE ENUMS (ĐỒNG BỘ VỚI APP.PY) =====
 class ConversationStage(Enum):
