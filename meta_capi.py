@@ -1,302 +1,1104 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-meta_capi.py - Server-side Meta Conversion API
-Version: 2.0 (Enhanced with Call Button Tracking)
+META CONVERSION API - RUBY WINGS v5.2
+Version: 5.2.0 Professional
+Created: 2025-01-16
+Author: Ruby Wings AI Team
 
-CHỨC NĂNG HIỆN CÓ:
-1. send_meta_pageview: Gửi PageView event khi trang được load
-2. send_meta_lead: Gửi Lead event khi có form submit
-3. send_meta_call_button: Gửi Call Button event khi click nút gọi điện (FIXED)
+MÔ TẢ: Server-side Meta Conversion API tracking với đầy đủ tính năng
+- PageView tracking cho mọi request
+- Lead tracking cho form submissions  
+- Call Button tracking cho hotline clicks
+- Enhanced user data với PII hashing
+- Retry mechanism với exponential backoff
+- Connection pooling cho performance
+- Comprehensive error handling
+- Tích hợp với entities.py LeadData
 
-CẬP NHẬT QUAN TRỌNG:
-1. Hàm send_meta_call_button đã được fix để Meta ghi nhận đúng
-2. Tương thích với tracking script nút gọi điện hiện tại
-3. Giữ nguyên tất cả chức năng hiện có
+TÍCH HỢP: Hoàn toàn tương thích với Ruby Wings Chatbot v5.2
+ĐỒNG BỘ: entities.py v5.2, .env.example.ini, app.py v5.2
 """
 
-import time
-import requests
 import os
-import uuid
-import hashlib
+import time
 import json
-# Thêm vào dòng 1-3 của meta_capi.py:
 import logging
-logger = logging.getLogger("meta_capi")
+import hashlib
+import uuid
+from datetime import datetime
+from typing import Dict, List, Optional, Any, Union, Tuple
+from functools import lru_cache, wraps
+from dataclasses import dataclass, asdict
+import threading
 
-# =========================
-# EXISTING FUNCTIONS (GIỮ NGUYÊN)
-# =========================
+# HTTP client với connection pooling
+try:
+    import requests
+    from requests.adapters import HTTPAdapter
+    from urllib3.util.retry import Retry
+    REQUESTS_AVAILABLE = True
+except ImportError:
+    REQUESTS_AVAILABLE = False
+    logging.warning("⚠️ Requests library not available - Meta CAPI will be disabled")
 
-def send_meta_pageview(request):
-    """
-    Gửi PageView event đến Meta CAPI - KHÔNG THAY ĐỔI
-    Chạy tự động khi trang được load
-    """
-    try:
-        print("=== META CAPI HIT ===")
+# ==================== CONFIGURATION ====================
+logger = logging.getLogger("meta-capi")
 
-        pixel_id = os.getenv("META_PIXEL_ID")
-        token = os.getenv("META_CAPI_TOKEN")
-        test_event_code = os.getenv("META_TEST_EVENT_CODE")
+@dataclass
+class MetaCAPIConfig:
+    """Meta CAPI configuration - Đồng bộ với .env.example.ini"""
+    pixel_id: str = ""
+    access_token: str = ""
+    api_version: str = "v18.0"
+    endpoint: str = "https://graph.facebook.com"
+    test_event_code: str = ""
+    
+    # Feature toggles (đồng bộ với .env)
+    enabled: bool = False  # ENABLE_META_CAPI từ .env
+    enable_pageview: bool = True
+    enable_lead: bool = True
+    enable_call_button: bool = True
+    
+    # Performance settings
+    timeout: int = 5
+    max_retries: int = 2
+    retry_backoff_factor: float = 0.5
+    enable_connection_pooling: bool = True
+    pool_connections: int = 10
+    pool_maxsize: int = 10
+    
+    # Privacy settings
+    hash_pii: bool = True
+    hash_algorithm: str = "sha256"
+    remove_ip_after_hash: bool = False
+    
+    # Debug settings
+    debug_mode: bool = False
+    log_payload: bool = False
+    validate_events: bool = True
+    
+    @classmethod
+    def from_env(cls):
+        """Load configuration from environment variables - Đồng bộ với .env.example.ini"""
+        return cls(
+            # Đồng bộ với .env.example.ini: META_CAPI_TOKEN và META_PIXEL_ID
+            pixel_id=os.environ.get("META_PIXEL_ID", "").strip(),
+            access_token=os.environ.get("META_CAPI_TOKEN", "").strip(),
+            api_version=os.environ.get("META_API_VERSION", "v18.0"),
+            test_event_code=os.environ.get("META_TEST_EVENT_CODE", "").strip(),
+            
+            # Feature toggle: ENABLE_META_CAPI từ .env
+            enabled=os.environ.get("ENABLE_META_CAPI", "false").lower() == "true",
+            enable_pageview=os.environ.get("ENABLE_META_CAPI_PAGEVIEW", "true").lower() == "true",
+            enable_lead=os.environ.get("ENABLE_META_CAPI_LEAD", "true").lower() == "true",
+            enable_call_button=os.environ.get("ENABLE_META_CAPI_CALL", "true").lower() == "true",
+            
+            # Debug mode
+            debug_mode=os.environ.get("DEBUG_META_CAPI", "false").lower() == "true"
+        )
+    
+    def is_valid(self) -> bool:
+        """Check if configuration is valid"""
+        return bool(self.enabled and self.pixel_id and self.access_token)
+    
+    def is_enabled(self) -> bool:
+        """Check if Meta CAPI is enabled"""
+        return self.enabled and self.is_valid()
 
-        if not pixel_id or not token:
-            print("META CAPI ERROR: Missing PIXEL_ID or TOKEN")
+# Global configuration
+config = MetaCAPIConfig.from_env()
+
+# ==================== HTTP CLIENT ====================
+class MetaCAPIHTTPClient:
+    """HTTP client với retry mechanism và connection pooling"""
+    
+    _instance = None
+    _lock = threading.Lock()
+    
+    def __new__(cls):
+        with cls._lock:
+            if cls._instance is None:
+                cls._instance = super().__new__(cls)
+                cls._instance._initialize()
+            return cls._instance
+    
+    def _initialize(self):
+        """Initialize HTTP client"""
+        if not REQUESTS_AVAILABLE:
+            self.session = None
+            logger.warning("⚠️ Requests library not available - Meta CAPI disabled")
             return
-
-        event_id = str(uuid.uuid4())
-
-        payload = {
-            "data": [
-                {
-                    "event_name": "PageView",
-                    "event_time": int(time.time()),
-                    "event_id": event_id,
-                    "event_source_url": request.url,
-                    "action_source": "website",
-                    "user_data": {
-                        "client_ip_address": request.remote_addr,
-                        "client_user_agent": request.headers.get("User-Agent")
-                    }
-                }
-            ]
-        }
-
-        if test_event_code:
-            payload["test_event_code"] = test_event_code
-
-        url = f"https://graph.facebook.com/v18.0/{pixel_id}/events?access_token={token}"
-        response = requests.post(url, json=payload, timeout=5)
-        logger.info(f"Meta CAPI response: {response.status_code} - {response.text}")
-
         
-
-        print("META CAPI STATUS:", response.status_code)
-        print("META CAPI RESPONSE TEXT:", response.text)
-        print("META CAPI EVENT_ID:", event_id)
-
-    except Exception as e:
-        print("META CAPI EXCEPTION:", str(e))
-
-
-def send_meta_lead(
-    request,
-    event_name="Lead",
-    event_id=None,
-    phone=None,
-    value=None,
-    currency="VND",
-    content_name=None
-):
-    """
-    Server-side Meta CAPI Lead Event - KHÔNG THAY ĐỔI
-    Gửi khi có form submit, lead generation
-    """
-    # Feature flag: mặc định OFF
-    if os.getenv("ENABLE_META_CAPI_LEAD", "false").lower() not in ("1", "true", "yes"):
-        return
-
-    try:
-        pixel_id = os.getenv("META_PIXEL_ID")
-        token = os.getenv("META_CAPI_TOKEN")
-        test_event_code = os.getenv("META_TEST_EVENT_CODE")
-
-        if not pixel_id or not token:
+        if not config.is_enabled():
+            self.session = None
+            logger.info("ℹ️ Meta CAPI disabled in configuration")
             return
-
-        if not event_id:
-            event_id = str(uuid.uuid4())
-
-        user_data = {
-            "client_ip_address": request.remote_addr,
-            "client_user_agent": request.headers.get("User-Agent")
-        }
-
-        if phone:
-            user_data["ph"] = _hash(phone)
-
-        payload_event = {
-            "event_name": event_name,
-            "event_time": int(time.time()),
-            "event_id": event_id,
-            "event_source_url": request.url,
-            "action_source": "website",
-            "user_data": user_data
-        }
-
-        if value is not None:
-            payload_event["custom_data"] = {
-                "value": value,
-                "currency": currency
-            }
-            if content_name:
-                payload_event["custom_data"]["content_name"] = content_name
-
-        payload = {"data": [payload_event]}
-
-        if test_event_code:
-            payload["test_event_code"] = test_event_code
-
-        url = f"https://graph.facebook.com/v18.0/{pixel_id}/events?access_token={token}"
-        requests.post(url, json=payload, timeout=5)
-
-    except Exception:
-        # Fail-safe tuyệt đối
-        return
-
-
-# =========================
-# ENHANCED FUNCTIONS (CẬP NHẬT CHO CALL BUTTON)
-# =========================
-
-def _hash(value: str) -> str:
-    """Hash SHA256 cho PII data theo yêu cầu Meta"""
-    if not value:
-        return ""
-    return hashlib.sha256(value.strip().lower().encode("utf-8")).hexdigest()
-
-
-def send_meta_call_button(
-    request,
-    # === THAM SỐ TỪ CLIENT (QUAN TRỌNG) ===
-    page_url: str = None,           # URL từ window.location.href (client)
-    user_agent: str = None,         # User agent từ client
-    # === THAM SỐ TỪ TRACKING SCRIPT ===
-    phone: str = None,
-    call_type: str = "phone",
-    fbp: str = None,                # Từ cookie _fbp
-    fbc: str = None,                # Từ cookie _fbc
-    event_id: str = None,           # Event ID từ client
-    pixel_id: str = None,           # Pixel ID từ client (có thể override)
-    event_name: str = "CallButtonClick",
-    value: float = 150000,
-    currency: str = "VND",
-    # === THAM SỐ TÙY CHỌN ===
-    client_ip: str = None,          # IP từ client (nếu có proxy)
-    content_name: str = "Call Button Click"
-):
-    """
-    ENHANCED VERSION: Gửi Call Button event đến Meta CAPI
-    TƯƠNG THÍCH với tracking script hiện tại của nút gọi điện
-    
-    Tham số được gửi từ tracking script:
-    {
-        phone: '0332510486',
-        call_type: 'regular' hoặc 'zalo',
-        page_url: window.location.href,
-        user_agent: navigator.userAgent,
-        fbp: getFBP(),        // từ cookie _fbp
-        fbc: getFBC(),        // từ cookie _fbc hoặc fbclid
-        event_id: generateEventID(),
-        pixel_id: '862531473384426',  // pixel ID từ script
-        event_name: 'CallButtonClick'
-    }
-    """
-    
-    # Feature flag
-    if os.getenv("ENABLE_META_CAPI_CALL", "false").lower() not in ("1", "true", "yes"):
-        print("META CAPI CALL: Feature flag OFF")
-        return None
-    
-    try:
-        print("=== META CAPI CALL BUTTON TRACKING ===")
         
-        # 1. Lấy Pixel ID (ưu tiên từ client, fallback env)
-        target_pixel_id = pixel_id or os.getenv("META_PIXEL_ID")
-        token = os.getenv("META_CAPI_TOKEN")
-        test_event_code = os.getenv("META_TEST_EVENT_CODE")
+        # Create session với connection pooling
+        self.session = requests.Session()
         
-        if not target_pixel_id or not token:
-            print("META CAPI CALL ERROR: Missing PIXEL_ID or TOKEN")
+        if config.enable_connection_pooling:
+            # Configure connection pooling
+            adapter = HTTPAdapter(
+                pool_connections=config.pool_connections,
+                pool_maxsize=config.pool_maxsize,
+                max_retries=Retry(
+                    total=config.max_retries,
+                    backoff_factor=config.retry_backoff_factor,
+                    status_forcelist=[500, 502, 503, 504],
+                    allowed_methods=["POST"]  # Updated from method_whitelist
+                )
+            )
+            
+            # Mount adapter cho cả HTTP và HTTPS
+            self.session.mount('http://', adapter)
+            self.session.mount('https://', adapter)
+        
+        # Set default headers
+        self.session.headers.update({
+            'User-Agent': 'RubyWings-MetaCAPI/5.2',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+        })
+        
+        logger.info("✅ Meta CAPI HTTP client initialized")
+    
+    def post(self, url: str, payload: Dict, timeout: int = None) -> Optional[requests.Response]:
+        """Send POST request với error handling"""
+        if not self.session:
             return None
         
-        # 2. Ưu tiên thông tin từ CLIENT thay vì server
-        # Nếu page_url không có từ client, dùng từ server như cũ
-        final_page_url = page_url or request.url
-        final_user_agent = user_agent or request.headers.get("User-Agent", "")
-        final_client_ip = client_ip or request.remote_addr
+        if timeout is None:
+            timeout = config.timeout
         
-        # 3. Tạo event_id nếu client không gửi
-        if not event_id:
+        try:
+            start_time = time.time()
+            response = self.session.post(
+                url,
+                json=payload,
+                timeout=timeout
+            )
+            elapsed = (time.time() - start_time) * 1000
+            
+            if config.debug_mode:
+                logger.debug(f"Meta CAPI Request: {url}")
+                logger.debug(f"Response: {response.status_code} in {elapsed:.0f}ms")
+                if config.log_payload:
+                    logger.debug(f"Payload: {json.dumps(payload, ensure_ascii=False)[:500]}...")
+            
+            return response
+            
+        except requests.exceptions.Timeout:
+            logger.error(f"❌ Meta CAPI timeout after {timeout}s")
+            return None
+        except requests.exceptions.ConnectionError:
+            logger.error("❌ Meta CAPI connection error")
+            return None
+        except Exception as e:
+            logger.error(f"❌ Meta CAPI request error: {str(e)}")
+            return None
+    
+    def close(self):
+        """Close HTTP session"""
+        if self.session:
+            self.session.close()
+            logger.info("Meta CAPI HTTP client closed")
+
+# Initialize HTTP client
+http_client = MetaCAPIHTTPClient()
+
+# ==================== EVENT BUILDERS ====================
+class EventBuilder:
+    """Builder pattern cho Meta CAPI events"""
+    
+    @staticmethod
+    def create_base_event(
+        event_name: str,
+        event_time: Optional[int] = None,
+        event_id: Optional[str] = None,
+        event_source_url: Optional[str] = None,
+        action_source: str = "website"
+    ) -> Dict[str, Any]:
+        """Create base event structure"""
+        if event_time is None:
+            event_time = int(time.time())
+        
+        if event_id is None:
             event_id = str(uuid.uuid4())
         
-        # 4. Chuẩn bị user_data với ưu tiên từ client
-        user_data = {
-            "client_ip_address": final_client_ip,
-            "client_user_agent": final_user_agent
+        event = {
+            "event_name": event_name,
+            "event_time": event_time,
+            "event_id": event_id,
+            "action_source": action_source
         }
         
-        # 5. Thêm fbp/fbc nếu có từ client (QUAN TRỌNG để match với pixel)
+        if event_source_url:
+            event["event_source_url"] = event_source_url
+        
+        return event
+    
+    @staticmethod
+    def add_user_data(
+        event: Dict[str, Any],
+        client_ip: Optional[str] = None,
+        user_agent: Optional[str] = None,
+        phone: Optional[str] = None,
+        email: Optional[str] = None,
+        fbp: Optional[str] = None,
+        fbc: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Add user data với PII hashing"""
+        user_data = {}
+        
+        # Add IP và User-Agent
+        if client_ip and not config.remove_ip_after_hash:
+            user_data["client_ip_address"] = client_ip
+        
+        if user_agent:
+            user_data["client_user_agent"] = user_agent
+        
+        # Hash PII data
+        if phone and config.hash_pii:
+            user_data["ph"] = EventBuilder._hash_value(phone, config.hash_algorithm)
+        
+        if email and config.hash_pii:
+            user_data["em"] = EventBuilder._hash_value(email, config.hash_algorithm)
+        
+        # Add Facebook cookies
         if fbp:
             user_data["fbp"] = fbp
+        
         if fbc:
             user_data["fbc"] = fbc
         
-        # 6. Hash phone number nếu có (theo yêu cầu Meta)
-        if phone:
-            user_data["ph"] = _hash(str(phone))
-            print(f"META CAPI CALL: Phone hashed: {phone[:4]}... -> {user_data['ph'][:10]}...")
+        if user_data:
+            event["user_data"] = user_data
         
-        # 7. Tạo event payload - TƯƠNG THÍCH với tracking script
-        payload_event = {
-            "event_name": event_name,
-            "event_time": int(time.time()),
-            "event_id": event_id,
-            "event_source_url": final_page_url,  # URL từ CLIENT
-            "action_source": "website",
-            "user_data": user_data,
-            "custom_data": {
-                "value": value,
-                "currency": currency,
-                "call_type": call_type,
-                "content_name": content_name,
-                "button_location": "fixed_bottom_left",
-                "content_category": "Zalo Call" if call_type == "zalo" else "Phone Call"
-            }
-        }
+        return event
+    
+    @staticmethod
+    def add_custom_data(
+        event: Dict[str, Any],
+        value: Optional[float] = None,
+        currency: str = "VND",
+        content_name: Optional[str] = None,
+        content_category: Optional[str] = None,
+        content_ids: Optional[List[str]] = None,
+        content_type: Optional[str] = None,
+        **kwargs
+    ) -> Dict[str, Any]:
+        """Add custom data to event"""
+        custom_data = {}
         
-        payload = {"data": [payload_event]}
+        if value is not None:
+            custom_data["value"] = value
+            custom_data["currency"] = currency
         
-        # 8. Test mode
-        if test_event_code:
-            payload["test_event_code"] = test_event_code
-            print(f"META CAPI CALL TEST MODE: {test_event_code}")
+        if content_name:
+            custom_data["content_name"] = content_name
         
-        # 9. Gửi request đến Meta
-        url = f"https://graph.facebook.com/v18.0/{target_pixel_id}/events?access_token={token}"
+        if content_category:
+            custom_data["content_category"] = content_category
         
-        # Log để debug
-        print(f"META CAPI CALL DETAILS:")
-        print(f"  Pixel: {target_pixel_id}")
-        print(f"  Event: {event_name}")
-        print(f"  Page URL: {final_page_url[:80]}...")
-        print(f"  Call Type: {call_type}")
-        print(f"  Event ID: {event_id}")
-        print(f"  FBP: {fbp[:20] if fbp else 'None'}...")
-        print(f"  FBC: {fbc[:20] if fbc else 'None'}...")
+        if content_ids:
+            custom_data["content_ids"] = content_ids
         
-        response = requests.post(
-            url, 
-            json=payload, 
-            timeout=5,
-            headers={
-                "Content-Type": "application/json",
-                "User-Agent": final_user_agent
-            }
+        if content_type:
+            custom_data["content_type"] = content_type
+        
+        # Add any additional custom data
+        if kwargs:
+            custom_data.update(kwargs)
+        
+        if custom_data:
+            event["custom_data"] = custom_data
+        
+        return event
+    
+    @staticmethod
+    def _hash_value(value: str, algorithm: str = "sha256") -> str:
+        """Hash value theo Meta requirements"""
+        if not value:
+            return ""
+        
+        try:
+            # Normalize: lowercase, trim whitespace, remove non-digits for phone
+            normalized = value.lower().strip()
+            
+            # For phone numbers: remove all non-digits
+            if any(char.isdigit() for char in normalized):
+                normalized = ''.join(filter(str.isdigit, normalized))
+            
+            if algorithm == "sha256":
+                return hashlib.sha256(normalized.encode()).hexdigest()
+            elif algorithm == "md5":
+                return hashlib.md5(normalized.encode()).hexdigest()
+            else:
+                logger.warning(f"Unsupported hash algorithm: {algorithm}, using sha256")
+                return hashlib.sha256(normalized.encode()).hexdigest()
+        except Exception as e:
+            logger.error(f"Hash error: {e}")
+            return ""
+
+# ==================== EVENT VALIDATOR ====================
+class EventValidator:
+    """Validate events before sending"""
+    
+    @staticmethod
+    def validate_event(event: Dict[str, Any]) -> Tuple[bool, List[str]]:
+        """Validate event structure"""
+        errors = []
+        
+        # Required fields
+        required_fields = ["event_name", "event_time", "event_id", "action_source"]
+        for field in required_fields:
+            if field not in event:
+                errors.append(f"Missing required field: {field}")
+        
+        # Validate event_time
+        if "event_time" in event:
+            event_time = event["event_time"]
+            if not isinstance(event_time, int):
+                errors.append("event_time must be integer")
+            elif event_time < 0:
+                errors.append("event_time cannot be negative")
+            # Check if event_time is not too far in future (max 7 days)
+            elif event_time > int(time.time()) + (7 * 24 * 60 * 60):
+                errors.append("event_time too far in future")
+        
+        # Validate action_source
+        if "action_source" in event:
+            valid_sources = ["website", "app", "phone_call", "chat", "physical_store", "email", "other"]
+            if event["action_source"] not in valid_sources:
+                errors.append(f"Invalid action_source: {event['action_source']}")
+        
+        # Validate user_data
+        if "user_data" in event:
+            user_data = event["user_data"]
+            
+            # Check for at least one identifier
+            identifiers = ["em", "ph", "client_ip_address", "client_user_agent", "fbp", "fbc"]
+            has_identifier = any(key in user_data for key in identifiers)
+            
+            if not has_identifier:
+                errors.append("user_data must contain at least one identifier")
+        
+        is_valid = len(errors) == 0
+        return is_valid, errors
+    
+    @staticmethod
+    def sanitize_event(event: Dict[str, Any]) -> Dict[str, Any]:
+        """Sanitize event data"""
+        # Create a copy
+        sanitized = event.copy()
+        
+        # Remove empty fields
+        keys_to_remove = []
+        for key, value in sanitized.items():
+            if value is None or (isinstance(value, (str, list, dict)) and len(value) == 0):
+                keys_to_remove.append(key)
+        
+        for key in keys_to_remove:
+            del sanitized[key]
+        
+        # Truncate long strings
+        for key, value in sanitized.items():
+            if isinstance(value, str) and len(value) > 500:
+                sanitized[key] = value[:497] + "..."
+        
+        return sanitized
+
+# ==================== TÍCH HỢP VỚI ENTITIES.PY ====================
+def send_meta_lead_from_entities(request, lead_data: 'LeadData') -> Optional[Dict[str, Any]]:
+    """
+    Send Lead event từ entities.LeadData object
+    Tích hợp với app.py v5.2
+    
+    Args:
+        request: Flask request object
+        lead_data: LeadData object từ entities.py
+    
+    Returns:
+        Meta API response or None
+    """
+    if not config.is_enabled():
+        return None
+    
+    try:
+        # Convert LeadData to Meta CAPI format
+        return send_meta_lead(
+            request=request,
+            event_name="Lead",
+            event_id=lead_data.session_id if hasattr(lead_data, 'session_id') else None,
+            phone=lead_data.phone if hasattr(lead_data, 'phone') else None,
+            email=None,  # Email không có trong LeadData hiện tại
+            value=200000,  # Estimated lead value
+            currency="VND",
+            content_name="Ruby Wings Lead",
+            contact_name=lead_data.contact_name if hasattr(lead_data, 'contact_name') else None,
+            lead_source=lead_data.source_channel if hasattr(lead_data, 'source_channel') else "Website",
+            lead_status=lead_data.status if hasattr(lead_data, 'status') else "New",
+            action_type=lead_data.action_type if hasattr(lead_data, 'action_type') else "Click Call",
+            service_interest=lead_data.service_interest if hasattr(lead_data, 'service_interest') else "",
+            tour_id=str(lead_data.tour_id) if hasattr(lead_data, 'tour_id') and lead_data.tour_id else None,
+            intent=lead_data.intent if hasattr(lead_data, 'intent') else None,
+            stage=lead_data.stage if hasattr(lead_data, 'stage') else None
+        )
+    except Exception as e:
+        logger.error(f"❌ Meta CAPI from LeadData error: {str(e)}")
+        return None
+
+# ==================== MAIN CAPI FUNCTIONS ====================
+def send_meta_pageview(request) -> Optional[Dict[str, Any]]:
+    """
+    Send PageView event to Meta CAPI
+    
+    Args:
+        request: Flask request object
+    
+    Returns:
+        Meta API response or None
+    """
+    if not config.enable_pageview or not config.is_enabled():
+        return None
+    
+    try:
+        # Build event
+        event = EventBuilder.create_base_event(
+            event_name="PageView",
+            event_source_url=request.url if hasattr(request, 'url') else "",
+            action_source="website"
         )
         
-        # 10. Log kết quả
-        print(f"META CAPI CALL RESPONSE: {response.status_code}")
+        # Add user data
+        EventBuilder.add_user_data(
+            event,
+            client_ip=request.remote_addr if hasattr(request, 'remote_addr') else None,
+            user_agent=request.headers.get("User-Agent") if hasattr(request, 'headers') else None
+        )
         
-        if response.status_code == 200:
-            result = response.json()
-            print(f"META CAPI CALL SUCCESS")
-            if "events_received" in result and result["events_received"] > 0:
-                print(f"  ✅ Event received by Meta")
-            return result
-        else:
-            print(f"META CAPI CALL ERROR: {response.text}")
-            return None
-            
+        # Validate event
+        if config.validate_events:
+            is_valid, errors = EventValidator.validate_event(event)
+            if not is_valid:
+                logger.error(f"Invalid PageView event: {errors}")
+                return None
+        
+        # Sanitize
+        event = EventValidator.sanitize_event(event)
+        
+        # Build payload
+        payload = {"data": [event]}
+        
+        # Add test event code if in debug mode
+        if config.test_event_code and config.debug_mode:
+            payload["test_event_code"] = config.test_event_code
+            logger.info(f"Meta CAPI PageView (TEST MODE): {event['event_id']}")
+        
+        # Send to Meta
+        return _send_to_meta(payload)
+        
     except Exception as e:
-        print(f"META CAPI CALL EXCEPTION: {str(e)}")
+        logger.error(f"Meta CAPI PageView error: {str(e)}")
         return None
+
+def send_meta_lead(
+    request,
+    event_name: str = "Lead",
+    event_id: Optional[str] = None,
+    phone: Optional[str] = None,
+    email: Optional[str] = None,
+    value: Optional[float] = None,
+    currency: str = "VND",
+    content_name: Optional[str] = None,
+    contact_name: Optional[str] = None,
+    lead_source: str = "Chatbot",
+    lead_status: str = "New",
+    **kwargs
+) -> Optional[Dict[str, Any]]:
+    """
+    Send Lead event to Meta CAPI
+    
+    Args:
+        request: Flask request object
+        event_name: Event name (default: "Lead")
+        event_id: Custom event ID
+        phone: Phone number
+        email: Email address
+        value: Lead value
+        currency: Currency code
+        content_name: Content name
+        contact_name: Contact name
+        lead_source: Lead source
+        lead_status: Lead status
+        **kwargs: Additional custom data
+    
+    Returns:
+        Meta API response or None
+    """
+    if not config.enable_lead or not config.is_enabled():
+        return None
+    
+    try:
+        # Build event
+        event = EventBuilder.create_base_event(
+            event_name=event_name,
+            event_id=event_id,
+            event_source_url=request.url if hasattr(request, 'url') else "",
+            action_source="website"
+        )
+        
+        # Add user data
+        EventBuilder.add_user_data(
+            event,
+            client_ip=request.remote_addr if hasattr(request, 'remote_addr') else None,
+            user_agent=request.headers.get("User-Agent") if hasattr(request, 'headers') else None,
+            phone=phone,
+            email=email
+        )
+        
+        # Add custom data
+        custom_data_kwargs = {
+            "value": value or 200000,  # Default lead value
+            "currency": currency,
+            "content_name": content_name or "Ruby Wings Lead",
+            "lead_source": lead_source,
+            "lead_status": lead_status
+        }
+        
+        if contact_name:
+            custom_data_kwargs["contact_name"] = contact_name
+        
+        # Add additional kwargs
+        custom_data_kwargs.update(kwargs)
+        
+        EventBuilder.add_custom_data(event, **custom_data_kwargs)
+        
+        # Validate event
+        if config.validate_events:
+            is_valid, errors = EventValidator.validate_event(event)
+            if not is_valid:
+                logger.error(f"Invalid Lead event: {errors}")
+                return None
+        
+        # Sanitize
+        event = EventValidator.sanitize_event(event)
+        
+        # Build payload
+        payload = {"data": [event]}
+        
+        # Add test event code if in debug mode
+        if config.test_event_code and config.debug_mode:
+            payload["test_event_code"] = config.test_event_code
+            logger.info(f"Meta CAPI Lead (TEST MODE): {event['event_id']} - Phone: {phone[:4] if phone else 'N/A'}...")
+        
+        # Send to Meta
+        response = _send_to_meta(payload)
+        
+        if response:
+            logger.info(f"✅ Meta CAPI Lead sent: {event['event_id']} - Phone: {phone[:4] if phone else 'N/A'}...")
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Meta CAPI Lead error: {str(e)}")
+        return None
+
+def send_meta_call_button(
+    request,
+    page_url: Optional[str] = None,
+    phone: Optional[str] = None,
+    call_type: str = "regular",
+    button_location: str = "fixed_bottom_left",
+    button_text: str = "Gọi ngay",
+    **kwargs
+) -> Optional[Dict[str, Any]]:
+    """
+    Send Call Button event to Meta CAPI
+    
+    Args:
+        request: Flask request object
+        page_url: Page URL where button was clicked
+        phone: Phone number called
+        call_type: Type of call (regular, zalo, viber, etc.)
+        button_location: Button location on page
+        button_text: Button text
+        **kwargs: Additional custom data
+    
+    Returns:
+        Meta API response or None
+    """
+    if not config.enable_call_button or not config.is_enabled():
+        return None
+    
+    try:
+        # Build event
+        event = EventBuilder.create_base_event(
+            event_name="Contact",
+            event_source_url=page_url or (request.url if hasattr(request, 'url') else ""),
+            action_source="website"
+        )
+        
+        # Add user data
+        EventBuilder.add_user_data(
+            event,
+            client_ip=request.remote_addr if hasattr(request, 'remote_addr') else None,
+            user_agent=request.headers.get("User-Agent") if hasattr(request, 'headers') else None,
+            phone=phone
+        )
+        
+        # Add custom data
+        custom_data = {
+            "value": 150000,  # Estimated value of a call
+            "currency": "VND",
+            "call_type": call_type,
+            "button_location": button_location,
+            "button_text": button_text,
+            "content_name": "Ruby Wings Hotline Call",
+            "content_category": "Zalo Call" if call_type == "zalo" else "Phone Call",
+            "business_name": "Ruby Wings Travel",
+            "hotline_number": "0332510486"
+        }
+        
+        # Add additional kwargs
+        custom_data.update(kwargs)
+        
+        EventBuilder.add_custom_data(event, **custom_data)
+        
+        # Validate event
+        if config.validate_events:
+            is_valid, errors = EventValidator.validate_event(event)
+            if not is_valid:
+                logger.error(f"Invalid Call Button event: {errors}")
+                return None
+        
+        # Sanitize
+        event = EventValidator.sanitize_event(event)
+        
+        # Build payload
+        payload = {"data": [event]}
+        
+        # Add test event code if in debug mode
+        if config.test_event_code and config.debug_mode:
+            payload["test_event_code"] = config.test_event_code
+            logger.info(f"Meta CAPI Call Button (TEST MODE): {event['event_id']}")
+        
+        # Log event
+        masked_phone = f"{phone[:4]}..." if phone else "N/A"
+        logger.info(
+            f"📞 Meta CAPI Call Button: Event={event['event_name']}, "
+            f"Phone={masked_phone}, Type={call_type}"
+        )
+        
+        # Send to Meta
+        response = _send_to_meta(payload)
+        
+        if response:
+            received = response.get('events_received', 0)
+            if received > 0:
+                logger.info(f"✅ Meta CAPI Call Button successful: {received} event(s) received")
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Meta CAPI Call Button error: {str(e)}")
+        return None
+
+def send_meta_custom_event(
+    request,
+    event_name: str,
+    user_data: Optional[Dict] = None,
+    custom_data: Optional[Dict] = None,
+    event_id: Optional[str] = None,
+    event_source_url: Optional[str] = None,
+    action_source: str = "website",
+    **kwargs
+) -> Optional[Dict[str, Any]]:
+    """
+    Send custom event to Meta CAPI
+    """
+    if not config.is_enabled():
+        return None
+    
+    try:
+        # Build base event
+        event = EventBuilder.create_base_event(
+            event_name=event_name,
+            event_id=event_id,
+            event_source_url=event_source_url or (request.url if hasattr(request, 'url') else ""),
+            action_source=action_source
+        )
+        
+        # Add additional kwargs
+        event.update(kwargs)
+        
+        # Add user data
+        if user_data:
+            if "user_data" not in event:
+                event["user_data"] = {}
+            event["user_data"].update(user_data)
+        
+        # Ensure basic user data
+        if "user_data" not in event:
+            EventBuilder.add_user_data(
+                event,
+                client_ip=request.remote_addr if hasattr(request, 'remote_addr') else None,
+                user_agent=request.headers.get("User-Agent") if hasattr(request, 'headers') else None
+            )
+        
+        # Add custom data
+        if custom_data:
+            EventBuilder.add_custom_data(event, **custom_data)
+        
+        # Validate event
+        if config.validate_events:
+            is_valid, errors = EventValidator.validate_event(event)
+            if not is_valid:
+                logger.error(f"Invalid custom event: {errors}")
+                return None
+        
+        # Sanitize
+        event = EventValidator.sanitize_event(event)
+        
+        # Build payload
+        payload = {"data": [event]}
+        
+        # Add test event code if in debug mode
+        if config.test_event_code and config.debug_mode:
+            payload["test_event_code"] = config.test_event_code
+            logger.info(f"Meta CAPI Custom Event (TEST MODE): {event['event_id']}")
+        
+        # Send to Meta
+        return _send_to_meta(payload)
+        
+    except Exception as e:
+        logger.error(f"Meta CAPI custom event error: {str(e)}")
+        return None
+
+# ==================== HELPER FUNCTIONS ====================
+def _send_to_meta(payload: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+    """
+    Send payload to Meta CAPI
+    
+    Args:
+        payload: Event payload
+    
+    Returns:
+        Meta API response or None
+    """
+    if not config.is_enabled():
+        return None
+    
+    # Build URL
+    url = f"{config.endpoint}/{config.api_version}/{config.pixel_id}/events"
+    
+    # Add access token
+    url_with_token = f"{url}?access_token={config.access_token}"
+    
+    # Send request
+    response = http_client.post(url_with_token, payload)
+    
+    if response is None:
+        return None
+    
+    # Parse response
+    if response.status_code == 200:
+        try:
+            result = response.json()
+            
+            if config.debug_mode:
+                logger.debug(f"Meta CAPI Response: {json.dumps(result, indent=2)}")
+            
+            return result
+        except json.JSONDecodeError:
+            logger.error(f"Meta CAPI invalid JSON response: {response.text[:200]}")
+            return None
+    else:
+        logger.error(f"Meta CAPI error {response.status_code}: {response.text[:200]}")
+        return None
+
+def check_meta_capi_health() -> Dict[str, Any]:
+    """
+    Check Meta CAPI health status
+    
+    Returns:
+        Health status dictionary
+    """
+    health = {
+        "status": "unknown",
+        "timestamp": datetime.now().isoformat(),
+        "config": {
+            "enabled": config.enabled,
+            "pixel_id_set": bool(config.pixel_id),
+            "token_set": bool(config.access_token),
+            "api_version": config.api_version,
+            "endpoint": config.endpoint
+        },
+        "features": {
+            "pageview": config.enable_pageview,
+            "lead": config.enable_lead,
+            "call_button": config.enable_call_button
+        },
+        "performance": {
+            "connection_pooling": config.enable_connection_pooling,
+            "max_retries": config.max_retries,
+            "timeout": config.timeout
+        },
+        "privacy": {
+            "hash_pii": config.hash_pii,
+            "hash_algorithm": config.hash_algorithm
+        }
+    }
+    
+    # Determine overall status
+    if not config.enabled:
+        health["status"] = "disabled"
+        health["message"] = "Meta CAPI is disabled in configuration (ENABLE_META_CAPI=false)"
+    elif not config.is_valid():
+        health["status"] = "unconfigured"
+        health["message"] = "Meta CAPI credentials not configured"
+    elif not REQUESTS_AVAILABLE:
+        health["status"] = "missing_dependencies"
+        health["message"] = "Requests library not installed"
+    else:
+        health["status"] = "configured"
+        health["message"] = "Meta CAPI is configured and ready"
+    
+    return health
+
+def get_meta_capi_config() -> Dict[str, Any]:
+    """
+    Get Meta CAPI configuration (for debugging)
+    
+    Returns:
+        Configuration dictionary (sanitized)
+    """
+    # Return safe configuration (without token)
+    safe_config = {
+        "enabled": config.enabled,
+        "pixel_id": config.pixel_id[:6] + "..." + config.pixel_id[-4:] if len(config.pixel_id) > 10 else config.pixel_id,
+        "api_version": config.api_version,
+        "endpoint": config.endpoint,
+        "test_mode": bool(config.test_event_code),
+        "debug_mode": config.debug_mode,
+        "features": {
+            "pageview": config.enable_pageview,
+            "lead": config.enable_lead,
+            "call_button": config.enable_call_button
+        },
+        "privacy": {
+            "hash_pii": config.hash_pii,
+            "hash_algorithm": config.hash_algorithm,
+            "remove_ip_after_hash": config.remove_ip_after_hash
+        },
+        "performance": {
+            "timeout": config.timeout,
+            "max_retries": config.max_retries,
+            "connection_pooling": config.enable_connection_pooling
+        }
+    }
+    
+    return safe_config
+
+def get_meta_capi_stats() -> Dict[str, Any]:
+    """
+    Get Meta CAPI statistics
+    
+    Returns:
+        Statistics dictionary
+    """
+    stats = {
+        "timestamp": datetime.now().isoformat(),
+        "http_client": {
+            "initialized": http_client.session is not None,
+            "requests_available": REQUESTS_AVAILABLE
+        },
+        "config": {
+            "enabled": config.enabled,
+            "is_valid": config.is_valid(),
+            "features_enabled": {
+                "pageview": config.enable_pageview,
+                "lead": config.enable_lead,
+                "call_button": config.enable_call_button
+            }
+        }
+    }
+    
+    return stats
+
+# ==================== CLEANUP ====================
+def cleanup():
+    """Cleanup resources"""
+    http_client.close()
+    logger.info("Meta CAPI cleanup completed")
+
+# ==================== UTILITY DECORATORS ====================
+def meta_capi_enabled(func):
+    """
+    Decorator to check if Meta CAPI is enabled before executing function
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not config.is_enabled():
+            logger.debug(f"Meta CAPI disabled, skipping {func.__name__}")
+            return None
+        return func(*args, **kwargs)
+    return wrapper
+
+def meta_capi_safe(func):
+    """
+    Decorator to safely execute Meta CAPI functions with error handling
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Meta CAPI error in {func.__name__}: {str(e)}")
+            return None
+    return wrapper
+
+# ==================== BATCH OPERATIONS ====================
+def send_meta_bulk_events(
+    request,
+    events: List[Dict],
+    test_mode: bool = False
+) -> Optional[Dict[str, Any]]:
+    """
+    Send multiple events in bulk
+    
+    Args:
+        request: Flask request object
+        events: List of event dictionaries
+        test_mode: Enable test mode
+    
+    Returns:
+        Meta API response or None
+    """
+    if not config.is_enabled():
+        return None
+    
+    if not events:
+        logger.warning("No events to send")
+        return None
+    
+    try:
+        # Prepare events
+        prepared_events = []
+        
+        for event in events:
+            # Ensure event has basic structure
+            if "event_time" not in event:
+                event["event_time"] = int(time.time())
+            
+            if "event_id" not in event:
+                event["event_id"] = str(uuid.uuid4())
+            
+            if "action_source" not in event:
+                event["action_source"] = "website"
+            
+            # Validate event
+            if config.validate_events:
+                is_valid, errors = EventValidator.validate_event(event)
+                if not is_valid:
+                    logger.error(f"Invalid event in bulk: {errors}")
+                    continue
+            
+            # Sanitize
+            sanitized = EventValidator.sanitize_event(event)
+            prepared_events.append(sanitized)
+        
+        if not prepared_events:
+            logger.warning("No valid events to send")
+            return None
+        
+        # Build payload
+        payload = {"data": prepared_events}
+        
+        # Add test event code
+        if test_mode or (config.test_event_code and config.debug_mode):
+            payload["test_event_code"] = config.test_event_code
+            logger.info(f"Meta CAPI Bulk (TEST MODE): {len(prepared_events)} events")
+        
+        # Send to Meta
+        response = _send_to_meta(payload)
+        
+        if response:
+            received = response.get('events_received', 0)
+            logger.info(f"✅ Meta CAPI Bulk sent: {received}/{len(prepared_events)} events received")
+        
+        return response
+        
+    except Exception as e:
+        logger.error(f"Meta CAPI bulk events error: {str(e)}")
+        return None
+
+# ==================== INITIALIZATION ====================
+def initialize_meta_capi():
+    """
+    Initialize Meta CAPI system
+    Called at app startup
+    """
+    logger.info("=" * 60)
+    logger.info("🚀 META CAPI v5.2 PROFESSIONAL INITIALIZED")
+    logger.info("=" * 60)
+    
+    if not config.enabled:
+        logger.warning("⚠️ Meta CAPI is DISABLED in configuration")
+        logger.info("   Set ENABLE_META_CAPI=true in .env to enable")
+    elif not config.is_valid():
+        logger.warning("⚠️ Meta CAPI is NOT CONFIGURED")
+        logger.info("   Set META_PIXEL_ID and META_CAPI_TOKEN in .env")
+    else:
+        pixel_masked = f"{config.pixel_id[:6]}...{config.pixel_id[-4:]}" if len(config.pixel_id) > 10 else config.pixel_id
+        logger.info(f"✅ Meta CAPI is ENABLED")
+        logger.info(f"📊 Pixel ID: {pixel_masked}")
+        logger.info(f"🔧 Features: PageView={config.enable_pageview}, Lead={config.enable_lead}, Call={config.enable_call_button}")
+        logger.info(f"⚡ Performance: Pooling={config.enable_connection_pooling}, Retries={config.max_retries}, Timeout={config.timeout}s")
+        logger.info(f"🔒 Privacy: Hash PII={config.hash_pii} ({config.hash_algorithm}), Remove IP={config.remove_ip_after_hash}")
+        
+        if config.debug_mode:
+            logger.info("🐛 Debug mode: ENABLED")
+            if config.test_event_code:
+                logger.info(f"🧪 Test event code: {config.test_event_code[:4]}...")
+    
+    logger.info("=" * 60)
+
+# Initialize at import
+initialize_meta_capi()
+
+# Register cleanup on exit
+import atexit
+atexit.register(cleanup)
+
+# ==================== EXPORTS ====================
+__all__ = [
+    # Configuration
+    'MetaCAPIConfig',
+    'config',
+    
+    # Main functions
+    'send_meta_pageview',
+    'send_meta_lead',
+    'send_meta_lead_from_entities',
+    'send_meta_call_button',
+    'send_meta_custom_event',
+    'send_meta_bulk_events',
+    
+    # Utilities
+    'check_meta_capi_health',
+    'get_meta_capi_config',
+    'get_meta_capi_stats',
+    'initialize_meta_capi',
+    'cleanup',
+    
+    # Decorators
+    'meta_capi_enabled',
+    'meta_capi_safe',
+    
+    # Builders
+    'EventBuilder',
+    'EventValidator'
+]

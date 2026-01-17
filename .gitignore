@@ -1,1 +1,504 @@
+# ============================================
+# RUBY WINGS AI CHATBOT v5.2.1 - GIT IGNORE
+# ============================================
+# Updated: 2025-01-17
+# Compatible with: Render, Docker, Local development
+# 
+# CHANGES IN v5.2.1:
+# - Fixed Docker files being ignored (now kept)
+# - Added build.sh to exceptions
+# - Added new documentation files
+# - Enhanced Meta CAPI and Google Sheets ignores
+# - Better organization
+# ============================================
+
+# ===== PYTHON =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+python_env/
+.python-version
+pip-wheel-metadata/
+*.pyc
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+.eggs/
+.venv/
+pip-selfcheck.json
+pyvenv.cfg
+
+# Build artifacts
+build/
+dist/
+*.egg-info/
+wheels/
+sdist/
+wheelhouse/
+*.whl
+*.tar.gz
+!requirements.txt
+
+# ===== DATA FILES & INDEXES (v5.2.1 SPECIFIC) =====
+# FAISS and vector indexes (generated files)
+faiss_index.bin
+faiss_index_meta.json
+faiss_mapping.json
+faiss_mapping_index.json
+vectors.npz
+vectors_fallback.npz
+*.index
+*.npy
+*.npz
+
+# Tour entities (generated - can be rebuilt)
+tour_entities.json
+tour_index.json
+entity_index.json
+
+# Session and cache data
+*.session
+*.cache
+cache/
+sessions/
+temp/
+tmp/
+
+# ===== LOGS =====
+*.log
+ruby_wings.log
+ruby_wings_*.log
+build_index.log
+logs/*.log
+log/*.log
+# Keep log directories
+!logs/.gitkeep
+!log/.gitkeep
+
+# ===== DATABASE FILES =====
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+leads.db
+sessions.db
+
+# ===== BACKUP & FALLBACK STORAGE =====
+# Lead fallback (contains sensitive data)
+leads_fallback.json
+leads_backup.json
+backup-*.json
+backup-*.tar.gz
+
+# State backups
+state_backup.json
+session_backup.json
+conversation_states.json
+user_profiles.json
+
+# Data backups
+data/*.bak
+data/*.backup
+data/backup-*
+
+# ===== ENVIRONMENT & SECRETS =====
+# CRITICAL: Never commit these!
 .env
+.env.*
+.env.local
+.env.development
+.env.development.local
+.env.test
+.env.test.local
+.env.production
+.env.production.local
+.env.staging
+
+# Keep templates
+!.env.example
+!.env.template
+!env.example
+!env.docker
+!_env_example.ini
+
+# Secrets and credentials
+secrets/
+credentials/
+*.key
+*.pem
+*.crt
+*.cer
+*.p12
+*.pfx
+
+# Service account files (Google, etc.)
+secrets.json
+credentials.json
+service_account.json
+google_creds.json
+google_sa.json
+*-service-account.json
+*_service_account.json
+
+# Meta CAPI credentials
+meta_creds.json
+meta_token.txt
+pixel_*.json
+
+# Configuration files with secrets
+config.yaml
+config.yml
+config.json
+settings.json
+local_settings.json
+
+# ===== DEPLOYMENT FILES =====
+# Render specific
+.render/
+.render-cloud/
+render.yaml.bak
+render-*.yaml
+render-cloud.yaml
+render.yaml.local
+
+# Keep main Render blueprint
+!render.yaml
+
+# Docker - KEEP THESE FILES! (FIXED in v5.2.1)
+# Docker files are needed for deployment
+!Dockerfile
+!.dockerignore
+!dockerignore
+!docker-compose.yml
+!docker-compose.yaml
+!docker-compose.dev.yml
+!docker-compose.dev.yaml
+!docker-compose.*.yml
+!docker-compose.*.yaml
+
+# Docker runtime
+.docker/
+docker/volumes/
+docker/data/
+
+# Kubernetes
+.kubernetes/
+k8s/
+*.k8s.yaml
+*.k8s.yml
+
+# Cloud deployment
+.cloudignore
+.gitlab-ci.yml
+.github/workflows/*.local.yml
+.gitlab/
+.bitbucket/
+.circleci/
+.travis.yml
+azure-pipelines.yml
+Jenkinsfile
+cloudbuild.yaml
+
+# Heroku (if used)
+Procfile.local
+Procfile.dev
+
+# ===== IDE & EDITOR =====
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+.history/
+
+# JetBrains IDEs (PyCharm, IntelliJ)
+.idea/
+*.iml
+*.ipr
+*.iws
+.idea_modules/
+
+# Sublime Text
+*.sublime-*
+*.sublime-project
+*.sublime-workspace
+
+# Vim
+*.sw[op]
+*.swn
+*.swo
+*~
+
+# Emacs
+\#*\#
+.\#*
+
+# Eclipse
+.project
+.classpath
+.settings/
+*.code-workspace
+
+# ===== PACKAGE MANAGERS =====
+# Node.js (if used for frontend tools)
+node_modules/
+.npm/
+.yarn/
+.yarnrc
+yarn.lock
+package-lock.json
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+bower_components/
+
+# Python package managers
+Pipfile.lock
+poetry.lock
+pdm.lock
+
+# ===== TESTING =====
+.coverage
+.coverage.*
+.cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+test_output/
+test-reports/
+test-results/
+junit/
+*.cover
+.hypothesis/
+.tox/
+.nox/
+htmlcov/
+coverage.xml
+*.coveragerc
+
+# Test data
+test_data/generated/
+test_data/*.tmp
+
+# ===== JUPYTER & NOTEBOOKS =====
+.ipynb_checkpoints/
+*.ipynb_checkpoints/
+
+# Keep example notebooks
+!examples/*.ipynb
+!notebooks/examples/*.ipynb
+
+# ===== DOCUMENTATION =====
+# Built documentation
+docs/_build/
+docs/.build/
+_build/
+site/
+.mkdocs.yml.local
+
+# Keep source documentation
+!docs/**/*.md
+!docs/**/*.rst
+!README*.md
+!CHANGELOG.md
+!CONTRIBUTING.md
+!LICENSE
+!DOCKER.md
+!QUICKSTART.md
+!RENDER_YAML_GUIDE.md
+
+# ===== SYSTEM & OS SPECIFIC =====
+# Linux
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+.Spotlight-V100
+.Trashes
+._*
+.DocumentRevisions-V100
+.fseventsd
+.TemporaryItems
+.VolumeIcon.icns
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.stackdump
+*.lnk
+
+# ===== TEMPORARY FILES =====
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+*.orig
+*~
+
+# ===== ARCHIVES (generated) =====
+*.7z
+*.bz2
+*.gz
+*.rar
+*.tar
+*.tgz
+*.zip
+*.zst
+!requirements*.txt
+
+# ===== AI/ML SPECIFIC =====
+# Model files (if custom models used)
+*.pt
+*.pth
+*.h5
+*.keras
+*.model
+*.joblib
+*.pkl
+*.pickle
+
+# Training artifacts
+training_data/generated/
+datasets/downloaded/
+models/checkpoints/
+wandb/
+mlruns/
+
+# ===== BUILD ARTIFACTS =====
+*.manifest
+*.spec
+MANIFEST
+pip-log.txt
+pip-delete-this-directory.txt
+
+# ===== CUSTOM APPLICATION FILES =====
+# Custom modules (if user adds)
+custom_modules/*.pyc
+custom_modules/__pycache__/
+
+# Custom data (keep structure, ignore data)
+data/*.json
+data/*.npz
+data/*.bin
+!data/.gitkeep
+!data/README.md
+
+# ===== EXCEPTIONS - CRITICAL FILES TO KEEP =====
+# Core application
+!app.py
+!entities.py
+!meta_capi.py
+!response_guard.py
+!build_index.py
+!gunicorn_conf.py
+
+# Build and deployment
+!build.sh
+!setup.sh
+!deploy.sh
+!run.sh
+!test.sh
+
+# Configuration
+!requirements.txt
+!requirements-minimal.txt
+!requirements-dev.txt
+
+# Docker files (v5.2.1 FIX)
+!Dockerfile
+!.dockerignore
+!docker-compose.yml
+!docker-compose.dev.yml
+!Makefile
+!nginx.conf
+!redis.conf
+
+# Render deployment
+!render.yaml
+
+# Documentation
+!README.md
+!CHANGELOG.md
+!LICENSE
+!CONTRIBUTING.md
+!DOCKER.md
+!QUICKSTART.md
+!RENDER_YAML_GUIDE.md
+!deployment_checklist.md
+!meta_capi_integration.md
+
+# Knowledge base
+!knowledge.json
+!knowledge.example.json
+
+# Test files
+!test_integration.py
+!tests/**/*.py
+
+# Git files
+!.gitignore
+!.gitattributes
+!.gitkeep
+
+# Templates
+*.example
+!*.example
+*.template
+!*.template
+*.sample
+!*.sample
+
+# Editor config
+!.editorconfig
+!.prettierrc
+!.eslintrc
+
+# ============================================
+# v5.2.1 DEPLOYMENT CHECKLIST:
+# ============================================
+# 
+# ✅ KEEP (tracked in Git):
+# - All source code (.py files)
+# - Docker files (Dockerfile, docker-compose.yml, etc.)
+# - Build scripts (build.sh, etc.)
+# - Configuration templates (.example, .template)
+# - Documentation (.md files)
+# - Knowledge base (knowledge.json)
+# - Requirements (requirements.txt)
+# - Render blueprint (render.yaml)
+#
+# ❌ IGNORE (never commit):
+# - Environment files (.env, .env.*)
+# - Generated indexes (faiss_index.bin, vectors.npz)
+# - Logs (*.log)
+# - Credentials (service accounts, tokens)
+# - Build artifacts (__pycache__, *.pyc)
+# - IDE files (.vscode, .idea)
+# - Lead data (leads_fallback.json)
+# - Backups (*.bak, backup-*)
+#
+# 🔒 SECURITY:
+# - Never commit API keys or tokens
+# - Never commit service account JSON
+# - Never commit .env files
+# - Never commit lead/customer data
+# - Always use .env.example as template
+#
+# ============================================

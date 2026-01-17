@@ -1,0 +1,216 @@
+version: '3.8'
+
+services:
+  # Ruby Wings Chatbot - Main Application
+  ruby-wings-chatbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        RAM_PROFILE: ${RAM_PROFILE:-512}
+        PYTHON_VERSION: "3.11"
+    container_name: ruby-wings-chatbot-v5.2.1
+    image: ruby-wings/chatbot:5.2.1
+    
+    ports:
+      - "${PORT:-10000}:10000"
+    
+    environment:
+      # ==================== CORE API KEYS ====================
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENAI_BASE_URL=${OPENAI_BASE_URL:-https://api.openai.com/v1}
+      - EMBEDDING_MODEL=${EMBEDDING_MODEL:-text-embedding-3-small}
+      - CHAT_MODEL=${CHAT_MODEL:-gpt-4o-mini}
+      
+      # ==================== META CONVERSION API ====================
+      - META_PIXEL_ID=${META_PIXEL_ID}
+      - META_CAPI_TOKEN=${META_CAPI_TOKEN}
+      - META_TEST_EVENT_CODE=${META_TEST_EVENT_CODE:-}
+      - ENABLE_META_CAPI_LEAD=${ENABLE_META_CAPI_LEAD:-true}
+      - ENABLE_META_CAPI_CALL=${ENABLE_META_CAPI_CALL:-true}
+      - DEBUG_META_CAPI=${DEBUG_META_CAPI:-false}
+      
+      # ==================== GOOGLE SHEETS ====================
+      - ENABLE_GOOGLE_SHEETS=${ENABLE_GOOGLE_SHEETS:-true}
+      - GOOGLE_SERVICE_ACCOUNT_JSON=${GOOGLE_SERVICE_ACCOUNT_JSON}
+      - GOOGLE_SHEET_ID=${GOOGLE_SHEET_ID}
+      - GOOGLE_SHEET_NAME=${GOOGLE_SHEET_NAME:-RBW_Lead_Raw_Inbox}
+      
+      # ==================== SERVER CONFIGURATION ====================
+      - FLASK_ENV=${FLASK_ENV:-production}
+      - PORT=10000
+      - HOST=0.0.0.0
+      - DEBUG=${DEBUG:-false}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - TIMEOUT=${TIMEOUT:-60}
+      
+      # ==================== FILE PATHS ====================
+      - KNOWLEDGE_PATH=/app/data/knowledge.json
+      - FAISS_ENABLED=${FAISS_ENABLED:-false}
+      - FALLBACK_VECTORS_PATH=/app/data/vectors.npz
+      - FAISS_MAPPING_PATH=/app/data/faiss_mapping.json
+      - FAISS_INDEX_PATH=/app/data/faiss_index.bin
+      - TOUR_ENTITIES_PATH=/app/data/tour_entities.json
+      
+      # ==================== PERFORMANCE ====================
+      - RAM_PROFILE=${RAM_PROFILE:-512}
+      - TOP_K=${TOP_K:-5}
+      - MAX_CONTENT_LENGTH=${MAX_CONTENT_LENGTH:-1048576}
+      - CACHE_TTL_SECONDS=${CACHE_TTL_SECONDS:-300}
+      - MAX_SESSIONS=${MAX_SESSIONS:-50}
+      - MAX_EMBEDDING_CACHE=${MAX_EMBEDDING_CACHE:-30}
+      - CONVERSATION_HISTORY_LIMIT=${CONVERSATION_HISTORY_LIMIT:-5}
+      
+      # ==================== STORAGE ====================
+      - ENABLE_FALLBACK_STORAGE=${ENABLE_FALLBACK_STORAGE:-true}
+      - FALLBACK_STORAGE_PATH=/app/data/leads_fallback.json
+      
+      # ==================== SECURITY ====================
+      - SECRET_KEY=${SECRET_KEY}
+      
+      # ==================== CORS ====================
+      - CORS_ORIGINS=${CORS_ORIGINS:-*}
+      
+      # ==================== GUNICORN ====================
+      - GUNICORN_WORKERS=${GUNICORN_WORKERS:-1}
+      - GUNICORN_THREADS=${GUNICORN_THREADS:-2}
+      - PYTHONUNBUFFERED=true
+      - PYTHONMALLOC=malloc
+      
+      # ==================== FEATURE TOGGLES ====================
+      - ENABLE_INTENT_DETECTION=${ENABLE_INTENT_DETECTION:-true}
+      - ENABLE_PHONE_DETECTION=${ENABLE_PHONE_DETECTION:-true}
+      - ENABLE_LEAD_CAPTURE=${ENABLE_LEAD_CAPTURE:-true}
+      - STATE_MACHINE_ENABLED=${STATE_MACHINE_ENABLED:-true}
+      - ENABLE_LOCATION_FILTER=${ENABLE_LOCATION_FILTER:-true}
+      - ENABLE_SEMANTIC_ANALYSIS=${ENABLE_SEMANTIC_ANALYSIS:-true}
+      
+      # ==================== REDIS (Optional) ====================
+      - REDIS_ENABLED=${REDIS_ENABLED:-false}
+      - REDIS_HOST=${REDIS_HOST:-redis}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      - REDIS_DB=${REDIS_DB:-0}
+    
+    volumes:
+      # Data directory for knowledge base and indexes
+      - ./data:/app/data
+      
+      # Logs directory
+      - ./logs:/app/logs
+      
+      # Knowledge base (read-only)
+      - ./knowledge.json:/app/data/knowledge.json:ro
+      
+      # Optional: Custom modules (if you have customizations)
+      # - ./custom_modules:/app/custom_modules:ro
+    
+    networks:
+      - ruby-wings-network
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:10000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    deploy:
+      resources:
+        limits:
+          # Set based on RAM_PROFILE
+          memory: ${MEMORY_LIMIT:-600M}
+          cpus: '1.0'
+        reservations:
+          memory: ${MEMORY_RESERVATION:-400M}
+          cpus: '0.5'
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+    
+    labels:
+      - "com.ruby-wings.service=chatbot"
+      - "com.ruby-wings.version=5.2.1"
+      - "com.ruby-wings.environment=${FLASK_ENV:-production}"
+
+  # ==================== REDIS (Optional) ====================
+  # Uncomment this section when upgrading to 2GB RAM for better session management
+  # redis:
+  #   image: redis:7-alpine
+  #   container_name: ruby-wings-redis
+  #   
+  #   ports:
+  #     - "${REDIS_PORT:-6379}:6379"
+  #   
+  #   volumes:
+  #     - redis-data:/data
+  #     - ./redis.conf:/usr/local/etc/redis/redis.conf:ro
+  #   
+  #   networks:
+  #     - ruby-wings-network
+  #   
+  #   restart: unless-stopped
+  #   
+  #   command: redis-server /usr/local/etc/redis/redis.conf
+  #   
+  #   healthcheck:
+  #     test: ["CMD", "redis-cli", "ping"]
+  #     interval: 30s
+  #     timeout: 10s
+  #     retries: 3
+  #   
+  #   deploy:
+  #     resources:
+  #       limits:
+  #         memory: 128M
+  #         cpus: '0.5'
+  #   
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "5m"
+  #       max-file: "2"
+
+  # ==================== NGINX (Optional Reverse Proxy) ====================
+  # Uncomment for production with SSL/HTTPS
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: ruby-wings-nginx
+  #   
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./ssl:/etc/nginx/ssl:ro
+  #   
+  #   networks:
+  #     - ruby-wings-network
+  #   
+  #   depends_on:
+  #     - ruby-wings-chatbot
+  #   
+  #   restart: unless-stopped
+  #   
+  #   logging:
+  #     driver: "json-file"
+  #     options:
+  #       max-size: "5m"
+  #       max-file: "2"
+
+networks:
+  ruby-wings-network:
+    driver: bridge
+    name: ruby-wings-network
+
+volumes:
+  # Persistent data volume
+  # redis-data:
+  #   name: ruby-wings-redis-data
+  data:
+    name: ruby-wings-data

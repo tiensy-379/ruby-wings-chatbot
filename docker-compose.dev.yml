@@ -1,0 +1,59 @@
+version: '3.8'
+
+# Development Docker Compose Configuration
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  ruby-wings-chatbot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        RAM_PROFILE: 512
+    
+    # Override environment for development
+    environment:
+      - FLASK_ENV=development
+      - DEBUG=true
+      - LOG_LEVEL=DEBUG
+      - DEBUG_META_CAPI=true
+      - CORS_ORIGINS=*
+    
+    # Mount source code for live reload (DO NOT use in production)
+    volumes:
+      - ./app.py:/app/app.py
+      - ./entities.py:/app/entities.py
+      - ./meta_capi.py:/app/meta_capi.py
+      - ./response_guard.py:/app/response_guard.py
+      - ./gunicorn_conf.py:/app/gunicorn_conf.py
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./knowledge.json:/app/data/knowledge.json
+    
+    # Override command for development
+    command: python app.py
+    
+    # Expose additional ports for debugging
+    ports:
+      - "10000:10000"
+      - "5678:5678"  # For remote debugging
+    
+    # Override restart policy
+    restart: "no"
+    
+    labels:
+      - "com.ruby-wings.environment=development"
+
+  # Enable Redis for testing
+  redis:
+    image: redis:7-alpine
+    container_name: ruby-wings-redis-dev
+    ports:
+      - "6379:6379"
+    networks:
+      - ruby-wings-network
+    restart: "no"
+
+networks:
+  ruby-wings-network:
+    driver: bridge

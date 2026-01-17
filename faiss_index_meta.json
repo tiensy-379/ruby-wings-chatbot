@@ -1,8 +1,19 @@
 {
-  "created_at": "2025-12-29T14:44:23.242863Z",
-  "num_passages": 686,
+  "created_at": "2026-01-17T03:49:30.454467Z",
+  "num_passages": 38,
+  "num_tours": 32,
   "embedding_model": "text-embedding-3-small",
   "dimension": 1536,
   "faiss_available": true,
-  "notes": "Built with batch memmap flow; tour_entities.json produced if entities module present"
+  "system_version": "v5.2",
+  "notes": "Built with enhanced tour_entities.json structure for Ruby Wings v5.2",
+  "features": {
+    "region_extraction": true,
+    "tags_extraction": true,
+    "price_parsing": true,
+    "duration_parsing": true,
+    "popularity_scoring": true,
+    "value_scoring": true,
+    "event_support_field": true
+  }
 }

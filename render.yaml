@@ -1,178 +1,238 @@
+# Ruby Wings Chatbot v5.2.1 - Render Blueprint
+# Infrastructure as Code for Render.com deployment
+
 services:
+  # ==================== MAIN CHATBOT SERVICE ====================
   - type: web
-    name: ruby-wings-chatbot
-    env: python
-    plan: free
-
-    buildCommand: "pip install --no-cache-dir -r requirements.txt"
-    startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 4 --timeout 300"
-
-    envVars:
-      # ===== CORE CONFIGURATION =====
-      - key: OPENAI_API_KEY
-        sync: false  # Đặt trong Render Dashboard
-
-      - key: OPENAI_BASE_URL
-        value: "https://api.openai.com/v1"
-
-      - key: FLASK_ENV
-        value: "production"
-
-      - key: PORT
-        value: "10000"
-
-      # ===== FAISS & CHATBOT CONFIG =====
-      - key: FAISS_ENABLED
-        value: "true"
-
-      - key: RBW_ALLOW_REINDEX
-        value: "0"
-
-      - key: KNOWLEDGE_PATH
-        value: "knowledge.json"
-
-      - key: FALLBACK_VECTORS_PATH
-        value: "vectors.npz"
-
-      - key: FAISS_MAPPING_PATH
-        value: "faiss_mapping.json"
-
-      - key: FAISS_INDEX_PATH
-        value: "faiss_index.bin"
-
-      # ===== AI MODELS =====
-      - key: EMBEDDING_MODEL
-        value: "text-embedding-3-small"
-
-      - key: CHAT_MODEL
-        value: "gpt-4o-mini"
-
-      - key: TOP_K
-        value: "5"
-
-      # ===== GOOGLE SHEETS INTEGRATION =====
-      - key: ENABLE_GOOGLE_SHEETS
-        value: "true"
-
-      - key: GOOGLE_SERVICE_ACCOUNT_JSON
-        sync: false  # Đặt trong Render Dashboard với JSON đầy đủ
-
-      - key: GOOGLE_SHEET_ID
-        value: "1SdVbwkuxb8l1meEW--ddyfh4WmUvSXXMOPQ5bCyPkdk"
-
-      - key: GOOGLE_SHEET_NAME
-        value: "RBW_Lead_Raw_Inbox"
-
-      # ===== FALLBACK STORAGE =====
-      - key: ENABLE_FALLBACK_STORAGE
-        value: "true"
-
-      - key: FALLBACK_STORAGE_PATH
-        value: "leads_fallback.json"
-
-      # ===== PERFORMANCE =====
-      - key: WORKERS
-        value: "1"
-
-      - key: TIMEOUT
-        value: "300"
-
-      - key: DEBUG
-        value: "false"
-
-      - key: LOG_LEVEL
-        value: "INFO"
-
-      # ===== META CONVERSION API (CAPI) =====
-      - key: META_PIXEL_ID
-        value: "862531473384426"
-
-      - key: META_CAPI_TOKEN
-        sync: false  # Đặt trong Render Dashboard
-
-      - key: META_TEST_EVENT_CODE
-        value: ""  # TEST12345 khi cần test, để trống khi production
-
-      # ===== META CAPI FEATURE FLAGS =====
-      - key: ENABLE_META_CAPI_LEAD
-        value: "true"  # Bật tracking lead qua /api/save-lead
-
-      - key: ENABLE_META_CAPI_CALL
-        value: "true"  # Bật tracking cho nút gọi điện (FIXED VERSION)
-
-      - key: DEBUG_META_CAPI
-        value: "true"  # Bật log debug cho Meta CAPI
-
-      # ===== SECURITY =====
-      - key: SECRET_KEY
-        generateValue: true
-
-      - key: CORS_ORIGINS
-        value: "https://www.rubywings.vn,https://rubywings.vn"
-
-      # ===== SYSTEM =====
-      - key: HOST
-        value: "0.0.0.0"
-
-      - key: MAX_CONTENT_LENGTH
-        value: "16777216"  # 16MB
-
-    healthCheckPath: "/api/health"
-    healthCheckTimeout: 30
-
+    name: ruby-wings-chatbot-v5
+    runtime: python
+    plan: starter  # 512MB RAM - upgrade to standard (2GB) next month
+    region: singapore  # Closest to Vietnam
+    
+    # Build configuration
+    buildCommand: pip install --upgrade pip && pip install -r requirements.txt
+    startCommand: gunicorn app:app --config gunicorn_conf.py
+    
+    # Health check
+    healthCheckPath: /health
+    
+    # Auto-deploy
     autoDeploy: true
+    
+    # Branch to deploy
     branch: main
-
+    
+    # Repository (update with your repo)
+    # repo: https://github.com/yourusername/ruby-wings-chatbot
+    
+    # ==================== ENVIRONMENT VARIABLES ====================
+    envVars:
+      # ==================== CORE API KEYS ====================
+      - key: OPENAI_API_KEY
+        sync: false  # Set manually in Render dashboard
+      
+      - key: OPENAI_BASE_URL
+        value: https://api.openai.com/v1
+      
+      - key: EMBEDDING_MODEL
+        value: text-embedding-3-small
+      
+      - key: CHAT_MODEL
+        value: gpt-4o-mini
+      
+      # ==================== META CONVERSION API ====================
+      - key: META_PIXEL_ID
+        sync: false  # Set manually
+      
+      - key: META_CAPI_TOKEN
+        sync: false  # Set manually
+      
+      - key: META_TEST_EVENT_CODE
+        value: TEST12345
+      
+      - key: ENABLE_META_CAPI_LEAD
+        value: true
+      
+      - key: ENABLE_META_CAPI_CALL
+        value: true
+      
+      - key: DEBUG_META_CAPI
+        value: false  # true for testing, false for production
+      
+      # ==================== GOOGLE SHEETS ====================
+      - key: ENABLE_GOOGLE_SHEETS
+        value: true
+      
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+        sync: false  # Set manually - JSON string
+      
+      - key: GOOGLE_SHEET_ID
+        sync: false  # Set manually
+      
+      - key: GOOGLE_SHEET_NAME
+        value: RBW_Lead_Raw_Inbox
+      
+      # ==================== SERVER CONFIGURATION ====================
+      - key: FLASK_ENV
+        value: production
+      
+      - key: PORT
+        value: 10000
+      
+      - key: HOST
+        value: 0.0.0.0
+      
+      - key: DEBUG
+        value: false
+      
+      - key: LOG_LEVEL
+        value: INFO
+      
+      - key: TIMEOUT
+        value: 60
+      
+      # ==================== FILE PATHS ====================
+      - key: KNOWLEDGE_PATH
+        value: knowledge.json
+      
+      - key: FAISS_ENABLED
+        value: false  # true when upgrade to 2GB
+      
+      - key: FALLBACK_VECTORS_PATH
+        value: vectors.npz
+      
+      - key: FAISS_MAPPING_PATH
+        value: faiss_mapping.json
+      
+      - key: FAISS_INDEX_PATH
+        value: faiss_index.bin
+      
+      - key: TOUR_ENTITIES_PATH
+        value: tour_entities.json
+      
+      # ==================== PERFORMANCE (512MB) ====================
+      - key: RAM_PROFILE
+        value: 512  # Change to 2048 when upgrading
+      
+      - key: TOP_K
+        value: 5  # Change to 10 when upgrading to 2GB
+      
+      - key: MAX_CONTENT_LENGTH
+        value: 1048576
+      
+      - key: CACHE_TTL_SECONDS
+        value: 300
+      
+      - key: MAX_SESSIONS
+        value: 50  # Change to 100 when upgrading to 2GB
+      
+      - key: MAX_EMBEDDING_CACHE
+        value: 30  # Change to 50 when upgrading to 2GB
+      
+      - key: CONVERSATION_HISTORY_LIMIT
+        value: 5  # Change to 10 when upgrading to 2GB
+      
+      # ==================== STORAGE ====================
+      - key: ENABLE_FALLBACK_STORAGE
+        value: true
+      
+      - key: FALLBACK_STORAGE_PATH
+        value: leads_fallback.json
+      
+      # ==================== SECURITY ====================
+      - key: SECRET_KEY
+        generateValue: true  # Render auto-generates secure key
+      
+      # ==================== CORS ====================
+      - key: CORS_ORIGINS
+        value: https://www.rubywings.vn,https://rubywings.vn
+      
+      # ==================== GUNICORN ====================
+      - key: GUNICORN_WORKERS
+        value: 1  # Change to 2 when upgrading to 2GB
+      
+      - key: GUNICORN_THREADS
+        value: 2  # Change to 4 when upgrading to 2GB
+      
+      - key: PYTHONUNBUFFERED
+        value: true
+      
+      - key: PYTHONMALLOC
+        value: malloc
+      
+      # ==================== FEATURE TOGGLES ====================
+      - key: ENABLE_INTENT_DETECTION
+        value: true
+      
+      - key: ENABLE_PHONE_DETECTION
+        value: true
+      
+      - key: ENABLE_LEAD_CAPTURE
+        value: true
+      
+      - key: STATE_MACHINE_ENABLED
+        value: true
+      
+      - key: ENABLE_LOCATION_FILTER
+        value: true
+      
+      - key: ENABLE_SEMANTIC_ANALYSIS
+        value: true
+    
+    # ==================== DISK STORAGE ====================
     disk:
-      name: chatbot-storage
-      mountPath: /data
-      sizeGB: 1
+      name: ruby-wings-data
+      mountPath: /opt/render/project/src/data
+      sizeGB: 1  # 1GB persistent storage for logs and fallback data
+    
+    # ==================== SCALING ====================
+    # Horizontal scaling (available on higher plans)
+    # numInstances: 1  # Increase when ready to scale
+    
+    # ==================== NOTIFICATIONS ====================
+    # Get notified on deploy events
+    # notifyOnFail: always
 
-    # Build cache optimization
-    buildFilter:
-      paths:
-        - "*.py"
-        - "requirements.txt"
-        - "knowledge.json"
-        - "*.json"
-        - "render.yaml"
-      ignoredPaths:
-        - "__pycache__/"
-        - "*.pyc"
-        - ".git/"
-        - "logs/"
-        - "*.log"
+# ==================== OPTIONAL: REDIS (for 2GB upgrade) ====================
+# Uncomment this section when upgrading to 2GB RAM for better session management
+#
+# - type: redis
+#   name: ruby-wings-redis
+#   plan: starter  # Free tier available
+#   ipAllowList: []  # Empty = allow from all Render services
+#   
+#   # Link to main service
+#   envVars:
+#     - key: REDIS_ENABLED
+#       value: true
+#       fromService:
+#         type: web
+#         name: ruby-wings-chatbot-v5
 
-    # Advanced configuration for better performance
-    scaling:
-      minInstances: 1
-      maxInstances: 1
+# ==================== OPTIONAL: CRON JOBS ====================
+# Uncomment for scheduled tasks
+#
+# - type: cron
+#   name: backup-leads
+#   runtime: python
+#   schedule: "0 2 * * *"  # Daily at 2 AM
+#   buildCommand: pip install -r requirements.txt
+#   startCommand: python scripts/backup_leads.py
+#   
+#   envVars:
+#     - key: GOOGLE_SHEET_ID
+#       fromService:
+#         type: web
+#         name: ruby-wings-chatbot-v5
+#         envVarKey: GOOGLE_SHEET_ID
 
-    # Header configuration for security
-    headers:
-      - path: /*
-        name: X-Content-Type-Options
-        value: nosniff
-      - path: /*
-        name: X-Frame-Options
-        value: DENY
-      - path: /*
-        name: X-XSS-Protection
-        value: 1; mode=block
-
-    # CORS configuration
-    cors:
-      allowedOrigins:
-        - "https://www.rubywings.vn"
-        - "https://rubywings.vn"
-      allowedMethods:
-        - GET
-        - POST
-        - OPTIONS
-      allowedHeaders:
-        - Content-Type
-        - Authorization
-        - X-Requested-With
-      allowCredentials: true
-      maxAge: 86400
-      startCommand: "gunicorn app:app --bind 0.0.0.0:$PORT --workers $GUNICORN_WORKERS --threads $GUNICORN_THREADS --timeout $TIMEOUT --worker-class=gthread --worker-tmp-dir=/dev/shm"
+# ==================== DATABASES (Future) ====================
+# If you need PostgreSQL for advanced features
+#
+# - type: pstg
+#   name: ruby-wings-db
+#   plan: starter  # Free tier available
+#   databaseName: ruby_wings
+#   databaseUser: chatbot
+#   
+#   ipAllowList: []
