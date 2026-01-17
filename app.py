@@ -824,396 +824,6 @@ class ResponseGenerator:
         
         return response
 
-# Initialize response generator
-response_gen = ResponseGenerator()
-
-# ==================== CHAT PROCESSOR ====================
-class ChatProcessor:
-    """Main chat processing engine"""
-    
-    def __init__(self):
-        self.response_generator = response_gen
-        self.search_engine = search_engine
-    
-    def process(self, user_message: str, session_id: str) -> Dict[str, Any]:
-        """Process user message"""
-        start_time = time.time()
-        
-        try:
-            # Get session context
-            context = state.get_session(session_id)
-            context['last_updated'] = datetime.now()
-            
-            # Check cache
-            cache_key = f"{session_id}:{hashlib.md5(user_message.encode()).hexdigest()[:12]}"
-            cached = state.get_cached_response(cache_key)
-            if cached:
-                logger.info(f"💾 Cache hit: {session_id}")
-                cached['processing_time_ms'] = int((time.time() - start_time) * 1000)
-                cached['from_cache'] = True
-                return cached
-            
-            # Detect intent
-            intent, confidence, metadata = detect_intent(user_message)
-            context['intent'] = intent.name if hasattr(intent, 'name') else str(intent)
-            
-            # Detect phone number
-            phone = metadata.get('phone_number') or detect_phone_number(user_message)
-            if phone:
-                context['lead_phone'] = phone
-                context['stage'] = ConversationStage.LEAD
-                
-                # Capture lead
-                if Config.ENABLE_LEAD_CAPTURE:
-                    self._capture_lead(phone, session_id, user_message, context)
-            
-            # Detect location
-            location = metadata.get('detected_location') or extract_location_from_query(user_message)
-            if location:
-                context['location_filter'] = location
-            
-            # State machine transition
-            if Config.STATE_MACHINE_ENABLED:
-                context['stage'] = self._next_stage(context['stage'], intent)
-            
-            # Search for relevant information
-            search_results = self.search_engine.search(user_message, Config.TOP_K)
-            
-            # Extract mentioned tours
-            mentioned_tours = []
-            for score, entry in search_results:
-                tour_idx = entry.get('tour_index')
-                if tour_idx is not None and tour_idx not in mentioned_tours:
-                    mentioned_tours.append(tour_idx)
-            
-            context['mentioned_tours'] = mentioned_tours
-            
-            # Generate response
-            response_text = self.response_generator.generate(
-                user_message,
-                search_results,
-                context
-            )
-            
-            # Apply response guard if available
-            if RESPONSE_GUARD_AVAILABLE:
-                try:
-                    guarded = validate_and_format_answer(
-                        response_text,
-                        [(s, e) for s, e in search_results],
-                        context=context
-                    )
-                    response_text = guarded.get('answer', response_text)
-                except Exception as e:
-                    logger.error(f"Response guard error: {e}")
-            
-            # Add conversation to history
-            context.setdefault('conversation_history', []).append({
-                'role': 'user',
-                'content': user_message[:200],
-                'timestamp': datetime.now().isoformat()
-            })
-            context['conversation_history'].append({
-                'role': 'assistant',
-                'content': response_text[:200],
-                'timestamp': datetime.now().isoformat()
-            })
-            
-            # Keep only last N messages
-            if len(context['conversation_history']) > Config.CONVERSATION_HISTORY_LIMIT * 2:
-                context['conversation_history'] = context['conversation_history'][-Config.CONVERSATION_HISTORY_LIMIT * 2:]
-            
-            # Build result
-            result = {
-                'reply': response_text,
-                'session_id': session_id,
-                'session_state': {
-                    'stage': context.get('stage'),
-                    'intent': context.get('intent'),
-                    'mentioned_tours': mentioned_tours,
-                    'has_phone': bool(phone)
-                },
-                'intent': {
-                    'name': intent.name if hasattr(intent, 'name') else str(intent),
-                    'confidence': confidence
-                },
-                'search': {
-                    'results_count': len(search_results),
-                    'tours': mentioned_tours
-                },
-                'processing_time_ms': int((time.time() - start_time) * 1000),
-                'from_cache': False,
-                'timestamp': datetime.now().isoformat()
-            }
-            
-            # Cache result
-            state.cache_response(cache_key, result)
-            
-            # Update stats
-            state.stats['requests'] += 1
-            
-            logger.info(f"⏱️ Processed in {result['processing_time_ms']}ms | "
-                       f"Intent: {intent.name if hasattr(intent, 'name') else intent} | "
-                       f"Stage: {context.get('stage')} | "
-                       f"Results: {len(search_results)}")
-            
-            return result
-            
-        except Exception as e:
-            logger.error(f"❌ Chat processing error: {e}")
-            traceback.print_exc()
-            
-            state.stats['errors'] += 1
-            
-            return {
-                'reply': "Xin lỗi, có lỗi xảy ra. Vui lòng thử lại hoặc liên hệ **0332510486**! 🙏",
-                'session_id': session_id,
-                'error': str(e),
-                'processing_time_ms': int((time.time() - start_time) * 1000),
-                'timestamp': datetime.now().isoformat()
-            }
-    
-    def _next_stage(self, current_stage: str, intent) -> str:
-        """Determine next conversation stage"""
-        intent_name = intent.name if hasattr(intent, 'name') else str(intent)
-        
-        transitions = {
-            ConversationStage.EXPLORE: {
-                'TOUR_INQUIRY': ConversationStage.SUGGEST,
-                'PRICE_ASK': ConversationStage.SUGGEST,
-                'PROVIDE_PHONE': ConversationStage.LEAD,
-                'CALLBACK_REQUEST': ConversationStage.CALLBACK
-            },
-            ConversationStage.SUGGEST: {
-                'BOOKING_REQUEST': ConversationStage.SELECT,
-                'PROVIDE_PHONE': ConversationStage.LEAD
-            },
-            ConversationStage.SELECT: {
-                'BOOKING_REQUEST': ConversationStage.BOOK,
-                'PROVIDE_PHONE': ConversationStage.BOOK
-            },
-            ConversationStage.BOOK: {
-                'PROVIDE_PHONE': ConversationStage.LEAD
-            }
-        }
-        
-        next_stages = transitions.get(current_stage, {})
-        return next_stages.get(intent_name, current_stage)
-    
-    def _capture_lead(self, phone: str, session_id: str, message: str, context: Dict):
-        """Capture lead data"""
-        try:
-            # Clean phone
-            phone_clean = re.sub(r'[^\d+]', '', phone)
-            
-            # Create lead data
-            lead_data = {
-                'phone': phone_clean,
-                'session_id': session_id,
-                'message': message[:200],
-                'stage': context.get('stage'),
-                'mentioned_tours': context.get('mentioned_tours', []),
-                'timestamp': datetime.now().isoformat(),
-                'source': 'Chatbot'
-            }
-            
-            # Send to Meta CAPI
-            if Config.ENABLE_META_CAPI and META_CAPI_AVAILABLE:
-                try:
-                    result = send_meta_lead(
-                        request,
-                        phone=phone_clean,
-                        content_name="Chatbot Lead Capture",
-                        value=200000,
-                        currency="VND"
-                    )
-                    state.stats['meta_capi_calls'] += 1
-                    logger.info(f"✅ Lead sent to Meta CAPI: {phone_clean[:4]}***")
-                    if Config.DEBUG_META_CAPI:
-                        logger.debug(f"Meta CAPI result: {result}")
-                except Exception as e:
-                    state.stats['meta_capi_errors'] += 1
-                    logger.error(f"Meta CAPI lead error: {e}")
-            
-            # Save to Google Sheets
-            if Config.ENABLE_GOOGLE_SHEETS:
-                self._save_to_sheets(lead_data)
-            
-            # Fallback storage (always save)
-            if Config.ENABLE_FALLBACK_STORAGE:
-                self._save_to_fallback(lead_data)
-            
-            # Update stats
-            state.stats['leads'] += 1
-            
-            logger.info(f"📞 Lead captured: {phone_clean[:4]}***{phone_clean[-2:]}")
-            
-        except Exception as e:
-            logger.error(f"Lead capture error: {e}")
-            traceback.print_exc()
-    
-    def _save_to_sheets(self, lead_data: Dict):
-        """Save to Google Sheets"""
-        try:
-            if not Config.GOOGLE_SERVICE_ACCOUNT_JSON or not Config.GOOGLE_SHEET_ID:
-                logger.warning("Google Sheets not configured")
-                return
-            
-            import gspread
-            from google.oauth2.service_account import Credentials
-            
-            creds_json = json.loads(Config.GOOGLE_SERVICE_ACCOUNT_JSON)
-            creds = Credentials.from_service_account_info(
-                creds_json,
-                scopes=['https://www.googleapis.com/auth/spreadsheets']
-            )
-            
-            gc = gspread.authorize(creds)
-            sh = gc.open_by_key(Config.GOOGLE_SHEET_ID)
-            ws = sh.worksheet(Config.GOOGLE_SHEET_NAME)
-            
-            # Prepare row
-            row = [
-                lead_data.get('timestamp', ''),
-                lead_data.get('phone', ''),
-                lead_data.get('session_id', ''),
-                lead_data.get('message', ''),
-                lead_data.get('stage', ''),
-                ', '.join(map(str, lead_data.get('mentioned_tours', []))),
-                lead_data.get('source', 'Chatbot')
-            ]
-            
-            ws.append_row(row)
-            logger.info("✅ Saved to Google Sheets")
-            
-        except Exception as e:
-            logger.error(f"Google Sheets error: {e}")
-            # Don't raise - fallback storage will catch it
-    
-    def _save_to_fallback(self, lead_data: Dict):
-        """Save to fallback JSON file"""
-        try:
-            # Load existing
-            if os.path.exists(Config.FALLBACK_STORAGE_PATH):
-                with open(Config.FALLBACK_STORAGE_PATH, 'r', encoding='utf-8') as f:
-                    leads = json.load(f)
-            else:
-                leads = []
-            
-            # Add new lead
-            leads.append(lead_data)
-            
-            # Keep only last 1000
-            leads = leads[-1000:]
-            
-            # Save
-            with open(Config.FALLBACK_STORAGE_PATH, 'w', encoding='utf-8') as f:
-                json.dump(leads, f, ensure_ascii=False, indent=2)
-            
-            logger.info("✅ Saved to fallback storage")
-            
-        except Exception as e:
-            logger.error(f"Fallback storage error: {e}")
-
-# Initialize chat processor
-chat_processor = ChatProcessor()
-
-# ==================== ROUTES ====================
-@app.before_request
-def before_request():
-    """Before request handler"""
-    g.start_time = time.time()
-    
-    # Track pageview for Meta CAPI
-    if Config.ENABLE_META_CAPI and META_CAPI_AVAILABLE:
-        try:
-            if request.path not in ['/health', '/stats', '/favicon.ico']:
-                send_meta_pageview(request)
-                state.stats['meta_capi_calls'] += 1
-        except Exception as e:
-            state.stats['meta_capi_errors'] += 1
-            logger.error(f"Meta CAPI pageview error: {e}")
-
-@app.after_request
-def after_request(response):
-    """After request handler"""
-    # Add processing time header
-    if hasattr(g, 'start_time'):
-        elapsed = (time.time() - g.start_time) * 1000
-        response.headers['X-Processing-Time'] = f"{elapsed:.2f}ms"
-    
-    return response
-
-@app.route('/health', methods=['GET'])
-def health():
-    """Health check endpoint"""
-    return jsonify({
-        'status': 'healthy',
-        'version': '5.2.1',
-        'timestamp': datetime.now().isoformat(),
-        'modules': {
-            'openai': OPENAI_AVAILABLE and bool(Config.OPENAI_API_KEY),
-            'entities': ENTITIES_AVAILABLE,
-            'meta_capi': META_CAPI_AVAILABLE,
-            'response_guard': RESPONSE_GUARD_AVAILABLE,
-            'faiss': FAISS_AVAILABLE,
-            'numpy': NUMPY_AVAILABLE
-        },
-        'knowledge': {
-            'loaded': state._knowledge_loaded,
-            'tours': len(state.tours_db)
-        }
-    })
-
-@app.route('/', methods=['GET'])
-def index():
-    """Index route"""
-    return jsonify({
-        'service': 'Ruby Wings AI Chatbot',
-        'version': '5.2.1',
-        'status': 'running',
-        'endpoints': {
-            'chat': '/api/chat',
-            'save_lead': '/api/save-lead',
-            'call_button': '/api/call-button',
-            'health': '/health',
-            'stats': '/stats'
-        }
-    })
-
-@app.route('/api/chat', methods=['POST', 'OPTIONS'])
-def chat():
-    """Main chat endpoint"""
-    if request.method == 'OPTIONS':
-        return jsonify({'status': 'ok'}), 200
-    
-    try:
-        data = request.get_json()
-        
-        if not data:
-            return jsonify({'error': 'No data provided'}), 400
-        
-        user_message = data.get('message', '').strip()
-        session_id = data.get('session_id') or str(uuid.uuid4())
-        
-        if not user_message:
-            return jsonify({'error': 'Message is required'}), 400
-        
-        # Process message
-        result = chat_processor.process(user_message, session_id)
-        
-        return jsonify(result)
-        
-    except Exception as e:
-        logger.error(f"❌ Chat endpoint error: {e}")
-        traceback.print_exc()
-        state.stats['errors'] += 1
-        
-        return jsonify({
-            'error': 'Internal server error',
-            'message': 'Xin lỗi, có lỗi xảy ra. Vui lòng thử lại!'
-        }), 500
-
 @app.route('/api/save-lead', methods=['POST', 'OPTIONS'])
 def save_lead():
     """Save lead from form submission"""
@@ -1228,6 +838,7 @@ def save_lead():
         name = data.get('name', '').strip()
         email = data.get('email', '').strip()
         tour_interest = data.get('tour_interest', '').strip()
+        page_url = data.get('page_url', '').strip()  # NEW: Get page URL
         
         if not phone:
             return jsonify({'error': 'Phone number is required'}), 400
@@ -1242,11 +853,15 @@ def save_lead():
         # Create lead data
         lead_data = {
             'timestamp': datetime.now().isoformat(),
-            'phone': phone_clean,
-            'name': name,
+            'source_channel': 'Website',  # NEW: Match column B
+            'action_type': 'Lead Form',  # NEW: Match column C
+            'page_url': page_url or 'https://www.rubywings.vn/',  # NEW: Match column D
+            'contact_name': name,  # Match column E
+            'phone': phone_clean,  # Match column F
             'email': email,
-            'tour_interest': tour_interest,
-            'source': 'Lead'
+            'service_interest': tour_interest,  # NEW: Match column G
+            'note': '',  # NEW: Match column H (empty for now)
+            'raw_status': 'New'  # NEW: Match column I
         }
         
         # Send to Meta CAPI
@@ -1259,7 +874,10 @@ def save_lead():
                     email=email,
                     content_name=f"Tour: {tour_interest}" if tour_interest else "General Inquiry",
                     value=200000,
-                    currency="VND"
+                    currency="VND",
+                    lead_source="Website",
+                    action_type="Lead Form",
+                    service_interest=tour_interest
                 )
                 state.stats['meta_capi_calls'] += 1
                 logger.info(f"✅ Form lead sent to Meta CAPI: {phone_clean[:4]}***")
@@ -1286,13 +904,17 @@ def save_lead():
                     sh = gc.open_by_key(Config.GOOGLE_SHEET_ID)
                     ws = sh.worksheet(Config.GOOGLE_SHEET_NAME)
                     
+                    # FIX: Match exact column structure as image
                     row = [
-                        lead_data['timestamp'],
-                        phone_clean,
-                        name,
-                        email,
-                        tour_interest,
-                        'Lead'
+                        lead_data['timestamp'],          # A: created_at
+                        lead_data['source_channel'],     # B: source_channel
+                        lead_data['action_type'],        # C: action_type
+                        lead_data['page_url'],           # D: page_url
+                        lead_data['contact_name'],       # E: contact_name
+                        lead_data['phone'],              # F: phone
+                        lead_data['service_interest'],   # G: service_interest
+                        lead_data['note'],               # H: note
+                        lead_data['raw_status']          # I: raw_status
                     ]
                     
                     ws.append_row(row)
