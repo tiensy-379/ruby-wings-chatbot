@@ -834,7 +834,7 @@ class ChatProcessor:
     def __init__(self):
         self.response_generator = response_gen
         self.search_engine = search_engine
-        
+    
     def process(self, user_message: str, session_id: str) -> Dict[str, Any]:
         """Process user message"""
         start_time = time.time()
@@ -855,8 +855,7 @@ class ChatProcessor:
             
             # Detect intent
             intent, confidence, metadata = detect_intent(user_message)
-            intent_name = intent.name if hasattr(intent, 'name') else str(intent)
-            context['intent'] = intent_name
+            context['intent'] = intent.name if hasattr(intent, 'name') else str(intent)
             
             # Detect phone number
             phone = metadata.get('phone_number') or detect_phone_number(user_message)
@@ -866,7 +865,7 @@ class ChatProcessor:
                 
                 # Capture lead
                 if Config.ENABLE_LEAD_CAPTURE:
-                    self._capture_lead(phone, session_id, user_message, context, intent_name)
+                    self._capture_lead(phone, session_id, user_message, context)
             
             # Detect location
             location = metadata.get('detected_location') or extract_location_from_query(user_message)
@@ -1001,138 +1000,47 @@ class ChatProcessor:
         next_stages = transitions.get(current_stage, {})
         return next_stages.get(intent_name, current_stage)
     
-    def _capture_lead(self, phone: str, session_id: str, message: str, context: Dict, intent_name: str):
+    def _capture_lead(self, phone: str, session_id: str, message: str, context: Dict):
         """Capture lead data"""
         try:
             # Clean phone
             phone_clean = re.sub(r'[^\d+]', '', phone)
             
-            # Get UTM parameters from request
-            utm_source = ''
-            utm_medium = ''
-            utm_campaign = ''
-            utm_content = ''
-            utm_term = ''
-            fbclid = ''
-            gclid = ''
-            
-            if request:
-                utm_source = request.args.get('utm_source', '')
-                utm_medium = request.args.get('utm_medium', '')
-                utm_campaign = request.args.get('utm_campaign', '')
-                utm_content = request.args.get('utm_content', '')
-                utm_term = request.args.get('utm_term', '')
-                fbclid = request.args.get('fbclid', '')
-                gclid = request.args.get('gclid', '')
-            
-            # Create lead data with all fields for Google Sheets
+            # Create lead data
             lead_data = {
                 'phone': phone_clean,
                 'session_id': session_id,
                 'message': message[:200],
                 'stage': context.get('stage'),
-                'mentioned_tours': ', '.join(map(str, context.get('mentioned_tours', []))) if context.get('mentioned_tours') else '',
+                'mentioned_tours': context.get('mentioned_tours', []),
                 'timestamp': datetime.now().isoformat(),
-                'source': 'Chatbot',
-                'event_name': 'Lead',
-                'event_id': session_id,
-                'email': '',
-                'value': 200000,
-                'currency': 'VND',
-                'content_name': 'Ruby Wings Lead',
-                'contact_name': '',
-                'lead_source': 'Chatbot',
-                'lead_status': 'New',
-                'action_type': 'Click Call',
-                'service_interest': '',
-                'tour_id': context.get('mentioned_tours', [])[0] if context.get('mentioned_tours') else '',
-                'intent': intent_name,
-                'user_agent': request.headers.get('User-Agent', '') if request else '',
-                'ip_address': request.remote_addr if request else '',
-                'page_url': request.url if request else '',
-                'client_id': context.get('client_id', ''),
-                'fbclid': fbclid,
-                'gclid': gclid,
-                'utm_source': utm_source,
-                'utm_medium': utm_medium,
-                'utm_campaign': utm_campaign,
-                'utm_content': utm_content,
-                'utm_term': utm_term,
-                'referrer': request.referrer if request else '',
-                'location': context.get('location_filter', ''),
-                'language': request.accept_language.best if request else 'vi-VN',
-                'lead_score': context.get('lead_score', 0),
-                'tour_names': ', '.join([f"Tour {idx}" for idx in context.get('mentioned_tours', [])]),
-                'notes': f"Intent: {intent_name}, Stage: {context.get('stage')}",
-                'follow_up_time': (datetime.now() + timedelta(hours=24)).isoformat(),
-                'assigned_to': '',
-                'priority': 'Medium',
-                'channel': 'Website Chat',
-                'campaign_id': '',
-                'adset_id': '',
-                'ad_id': '',
-                'form_id': 'chatbot_form',
-                'is_converted': False,
-                'conversion_value': 0,
-                'conversion_time': '',
-                'tags': 'chatbot,auto_lead',
-                'custom_fields': json.dumps({
-                    'conversation_history_length': len(context.get('conversation_history', [])),
-                    'search_results_count': len(context.get('search_results', [])),
-                    'confidence': context.get('intent_confidence', 0)
-                }, ensure_ascii=False)
+                'source': 'Chatbot'
             }
             
-            # Send to Meta CAPI with all fields
-            if os.getenv('ENABLE_META_CAPI', 'False').lower() == 'true' and META_CAPI_AVAILABLE:
+            # Send to Meta CAPI
+            if Config.ENABLE_META_CAPI and META_CAPI_AVAILABLE:
                 try:
-                    # Get Meta config from environment
-                    meta_pixel_id = os.getenv('META_PIXEL_ID', '')
-                    meta_access_token = os.getenv('META_ACCESS_TOKEN', '')
-                    
-                    if meta_pixel_id and meta_access_token:
-                        result = send_meta_lead(
-                            request=request,
-                            event_name=lead_data['event_name'],
-                            event_id=lead_data['event_id'],
-                            phone=lead_data['phone'],
-                            email=lead_data['email'],
-                            value=lead_data['value'],
-                            currency=lead_data['currency'],
-                            content_name=lead_data['content_name'],
-                            contact_name=lead_data['contact_name'],
-                            lead_source=lead_data['lead_source'],
-                            lead_status=lead_data['lead_status'],
-                            action_type=lead_data['action_type'],
-                            service_interest=lead_data['service_interest'],
-                            tour_id=lead_data['tour_id'],
-                            intent=lead_data['intent'],
-                            stage=lead_data['stage'],
-                            client_user_agent=lead_data['user_agent'],
-                            client_ip_address=lead_data['ip_address'],
-                            fbc=lead_data.get('fbclid', ''),
-                            fbp=lead_data.get('fbp', ''),
-                            page_url=lead_data['page_url'],
-                            utm_source=lead_data['utm_source'],
-                            utm_medium=lead_data['utm_medium'],
-                            utm_campaign=lead_data['utm_campaign'],
-                            pixel_id=meta_pixel_id,
-                            access_token=meta_access_token
-                        )
-                        state.stats['meta_capi_calls'] += 1
-                        logger.info(f"✅ Lead sent to Meta CAPI: {phone_clean[:4]}***")
-                        if os.getenv('DEBUG_META_CAPI', 'False').lower() == 'true':
-                            logger.debug(f"Meta CAPI result: {result}")
+                    result = send_meta_lead(
+                        request,
+                        phone=phone_clean,
+                        content_name="Chatbot Lead Capture",
+                        value=200000,
+                        currency="VND"
+                    )
+                    state.stats['meta_capi_calls'] += 1
+                    logger.info(f"✅ Lead sent to Meta CAPI: {phone_clean[:4]}***")
+                    if Config.DEBUG_META_CAPI:
+                        logger.debug(f"Meta CAPI result: {result}")
                 except Exception as e:
                     state.stats['meta_capi_errors'] += 1
                     logger.error(f"Meta CAPI lead error: {e}")
             
-            # Save to Google Sheets with all fields
-            if os.getenv('ENABLE_GOOGLE_SHEETS', 'False').lower() == 'true':
+            # Save to Google Sheets
+            if Config.ENABLE_GOOGLE_SHEETS:
                 self._save_to_sheets(lead_data)
             
             # Fallback storage (always save)
-            if os.getenv('ENABLE_FALLBACK_STORAGE', 'True').lower() == 'true':
+            if Config.ENABLE_FALLBACK_STORAGE:
                 self._save_to_fallback(lead_data)
             
             # Update stats
@@ -1145,97 +1053,38 @@ class ChatProcessor:
             traceback.print_exc()
     
     def _save_to_sheets(self, lead_data: Dict):
-        """Save to Google Sheets with all columns"""
+        """Save to Google Sheets"""
         try:
-            # Get config from environment variables
-            google_sheet_id = os.getenv('GOOGLE_SHEET_ID')
-            google_sheet_name = os.getenv('GOOGLE_SHEET_NAME', 'Leads')
-            google_service_account_json = os.getenv('GOOGLE_SERVICE_ACCOUNT_JSON')
-            
-            if not google_service_account_json or not google_sheet_id:
-                logger.warning("Google Sheets not configured - missing environment variables")
+            if not Config.GOOGLE_SERVICE_ACCOUNT_JSON or not Config.GOOGLE_SHEET_ID:
+                logger.warning("Google Sheets not configured")
                 return
             
             import gspread
             from google.oauth2.service_account import Credentials
             
-            # Parse service account JSON
-            try:
-                creds_json = json.loads(google_service_account_json)
-            except json.JSONDecodeError:
-                # Try reading from file if it's a file path
-                if os.path.exists(google_service_account_json):
-                    with open(google_service_account_json, 'r') as f:
-                        creds_json = json.load(f)
-                else:
-                    logger.error("Invalid GOOGLE_SERVICE_ACCOUNT_JSON format")
-                    return
-            
+            creds_json = json.loads(Config.GOOGLE_SERVICE_ACCOUNT_JSON)
             creds = Credentials.from_service_account_info(
                 creds_json,
                 scopes=['https://www.googleapis.com/auth/spreadsheets']
             )
             
             gc = gspread.authorize(creds)
-            sh = gc.open_by_key(google_sheet_id)
-            ws = sh.worksheet(google_sheet_name)
+            sh = gc.open_by_key(Config.GOOGLE_SHEET_ID)
+            ws = sh.worksheet(Config.GOOGLE_SHEET_NAME)
             
-            # Prepare row with all fields in correct order for sheets
+            # Prepare row
             row = [
                 lead_data.get('timestamp', ''),
                 lead_data.get('phone', ''),
                 lead_data.get('session_id', ''),
                 lead_data.get('message', ''),
                 lead_data.get('stage', ''),
-                lead_data.get('mentioned_tours', ''),
-                lead_data.get('source', ''),
-                lead_data.get('event_name', ''),
-                lead_data.get('event_id', ''),
-                lead_data.get('email', ''),
-                lead_data.get('value', ''),
-                lead_data.get('currency', ''),
-                lead_data.get('content_name', ''),
-                lead_data.get('contact_name', ''),
-                lead_data.get('lead_source', ''),
-                lead_data.get('lead_status', ''),
-                lead_data.get('action_type', ''),
-                lead_data.get('service_interest', ''),
-                lead_data.get('tour_id', ''),
-                lead_data.get('intent', ''),
-                lead_data.get('user_agent', ''),
-                lead_data.get('ip_address', ''),
-                lead_data.get('page_url', ''),
-                lead_data.get('client_id', ''),
-                lead_data.get('fbclid', ''),
-                lead_data.get('gclid', ''),
-                lead_data.get('utm_source', ''),
-                lead_data.get('utm_medium', ''),
-                lead_data.get('utm_campaign', ''),
-                lead_data.get('utm_content', ''),
-                lead_data.get('utm_term', ''),
-                lead_data.get('referrer', ''),
-                lead_data.get('location', ''),
-                lead_data.get('language', ''),
-                lead_data.get('lead_score', ''),
-                lead_data.get('tour_names', ''),
-                lead_data.get('notes', ''),
-                lead_data.get('follow_up_time', ''),
-                lead_data.get('assigned_to', ''),
-                lead_data.get('priority', ''),
-                lead_data.get('channel', ''),
-                lead_data.get('campaign_id', ''),
-                lead_data.get('adset_id', ''),
-                lead_data.get('ad_id', ''),
-                lead_data.get('form_id', ''),
-                lead_data.get('is_converted', ''),
-                lead_data.get('conversion_value', ''),
-                lead_data.get('conversion_time', ''),
-                lead_data.get('tags', ''),
-                lead_data.get('custom_fields', '')
+                ', '.join(map(str, lead_data.get('mentioned_tours', []))),
+                lead_data.get('source', 'Chatbot')
             ]
             
             ws.append_row(row)
-            logger.info("✅ Saved to Google Sheets with full columns")
+            logger.info("✅ Saved to Google Sheets")
             
         except Exception as e:
             logger.error(f"Google Sheets error: {e}")
@@ -1244,15 +1093,9 @@ class ChatProcessor:
     def _save_to_fallback(self, lead_data: Dict):
         """Save to fallback JSON file"""
         try:
-            # Get fallback storage path from env or use default
-            fallback_path = os.getenv('FALLBACK_STORAGE_PATH', 'data/leads_fallback.json')
-            
-            # Ensure directory exists
-            os.makedirs(os.path.dirname(fallback_path), exist_ok=True)
-            
             # Load existing
-            if os.path.exists(fallback_path):
-                with open(fallback_path, 'r', encoding='utf-8') as f:
+            if os.path.exists(Config.FALLBACK_STORAGE_PATH):
+                with open(Config.FALLBACK_STORAGE_PATH, 'r', encoding='utf-8') as f:
                     leads = json.load(f)
             else:
                 leads = []
@@ -1264,13 +1107,235 @@ class ChatProcessor:
             leads = leads[-1000:]
             
             # Save
-            with open(fallback_path, 'w', encoding='utf-8') as f:
+            with open(Config.FALLBACK_STORAGE_PATH, 'w', encoding='utf-8') as f:
                 json.dump(leads, f, ensure_ascii=False, indent=2)
             
-            logger.info(f"✅ Saved to fallback storage: {fallback_path}")
+            logger.info("✅ Saved to fallback storage")
             
         except Exception as e:
             logger.error(f"Fallback storage error: {e}")
+
+# Initialize chat processor
+chat_processor = ChatProcessor()
+
+# ==================== ROUTES ====================
+@app.before_request
+def before_request():
+    """Before request handler"""
+    g.start_time = time.time()
+    
+    # Track pageview for Meta CAPI
+    if Config.ENABLE_META_CAPI and META_CAPI_AVAILABLE:
+        try:
+            if request.path not in ['/health', '/stats', '/favicon.ico']:
+                send_meta_pageview(request)
+                state.stats['meta_capi_calls'] += 1
+        except Exception as e:
+            state.stats['meta_capi_errors'] += 1
+            logger.error(f"Meta CAPI pageview error: {e}")
+
+@app.after_request
+def after_request(response):
+    """After request handler"""
+    # Add processing time header
+    if hasattr(g, 'start_time'):
+        elapsed = (time.time() - g.start_time) * 1000
+        response.headers['X-Processing-Time'] = f"{elapsed:.2f}ms"
+    
+    return response
+
+@app.route('/health', methods=['GET'])
+def health():
+    """Health check endpoint"""
+    return jsonify({
+        'status': 'healthy',
+        'version': '5.2.1',
+        'timestamp': datetime.now().isoformat(),
+        'modules': {
+            'openai': OPENAI_AVAILABLE and bool(Config.OPENAI_API_KEY),
+            'entities': ENTITIES_AVAILABLE,
+            'meta_capi': META_CAPI_AVAILABLE,
+            'response_guard': RESPONSE_GUARD_AVAILABLE,
+            'faiss': FAISS_AVAILABLE,
+            'numpy': NUMPY_AVAILABLE
+        },
+        'knowledge': {
+            'loaded': state._knowledge_loaded,
+            'tours': len(state.tours_db)
+        }
+    })
+
+@app.route('/', methods=['GET'])
+def index():
+    """Index route"""
+    return jsonify({
+        'service': 'Ruby Wings AI Chatbot',
+        'version': '5.2.1',
+        'status': 'running',
+        'endpoints': {
+            'chat': '/api/chat',
+            'save_lead': '/api/save-lead',
+            'call_button': '/api/call-button',
+            'health': '/health',
+            'stats': '/stats'
+        }
+    })
+
+@app.route('/api/chat', methods=['POST', 'OPTIONS'])
+def chat():
+    """Main chat endpoint"""
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
+    
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        user_message = data.get('message', '').strip()
+        session_id = data.get('session_id') or str(uuid.uuid4())
+        
+        if not user_message:
+            return jsonify({'error': 'Message is required'}), 400
+        
+        # Process message
+        result = chat_processor.process(user_message, session_id)
+        
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"❌ Chat endpoint error: {e}")
+        traceback.print_exc()
+        state.stats['errors'] += 1
+        
+        return jsonify({
+            'error': 'Internal server error',
+            'message': 'Xin lỗi, có lỗi xảy ra. Vui lòng thử lại!'
+        }), 500
+
+@app.route('/api/save-lead', methods=['POST', 'OPTIONS'])
+def save_lead():
+    """Save lead from form submission"""
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
+    
+    try:
+        data = request.get_json() or {}
+        
+        # Extract data
+        phone = data.get('phone', '').strip()
+        name = data.get('name', '').strip()
+        email = data.get('email', '').strip()
+        tour_interest = data.get('tour_interest', '').strip()
+        
+        if not phone:
+            return jsonify({'error': 'Phone number is required'}), 400
+        
+        # Clean phone
+        phone_clean = re.sub(r'[^\d+]', '', phone)
+        
+        # Validate phone
+        if not re.match(r'^(0|\+?84)\d{9,10}$', phone_clean):
+            return jsonify({'error': 'Invalid phone number format'}), 400
+        
+        # Create lead data
+        lead_data = {
+            'timestamp': datetime.now().isoformat(),
+            'phone': phone_clean,
+            'name': name,
+            'email': email,
+            'tour_interest': tour_interest,
+            'source': 'Lead'
+        }
+        
+        # Send to Meta CAPI
+        if Config.ENABLE_META_CAPI and META_CAPI_AVAILABLE:
+            try:
+                result = send_meta_lead(
+                    request,
+                    phone=phone_clean,
+                    contact_name=name,
+                    email=email,
+                    content_name=f"Tour: {tour_interest}" if tour_interest else "General Inquiry",
+                    value=200000,
+                    currency="VND"
+                )
+                state.stats['meta_capi_calls'] += 1
+                logger.info(f"✅ Form lead sent to Meta CAPI: {phone_clean[:4]}***")
+                if Config.DEBUG_META_CAPI:
+                    logger.debug(f"Meta CAPI result: {result}")
+            except Exception as e:
+                state.stats['meta_capi_errors'] += 1
+                logger.error(f"Meta CAPI error: {e}")
+        
+        # Save to Google Sheets
+        if Config.ENABLE_GOOGLE_SHEETS:
+            try:
+                import gspread
+                from google.oauth2.service_account import Credentials
+                
+                if Config.GOOGLE_SERVICE_ACCOUNT_JSON and Config.GOOGLE_SHEET_ID:
+                    creds_json = json.loads(Config.GOOGLE_SERVICE_ACCOUNT_JSON)
+                    creds = Credentials.from_service_account_info(
+                        creds_json,
+                        scopes=['https://www.googleapis.com/auth/spreadsheets']
+                    )
+                    
+                    gc = gspread.authorize(creds)
+                    sh = gc.open_by_key(Config.GOOGLE_SHEET_ID)
+                    ws = sh.worksheet(Config.GOOGLE_SHEET_NAME)
+                    
+                    row = [
+                        lead_data['timestamp'],
+                        phone_clean,
+                        name,
+                        email,
+                        tour_interest,
+                        'Lead'
+                    ]
+                    
+                    ws.append_row(row)
+                    logger.info("✅ Form lead saved to Google Sheets")
+            except Exception as e:
+                logger.error(f"Google Sheets error: {e}")
+        
+        # Fallback storage
+        if Config.ENABLE_FALLBACK_STORAGE:
+            try:
+                if os.path.exists(Config.FALLBACK_STORAGE_PATH):
+                    with open(Config.FALLBACK_STORAGE_PATH, 'r', encoding='utf-8') as f:
+                        leads = json.load(f)
+                else:
+                    leads = []
+                
+                leads.append(lead_data)
+                leads = leads[-1000:]
+                
+                with open(Config.FALLBACK_STORAGE_PATH, 'w', encoding='utf-8') as f:
+                    json.dump(leads, f, ensure_ascii=False, indent=2)
+                
+                logger.info("✅ Form lead saved to fallback storage")
+            except Exception as e:
+                logger.error(f"Fallback storage error: {e}")
+        
+        # Update stats
+        state.stats['leads'] += 1
+        
+        return jsonify({
+            'success': True,
+            'message': 'Lead đã được lưu! Đội ngũ Ruby Wings sẽ liên hệ sớm nhất. 📞',
+            'data': {
+                'phone': phone_clean[:3] + '***' + phone_clean[-2:],
+                'timestamp': lead_data['timestamp']
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Save lead error: {e}")
+        traceback.print_exc()
+        state.stats['errors'] += 1
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/api/call-button', methods=['POST', 'OPTIONS'])
 def call_button():
