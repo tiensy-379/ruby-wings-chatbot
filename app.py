@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-RUBY WINGS AI CHATBOT - PRODUCTION VERSION 5.2.2 GOOGLE SHEETS FIXED
+RUBY WINGS AI CHATBOT - PRODUCTION VERSION 5.2.2 FIXED
 Created: 2025-01-17
 Author: Ruby Wings AI Team
 
@@ -598,9 +598,7 @@ class SearchEngine:
         if OPENAI_AVAILABLE and Config.OPENAI_API_KEY:
             try:
                 self.openai_client = OpenAI(
-                    api_key=Config.OPENAI_API_KEY,
-                    base_url=Config.OPENAI_BASE_URL,
-                    timeout=10.0
+                    api_key=Config.OPENAI_API_KEY
                 )
                 logger.info("✅ OpenAI client initialized")
             except Exception as e:
@@ -762,9 +760,7 @@ class ResponseGenerator:
         if OPENAI_AVAILABLE and Config.OPENAI_API_KEY:
             try:
                 self.llm_client = OpenAI(
-                    api_key=Config.OPENAI_API_KEY,
-                    base_url=Config.OPENAI_BASE_URL,
-                    timeout=20.0
+                    api_key=Config.OPENAI_API_KEY
                 )
             except Exception as e:
                 logger.error(f"LLM client init failed: {e}")
@@ -1006,21 +1002,21 @@ class ChatProcessor:
             # Clean phone
             phone_clean = re.sub(r'[^\d+]', '', phone)
             
-            # Create lead data following LeadData.to_row() standard (13 columns)
+            # Create lead data following LeadData.to_row() (13 columns)
             lead_data = {
-                'timestamp': datetime.now().isoformat(),                    # A: created_at
-                'source_channel': 'Website',                                # B: source_channel
-                'action_type': 'Chatbot',                                   # C: action_type
-                'page_url': '',                                             # D: page_url (empty for chatbot)
-                'contact_name': 'Khách hàng từ chatbot',                    # E: contact_name
-                'phone': phone_clean,                                       # F: phone
-                'service_interest': ', '.join(map(str, context.get('mentioned_tours', []))),  # G: service_interest
-                'note': message[:200],                                      # H: note
-                'status': 'New',                                            # I: raw_status
-                'session_id': session_id,                                   # J: session_id
-                'intent': context.get('intent', ''),                        # K: intent
-                'tour_id': context.get('mentioned_tours', [None])[0] if context.get('mentioned_tours') else None,  # L: tour_id
-                'stage': context.get('stage', '')                           # M: stage
+                'timestamp': datetime.now().isoformat(),
+                'source_channel': 'Website',
+                'action_type': 'Chatbot',
+                'page_url': '',
+                'contact_name': 'Khách hàng từ chatbot',
+                'phone': phone_clean,
+                'service_interest': ', '.join(map(str, context.get('mentioned_tours', []))),
+                'note': message[:200],
+                'status': 'New',
+                'session_id': session_id,
+                'intent': context.get('intent', ''),
+                'tour_id': context.get('mentioned_tours', [None])[0] if context.get('mentioned_tours') else None,
+                'stage': context.get('stage', '')
             }
             
             # Send to Meta CAPI
@@ -1078,25 +1074,25 @@ class ChatProcessor:
             sh = gc.open_by_key(Config.GOOGLE_SHEET_ID)
             ws = sh.worksheet(Config.GOOGLE_SHEET_NAME)
             
-            # FIXED: Prepare row with 13 columns following LeadData.to_row() standard
+            # FIXED: 13 columns with str() cast
             row = [
-                lead_data.get('timestamp', ''),          # A: created_at
-                lead_data.get('source_channel', ''),     # B: source_channel
-                lead_data.get('action_type', ''),        # C: action_type
-                lead_data.get('page_url', ''),           # D: page_url
-                lead_data.get('contact_name', ''),       # E: contact_name
-                lead_data.get('phone', ''),              # F: phone
-                lead_data.get('service_interest', ''),   # G: service_interest
-                lead_data.get('note', ''),               # H: note
-                lead_data.get('status', ''),             # I: raw_status
-                lead_data.get('session_id', ''),         # J: session_id
-                lead_data.get('intent', ''),             # K: intent
-                str(lead_data.get('tour_id', '')),       # L: tour_id
-                lead_data.get('stage', '')               # M: stage
+                str(lead_data.get('timestamp', '')),
+                str(lead_data.get('source_channel', '')),
+                str(lead_data.get('action_type', '')),
+                str(lead_data.get('page_url', '')),
+                str(lead_data.get('contact_name', '')),
+                str(lead_data.get('phone', '')),
+                str(lead_data.get('service_interest', '')),
+                str(lead_data.get('note', '')),
+                str(lead_data.get('status', '')),
+                str(lead_data.get('session_id', '')),
+                str(lead_data.get('intent', '')),
+                str(lead_data.get('tour_id', '') if lead_data.get('tour_id') else ''),
+                str(lead_data.get('stage', ''))
             ]
             
-            ws.append_row(row)
-            logger.info("✅ Saved to Google Sheets (13 columns)")
+            ws.append_row(row, value_input_option='USER_ENTERED')
+            logger.info(f"✅ Saved to Google Sheets (13 columns): {len(row)} values")
             
         except Exception as e:
             logger.error(f"Google Sheets error: {e}")
@@ -1226,6 +1222,35 @@ def chat():
             'message': 'Xin lỗi, có lỗi xảy ra. Vui lòng thử lại!'
         }), 500
 
+@app.route('/chat', methods=['POST', 'OPTIONS'])
+def chat_legacy():
+    """Legacy /chat endpoint - backward compatible"""
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
+    
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        user_message = data.get('message', '').strip()
+        session_id = data.get('session_id') or str(uuid.uuid4())
+        
+        if not user_message:
+            return jsonify({'error': 'Message is required'}), 400
+        
+        result = chat_processor.process(user_message, session_id)
+        return jsonify(result)
+        
+    except Exception as e:
+        logger.error(f"❌ /chat error: {e}")
+        traceback.print_exc()
+        state.stats['errors'] += 1
+        return jsonify({
+            'error': 'Internal server error',
+            'message': 'Xin lỗi, có lỗi xảy ra!'
+        }), 500
+
 @app.route('/api/save-lead', methods=['POST', 'OPTIONS'])
 def save_lead():
     """Save lead from form submission"""
@@ -1255,21 +1280,21 @@ def save_lead():
         if not re.match(r'^(0|\+?84)\d{9,10}$', phone_clean):
             return jsonify({'error': 'Invalid phone number format'}), 400
         
-        # Create lead data following LeadData.to_row() standard (13 columns)
+        # Create lead data (13 columns)
         lead_data = {
-            'timestamp': datetime.now().isoformat(),                    # A: created_at
-            'source_channel': source_channel,                           # B: source_channel
-            'action_type': action_type,                                 # C: action_type
-            'page_url': page_url or request.referrer or '',             # D: page_url
-            'contact_name': name or 'Khách yêu cầu gọi lại',           # E: contact_name
-            'phone': phone_clean,                                       # F: phone
-            'service_interest': tour_interest,                          # G: service_interest
-            'note': note,                                               # H: note
-            'status': 'New',                                            # I: raw_status
-            'session_id': '',                                           # J: session_id (empty for form)
-            'intent': '',                                               # K: intent (empty for form)
-            'tour_id': None,                                            # L: tour_id (empty for form)
-            'stage': ''                                                 # M: stage (empty for form)
+            'timestamp': datetime.now().isoformat(),
+            'source_channel': source_channel,
+            'action_type': action_type,
+            'page_url': page_url or request.referrer or '',
+            'contact_name': name or 'Khách yêu cầu gọi lại',
+            'phone': phone_clean,
+            'service_interest': tour_interest,
+            'note': note,
+            'status': 'New',
+            'session_id': '',
+            'intent': '',
+            'tour_id': None,
+            'stage': ''
         }
         
         # Send to Meta CAPI
@@ -1309,25 +1334,25 @@ def save_lead():
                     sh = gc.open_by_key(Config.GOOGLE_SHEET_ID)
                     ws = sh.worksheet(Config.GOOGLE_SHEET_NAME)
                     
-                    # FIXED: Prepare row with 13 columns following LeadData.to_row() standard
+                    # FIXED: 13 columns
                     row = [
-                        lead_data['timestamp'],          # A: created_at
-                        lead_data['source_channel'],     # B: source_channel
-                        lead_data['action_type'],        # C: action_type
-                        lead_data['page_url'],           # D: page_url
-                        lead_data['contact_name'],       # E: contact_name
-                        lead_data['phone'],              # F: phone
-                        lead_data['service_interest'],   # G: service_interest
-                        lead_data['note'],               # H: note
-                        lead_data['status'],             # I: raw_status
-                        lead_data['session_id'],         # J: session_id
-                        lead_data['intent'],             # K: intent
-                        str(lead_data['tour_id']) if lead_data['tour_id'] else '',  # L: tour_id
-                        lead_data['stage']               # M: stage
+                        str(lead_data['timestamp']),
+                        str(lead_data['source_channel']),
+                        str(lead_data['action_type']),
+                        str(lead_data['page_url']),
+                        str(lead_data['contact_name']),
+                        str(lead_data['phone']),
+                        str(lead_data['service_interest']),
+                        str(lead_data['note']),
+                        str(lead_data['status']),
+                        str(lead_data['session_id']),
+                        str(lead_data['intent']),
+                        str(lead_data['tour_id']) if lead_data['tour_id'] else '',
+                        str(lead_data['stage'])
                     ]
                     
-                    ws.append_row(row)
-                    logger.info("✅ Form lead saved to Google Sheets (13 columns)")
+                    ws.append_row(row, value_input_option='USER_ENTERED')
+                    logger.info(f"✅ Form lead saved to Google Sheets (13 columns): {len(row)} values")
             except Exception as e:
                 logger.error(f"Google Sheets error: {e}")
         
