@@ -551,6 +551,7 @@ class SearchEngine:
                     base_url=Config.OPENAI_BASE_URL,
                     timeout=30.0
                 )
+
                 logger.info("✅ SearchEngine OpenAI client initialized (api_key + base_url + timeout only)")
             else:
                 logger.error("❌ OpenAI API key not configured")
@@ -893,6 +894,7 @@ class ResponseGenerator:
                     base_url=Config.OPENAI_BASE_URL,
                     timeout=60.0
                 )
+
                 logger.info("✅ ResponseGenerator OpenAI client initialized (api_key + base_url + timeout only)")
             else:
                 logger.error("❌ OpenAI API key not configured for ResponseGenerator")
