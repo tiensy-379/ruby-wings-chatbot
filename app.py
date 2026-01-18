@@ -38,11 +38,19 @@ This version ensures the chatbot ALWAYS provides detailed, helpful responses
 instead of generic greetings or "no information" messages.
 """
 
+# ===== OpenAI client init (ENV-based, SAFE) =====
+import os
 from openai import OpenAI
 
-client = OpenAI(
-    api_key=Config.OPENAI_API_KEY
+api_key = os.getenv("OPENAI_API_KEY")
+
+if not api_key:
+    raise RuntimeError("OPENAI_API_KEY is not set in environment variables")
+
+self.openai_client = OpenAI(
+    api_key=api_key
 )
+
 
 # ==================== CORE IMPORTS ====================
 import os
