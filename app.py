@@ -1,3 +1,7 @@
+import os
+for k in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
+    os.environ.pop(k, None)
+
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
@@ -3361,11 +3365,10 @@ class _SearchEngineProxy:
 search_engine = _SearchEngineProxy()
 
 # Availability flags
-try:
-    from openai import OpenAI
-    OPENAI_AVAILABLE = True
-except:
-    OPENAI_AVAILABLE = False
+from importlib.util import find_spec
+
+OPENAI_AVAILABLE = find_spec("openai") is not None
+
 
 try:
     import faiss
