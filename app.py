@@ -475,12 +475,12 @@ class AppState:
         if self._search_engine is None:
             self._search_engine = SearchEngine()
         return self._search_engine
-
     
     def get_chat_processor(self):
         if self._chat_processor is None:
             self._chat_processor = ChatProcessor()
         return self._chat_processor
+
     def get_stats(self) -> Dict[str, Any]:
         """Get statistics"""
         with self.stats_lock:
@@ -497,9 +497,8 @@ state.start_time = time.time()
 
 # ==================== FLASK APP SETUP ====================
 app = Flask(__name__)
-@app.route("/chat", methods=["POST", "OPTIONS"], endpoint="chat_api")
-def chat_api():
-
+@app.route("/chat", methods=["POST", "OPTIONS"])
+def chat():
     if request.method == "OPTIONS":
         return "", 200
 
@@ -511,6 +510,7 @@ def chat_api():
     result = processor.process(message, session_id)
 
     return jsonify(result)
+
 
 app.secret_key = Config.SECRET_KEY
 app.config['MAX_CONTENT_LENGTH'] = Config.MAX_CONTENT_LENGTH
@@ -1716,15 +1716,16 @@ class ChatProcessor:
             }
         
         except Exception as e:
-                logger.error(f"CHAT ERROR: {str(e)}")
-        traceback.print_exc()
+            logger.error(f"CHAT PROCESS ERROR: {str(e)}")
+            traceback.print_exc()
 
-        return {
-            'message': 'Xin lỗi, dịch vụ tạm thời gián đoạn. Vui lòng thử lại.',
-            'intent': Intent.UNKNOWN,
-            'confidence': 0.0,
-            'session_id': session_id
-        }
+            return {
+                "message": "Xin lỗi, hệ thống đang xử lý chậm. Bạn vui lòng thử lại sau giây lát.",
+                "intent": Intent.UNKNOWN,
+                "confidence": 0.0,
+                "session_id": session_id
+            }
+
     
     def _get_session(self, session_id: str) -> Dict[str, Any]:
         """Get or create session data"""
