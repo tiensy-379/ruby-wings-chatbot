@@ -38,18 +38,8 @@ This version ensures the chatbot ALWAYS provides detailed, helpful responses
 instead of generic greetings or "no information" messages.
 """
 
-# ===== OpenAI client init (ENV-based, SAFE) =====
-import os
-from openai import OpenAI
-
-api_key = os.getenv("OPENAI_API_KEY")
-
-if not api_key:
-    raise RuntimeError("OPENAI_API_KEY is not set in environment variables")
-
-self.openai_client = OpenAI(
-    api_key=api_key
-)
+# ===== DO NOT INIT OPENAI AT MODULE LOAD =====
+openai_client = None
 
 
 # ==================== CORE IMPORTS ====================
@@ -558,6 +548,15 @@ class SearchEngine:
         self.mapping = []
         self.vectors = None
         self.openai_client = None
+        import os
+        from openai import OpenAI
+
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise RuntimeError("OPENAI_API_KEY is not set")
+
+        self.openai_client = OpenAI(api_key=api_key)
+
         
         # Initialize OpenAI client - NO PROXIES PARAMETER
         try:
