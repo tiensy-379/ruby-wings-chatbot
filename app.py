@@ -447,19 +447,83 @@ def send_meta_lead(request_obj, phone: str, contact_name: str = "",
 
 # ==================== FLASK APP SETUP ====================
 app = Flask(__name__)
+# ===== Healthcheck (Render) =====
+@app.route("/", methods=["GET", "HEAD"])
+def root_ok():
+    return "OK", 200
+
+@app.route("/health", methods=["GET"])
+def health_ok():
+    return {"status": "ok"}, 200
+
+@app.route("/chat", methods=["POST", "OPTIONS"])
+
+@app.route("/test", methods=["GET"])
+def test_endpoint():
+    """Test endpoint to verify app is working"""
+    return jsonify({
+        "status": "OK",
+        "version": "6.0.0",
+        "timestamp": datetime.now().isoformat(),
+        "knowledge_loaded": len(state.tours_db) > 0,
+        "company_info": bool(state.company_info),
+        "openai_configured": bool(Config.OPENAI_API_KEY)
+    })
+
 @app.route("/chat", methods=["POST", "OPTIONS"])
 def chat():
     if request.method == "OPTIONS":
         return "", 200
 
-    data = request.get_json(force=True, silent=True) or {}
-    message = data.get("message", "")
-    session_id = data.get("session_id", str(uuid.uuid4()))
+    try:
+        data = request.get_json(force=True, silent=True) or {}
+        message = data.get("message", "").strip()
+        session_id = data.get("session_id", str(uuid.uuid4()))
 
-    processor = state.get_chat_processor()
-    result = processor.process(message, session_id)
+        if not message:
+            return jsonify({
+                "message": "Vui lòng nhập tin nhắn",
+                "intent": "UNKNOWN",
+                "confidence": 0.0,
+                "session_id": session_id
+            }), 400
 
-    return jsonify(result)
+        # Kiểm tra initialization
+        chat_processor = state.get_chat_processor()
+        if not chat_processor:
+            logger.error("Chat processor not initialized")
+            return jsonify({
+                "message": "Hệ thống đang khởi tạo, vui lòng thử lại sau",
+                "intent": "UNKNOWN",
+                "confidence": 0.0,
+                "session_id": session_id
+            }), 503
+
+        result = chat_processor.process(message, session_id)
+        return jsonify(result)
+    
+    except Exception as e:
+        logger.error(f"❌ Chat endpoint error: {str(e)}")
+        traceback.print_exc()
+        return jsonify({
+            "message": "Xin lỗi, có lỗi xảy ra trong quá trình xử lý",
+            "intent": "UNKNOWN",
+            "confidence": 0.0,
+            "session_id": session_id
+        }), 500
+
+        result = chat_processor.process(message, session_id)
+        return jsonify(result)
+    
+    except Exception as e:
+        logger.error(f"❌ Chat endpoint error: {str(e)}")
+        traceback.print_exc()
+        return jsonify({
+            "message": "Xin lỗi, có lỗi xảy ra trong quá trình xử lý",
+            "intent": "UNKNOWN",
+            "confidence": 0.0,
+            "session_id": session_id
+        }), 500
 
 
 app.secret_key = Config.SECRET_KEY
@@ -548,67 +612,30 @@ class SearchEngine:
         self.mapping = []
         self.vectors = None
         self.openai_client = None
-        import os
-        from openai import OpenAI
-
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise RuntimeError("OPENAI_API_KEY is not set")
-
-        self.openai_client = OpenAI(api_key=api_key)
-
-        
-        # Initialize OpenAI client - NO PROXIES PARAMETER
-        try:
-            # ===== VERSION VERIFY (REMOVE AFTER TEST) =====
-            import openai
-            import httpx
-
-            print("===== OPENAI VERSION =====", openai.__version__)
-            print("===== HTTPX VERSION =====", httpx.__version__)
-
-            from openai import OpenAI
-            if Config.OPENAI_API_KEY:
-                # FIX: Removed 'proxies' parameter - OpenAI v1.6.1+ doesn't support it
-                self.openai_client = OpenAI(
-                    api_key=Config.OPENAI_API_KEY,
-                    base_url=Config.OPENAI_BASE_URL,
-                    timeout=30.0
-                )
-
-                logger.info("✅ SearchEngine OpenAI client initialized (api_key + base_url + timeout only)")
-            else:
-                logger.error("❌ OpenAI API key not configured")
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize OpenAI client: {e}")
-            traceback.print_exc()
+        # REMOVED OpenAI client initialization - will initialize lazily
+        logger.info("✅ SearchEngine initialized (OpenAI client lazy)")
     
-    def load_index(self):
-        """Load search index (FAISS or NumPy fallback)"""
-        try:
-            # Load mapping
-            if os.path.exists(Config.FAISS_MAPPING_PATH):
-                with open(Config.FAISS_MAPPING_PATH, 'r', encoding='utf-8') as f:
-                    self.mapping = json.load(f)
-                logger.info(f"✅ Loaded mapping: {len(self.mapping)} entries")
-            else:
-                logger.warning(f"⚠️ Mapping file not found: {Config.FAISS_MAPPING_PATH}")
-            
-            # Load index
-            if Config.FAISS_ENABLED and os.path.exists(Config.FAISS_INDEX_PATH):
-                try:
-                    import faiss
-                    self.index = faiss.read_index(Config.FAISS_INDEX_PATH)
-                    logger.info(f"✅ Loaded FAISS index: {self.index.ntotal} vectors")
-                except Exception as e:
-                    logger.warning(f"⚠️ FAISS load failed: {e}, using NumPy fallback")
-                    self._load_numpy_fallback()
-            else:
-                self._load_numpy_fallback()
-        
-        except Exception as e:
-            logger.error(f"❌ Failed to load index: {e}")
-            traceback.print_exc()
+        def __init__(self):
+            self.openai_client = None
+            logger.info("✅ ResponseGenerator initialized (OpenAI client lazy)")
+    
+    def _ensure_openai_client(self):
+        """Lazy initialization of OpenAI client"""
+        if self.openai_client is None:
+            try:
+                from openai import OpenAI
+                if Config.OPENAI_API_KEY:
+                    self.openai_client = OpenAI(
+                        api_key=Config.OPENAI_API_KEY,
+                        base_url=Config.OPENAI_BASE_URL,
+                        timeout=30.0
+                    )
+                    logger.info("✅ ResponseGenerator OpenAI client initialized (lazy)")
+                else:
+                    logger.error("❌ OpenAI API key not configured")
+            except Exception as e:
+                logger.error(f"❌ Failed to initialize OpenAI client: {e}")
+                traceback.print_exc()
     
     def _load_numpy_fallback(self):
         """Load NumPy fallback vectors"""
@@ -638,8 +665,13 @@ class SearchEngine:
             
             state.stats['cache_misses'] += 1
         
-        # Generate embedding
+                        # Generate embedding
         try:
+            self._ensure_openai_client()
+            if not self.openai_client:
+                logger.error("❌ OpenAI client not available for embedding")
+                return None
+            
             response = self.openai_client.embeddings.create(
                 model=Config.EMBEDDING_MODEL,
                 input=text
@@ -907,24 +939,7 @@ class ResponseGenerator:
     """
     def __init__(self):
         self.openai_client = None
-        
-                # Initialize OpenAI client - NO PROXIES PARAMETER
-        try:
-            from openai import OpenAI
-            if Config.OPENAI_API_KEY:
-                # FIX: OpenAI v1.6.1+ không còn hỗ trợ tham số 'proxies'
-                self.openai_client = OpenAI(
-                    api_key=Config.OPENAI_API_KEY,
-                    base_url=Config.OPENAI_BASE_URL,
-                    timeout=30.0
-                )
-
-                logger.info("✅ SearchEngine OpenAI client initialized (api_key + base_url + timeout only)")
-            else:
-                logger.error("❌ OpenAI API key not configured")
-        except Exception as e:
-            logger.error(f"❌ Failed to initialize OpenAI client: {e}")
-            traceback.print_exc()
+        logger.info("✅ ResponseGenerator initialized (OpenAI client lazy)")
     
     def generate(self, query: str, search_results: List[Dict[str, Any]], 
                  intent: str = Intent.UNKNOWN, 
@@ -982,22 +997,25 @@ YÊU CẦU TRẢ LỜI:
 HÃY TRẢ LỜI:"""
         
         try:
-            # Call OpenAI API
+            self._ensure_openai_client()
+            if not self.openai_client:
+                logger.error("❌ OpenAI client not available for generation")
+                return self._generate_fallback_response(query, search_results, intent)
+            
+            # Call OpenAI API using chat completions
             messages = [
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt}
             ]
             
-            response = self.openai_client.responses.create(
+            response = self.openai_client.chat.completions.create(
                 model=Config.CHAT_MODEL,
-                input=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                max_output_tokens=800
+                messages=messages,
+                max_tokens=800,
+                temperature=0.7
             )
 
-            answer = response.output_text.strip()
+            answer = response.choices[0].message.content.strip()
 
             
             # Validate response quality
@@ -1742,11 +1760,15 @@ class ChatProcessor:
             }
         
         except Exception as e:
-            logger.error(f"CHAT PROCESS ERROR: {str(e)}")
+            logger.error(f"❌ CHAT PROCESS ERROR: {str(e)}")
             traceback.print_exc()
-
+            
+            # Return user-friendly but informative error
+            error_msg = f"🌿 Xin lỗi, tôi đang gặp sự cố kỹ thuật: {str(e)[:100]}...\n\n"
+            error_msg += "📞 Vui lòng liên hệ hotline 0332510486 để được hỗ trợ ngay!"
+            
             return {
-                "message": "Xin lỗi, hệ thống đang xử lý chậm. Bạn vui lòng thử lại sau giây lát.",
+                "message": error_msg,
                 "intent": Intent.UNKNOWN,
                 "confidence": 0.0,
                 "session_id": session_id
@@ -1907,8 +1929,8 @@ Lý do phù hợp: {', '.join(match_reasons)}
                 
                 logger.info(f"✅ Intelligent filtering returned {len(search_results)} tours")
         
-        # Fallback to vector search if filtering didn't work
-        if not filtered_tours:
+                # Fallback to vector search if intelligent filtering didn't return results
+        if not filtered_results:  # Đổi filtered_tours thành filtered_results
             search_results = self.search_engine.search(query, top_k=Config.TOP_K, intent=intent)
             logger.info(f"🔍 Vector search returned {len(search_results)} results for intent {intent}")
         
@@ -2825,7 +2847,21 @@ def initialize_app():
         
         # Validate config
         Config.log_config()
+                # Kiểm tra config critical
+        logger.info(f"🔑 OpenAI API Key available: {'✅' if Config.OPENAI_API_KEY else '❌'}")
+        logger.info(f"📁 Knowledge path exists: {'✅' if os.path.exists(Config.KNOWLEDGE_PATH) else '❌'}")
+        logger.info(f"🏢 Company info available: {'✅' if bool(state.company_info) else '❌'}")
         errors = Config.validate()
+        if not os.path.exists(Config.KNOWLEDGE_PATH):
+            errors.append(f"❌ Knowledge file not found: {Config.KNOWLEDGE_PATH}")
+        
+        # Thêm kiểm tra này
+        if not Config.OPENAI_API_KEY:
+            errors.append("❌ OPENAI_API_KEY is required")
+        else:
+            # Kiểm tra format API key
+            if not Config.OPENAI_API_KEY.startswith('sk-'):
+                logger.warning("⚠️ OpenAI API key may be invalid (should start with 'sk-')")
         
         if errors:
             for error in errors:
@@ -2848,11 +2884,10 @@ def initialize_app():
             search_engine.load_index()
             logger.info("✅ Search engine initialized")
         
-        # Initialize chat processor
+                # Initialize chat processor (lazy - no OpenAI client yet)
         logger.info("💬 Initializing chat processor...")
-        chat_processor = state.get_chat_processor()
-        if chat_processor:
-            logger.info("✅ Chat processor initialized")
+        _ = state.get_chat_processor()  # Just create instance
+        logger.info("✅ Chat processor initialized (OpenAI client lazy)")
         
         logger.info("=" * 80)
         logger.info("✅ RUBY WINGS CHATBOT READY!")
