@@ -1,33 +1,17 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-RUBY WINGS AI CHATBOT - PRODUCTION VERSION 5.2.2 FIXED
+RUBY WINGS AI CHATBOT - PRODUCTION VERSION 5.2.3 (INTENT-DRIVEN FIX)
 Created: 2025-01-17
 Author: Ruby Wings AI Team
 
-ARCHITECTURE:
-- Fully compatible with Render 512MB RAM
-- Ready to scale to 2GB RAM with env variables only
-- State Machine for conversation flow
-- Location Filter with region fallback
-- Intent Detection with phone capture
-- Meta CAPI tracking (FIXED & ENHANCED)
-- FAISS/Numpy hybrid search
-- Session management with auto-cleanup
-- Enhanced error handling
-- Better lead capture integration
-
-ĐỒNG BỘ: entities.py, meta_capi.py, response_guard.py, gunicorn.conf.py,
-         build_index.py, knowledge.json, .env variables from Render
-
-CHANGES IN v5.2.2:
-- Fixed Meta CAPI integration
-- Enhanced lead capture with fallback storage
-- Better error handling for Google Sheets
-- Improved session management
-- Fixed CORS configuration
-- Enhanced logging
-- Better cache management
+FIX V5.2.3: INTENT-DRIVEN RESPONSE SYSTEM
+- Fixed intent classification (SMALLTALK -> TOUR_LIST, TOUR_FILTER, ABOUT_COMPANY)
+- Added intent-based response routing
+- Added tour filtering by duration, location, etc.
+- Added company info response
+- Fixed search results to be context-aware
+- Preserved all existing features (lead capture, Meta CAPI, Google Sheets)
 """
 
 # ==================== CORE IMPORTS ====================
@@ -77,11 +61,11 @@ logging.basicConfig(
         logging.FileHandler('ruby_wings.log') if IS_PRODUCTION else logging.NullHandler()
     ]
 )
-logger = logging.getLogger("ruby-wings-v5.2.2")
+logger = logging.getLogger("ruby-wings-v5.2.3-intent")
 
 # ==================== CONFIGURATION ====================
 class Config:
-    """Centralized configuration - ĐỒNG BỘ với .env từ Render"""
+    """Centralized configuration"""
     
     # RAM Profile
     RAM_PROFILE = os.getenv("RAM_PROFILE", "512")
@@ -106,24 +90,26 @@ class Config:
     CHAT_MODEL = os.getenv("CHAT_MODEL", "gpt-4o-mini")
     OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
     
-    # Feature Toggles (QUAN TRỌNG: Đồng bộ với Render env vars)
+    # Feature Toggles
     FAISS_ENABLED = os.getenv("FAISS_ENABLED", "false").lower() == "true"
     ENABLE_INTENT_DETECTION = os.getenv("ENABLE_INTENT_DETECTION", "true").lower() == "true"
     ENABLE_PHONE_DETECTION = os.getenv("ENABLE_PHONE_DETECTION", "true").lower() == "true"
     ENABLE_LEAD_CAPTURE = os.getenv("ENABLE_GOOGLE_SHEETS", "true").lower() == "true"
-    ENABLE_LLM_FALLBACK = True  # Always enabled
-    ENABLE_CACHING = True  # Always enabled
+    ENABLE_LLM_FALLBACK = True
+    ENABLE_CACHING = True
     ENABLE_GOOGLE_SHEETS = os.getenv("ENABLE_GOOGLE_SHEETS", "true").lower() == "true"
     ENABLE_META_CAPI = os.getenv("ENABLE_META_CAPI_LEAD", "true").lower() == "true"
     ENABLE_META_CAPI_CALL = os.getenv("ENABLE_META_CAPI_CALL", "true").lower() == "true"
     ENABLE_FALLBACK_STORAGE = os.getenv("ENABLE_FALLBACK_STORAGE", "true").lower() == "true"
+    ENABLE_TOUR_FILTERING = os.getenv("ENABLE_TOUR_FILTERING", "true").lower() == "true"
+    ENABLE_COMPANY_INFO = os.getenv("ENABLE_COMPANY_INFO", "true").lower() == "true"
     
     # State Machine
     STATE_MACHINE_ENABLED = True
     ENABLE_LOCATION_FILTER = True
     ENABLE_SEMANTIC_ANALYSIS = True
     
-    # Performance Settings (tối ưu cho 512MB)
+    # Performance Settings
     TOP_K = int(os.getenv("TOP_K", "5" if IS_LOW_RAM else "10"))
     MAX_TOURS_PER_RESPONSE = 3
     CACHE_TTL_SECONDS = 300
@@ -137,7 +123,7 @@ class Config:
     TIMEOUT = int(os.getenv("TIMEOUT", "60"))
     DEBUG = os.getenv("DEBUG", "false").lower() == "true"
     
-    # CORS (FIXED)
+    # CORS
     CORS_ORIGINS_RAW = os.getenv("CORS_ORIGINS", "*")
     CORS_ORIGINS = CORS_ORIGINS_RAW if CORS_ORIGINS_RAW == "*" else [
         o.strip() for o in CORS_ORIGINS_RAW.split(",") if o.strip()
@@ -157,13 +143,12 @@ class Config:
     def log_config(cls):
         """Log configuration on startup"""
         logger.info("=" * 60)
-        logger.info("🚀 RUBY WINGS CHATBOT v5.2.2 PRODUCTION (FIXED)")
+        logger.info("🚀 RUBY WINGS CHATBOT v5.2.3 (INTENT-DRIVEN FIX)")
         logger.info("=" * 60)
         logger.info(f"📊 RAM Profile: {cls.RAM_PROFILE}MB")
         logger.info(f"🌍 Environment: {'Production' if IS_PRODUCTION else 'Development'}")
         logger.info(f"🔧 Platform: {platform.system()}")
         
-        # Features
         features = []
         if cls.STATE_MACHINE_ENABLED:
             features.append("State Machine")
@@ -181,9 +166,14 @@ class Config:
             features.append("Google Sheets")
         if cls.ENABLE_FALLBACK_STORAGE:
             features.append("Fallback Storage")
+        if cls.ENABLE_TOUR_FILTERING:
+            features.append("Tour Filtering")
+        if cls.ENABLE_COMPANY_INFO:
+            features.append("Company Info")
         
         logger.info(f"🎯 Features: {', '.join(features)}")
         logger.info(f"🔑 OpenAI: {'✅' if cls.OPENAI_API_KEY else '❌'}")
+        logger.info(f"🔍 FAISS enabled: {cls.FAISS_ENABLED}")
         
         if cls.META_PIXEL_ID and len(cls.META_PIXEL_ID) > 10:
             logger.info(f"📞 Meta Pixel: {cls.META_PIXEL_ID[:6]}...{cls.META_PIXEL_ID[-4:]}")
@@ -247,7 +237,45 @@ except ImportError as e:
     logger.warning(f"⚠️ Failed to import entities.py: {e}")
     ENTITIES_AVAILABLE = False
     
-    # Fallback definitions
+    # ==================== ENHANCED INTENT DETECTION SYSTEM ====================
+    class Intent:
+        # Core conversation intents
+        GREETING = "GREETING"
+        FAREWELL = "FAREWELL"
+        SMALLTALK = "SMALLTALK"
+        UNKNOWN = "UNKNOWN"
+        
+        # Tour-related intents
+        TOUR_INQUIRY = "TOUR_INQUIRY"
+        TOUR_LIST = "TOUR_LIST"
+        TOUR_FILTER = "TOUR_FILTER"
+        TOUR_DETAIL = "TOUR_DETAIL"
+        TOUR_COMPARE = "TOUR_COMPARE"
+        TOUR_RECOMMEND = "TOUR_RECOMMEND"
+        
+        # Price intents
+        PRICE_ASK = "PRICE_ASK"
+        PRICE_COMPARE = "PRICE_COMPARE"
+        PRICE_RANGE = "PRICE_RANGE"
+        
+        # Booking intents
+        BOOKING_REQUEST = "BOOKING_REQUEST"
+        BOOKING_PROCESS = "BOOKING_PROCESS"
+        BOOKING_CONDITION = "BOOKING_CONDITION"
+        
+        # Contact intents
+        PROVIDE_PHONE = "PROVIDE_PHONE"
+        CALLBACK_REQUEST = "CALLBACK_REQUEST"
+        CONTACT_INFO = "CONTACT_INFO"
+        
+        # Company intents
+        ABOUT_COMPANY = "ABOUT_COMPANY"
+        COMPANY_SERVICE = "COMPANY_SERVICE"
+        COMPANY_MISSION = "COMPANY_MISSION"
+        
+        # Lead capture
+        LEAD_CAPTURED = "LEAD_CAPTURED"
+    
     class ConversationStage:
         EXPLORE = "explore"
         SUGGEST = "suggest"
@@ -257,34 +285,193 @@ except ImportError as e:
         LEAD = "lead"
         CALLBACK = "callback"
     
-    class Intent:
-        GREETING = "greeting"
-        FAREWELL = "farewell"
-        TOUR_INQUIRY = "tour_inquiry"
-        PRICE_ASK = "price_ask"
-        BOOKING_REQUEST = "booking_request"
-        PROVIDE_PHONE = "provide_phone"
-        CALLBACK_REQUEST = "callback_request"
-        UNKNOWN = "unknown"
-    
     def detect_intent(text): 
-        text_lower = text.lower()
-        if any(w in text_lower for w in ['xin chào', 'chào', 'hello', 'hi']):
-            return Intent.GREETING, 0.9, {}
-        if any(w in text_lower for w in ['tạm biệt', 'bye', 'cảm ơn']):
-            return Intent.FAREWELL, 0.9, {}
-        if any(w in text_lower for w in ['giá', 'bao nhiêu', 'price', 'cost']):
-            return Intent.PRICE_ASK, 0.8, {}
-        if any(w in text_lower for w in ['đặt', 'book', 'đăng ký']):
-            return Intent.BOOKING_REQUEST, 0.8, {}
-        return Intent.UNKNOWN, 0.5, {}
+        """Enhanced intent detection with entity extraction"""
+        text_lower = text.lower().strip()
+        metadata = {
+            "duration_days": None,
+            "location": None,
+            "price_max": None,
+            "tags": [],
+            "region": None,
+            "raw_query": text
+        }
+        
+        # Extract duration days (e.g., "tour 1 ngày", "2 ngày")
+        duration_patterns = [
+            (r'(\d+)\s*ngày', 'duration_days'),
+            (r'(\d+)\s*ngay', 'duration_days'),
+            (r'(\d+)\s*day', 'duration_days'),
+            (r'một\s*ngày', 'duration_days'),
+            (r'hai\s*ngày', 'duration_days'),
+            (r'ba\s*ngày', 'duration_days'),
+            (r'bốn\s*ngày', 'duration_days'),
+            (r'năm\s*ngày', 'duration_days')
+        ]
+        
+        for pattern, key in duration_patterns:
+            match = re.search(pattern, text_lower)
+            if match:
+                if pattern.startswith(r'(\d+)'):
+                    metadata[key] = int(match.group(1))
+                else:
+                    # Map Vietnamese numbers
+                    num_map = {
+                        'một': 1, 'hai': 2, 'ba': 3, 
+                        'bốn': 4, 'năm': 5
+                    }
+                    for vn_num, num in num_map.items():
+                        if vn_num in match.group(0):
+                            metadata[key] = num
+                            break
+        
+        # Extract location/region
+        location_keywords = {
+            'huế': 'Huế', 'hue': 'Huế',
+            'đà nẵng': 'Đà Nẵng', 'da nang': 'Đà Nẵng',
+            'hội an': 'Hội An', 'hoi an': 'Hội An',
+            'quảng trị': 'Quảng Trị', 'quang tri': 'Quảng Trị',
+            'bạch mã': 'Bạch Mã', 'bach ma': 'Bạch Mã',
+            'hiền lương': 'Hiền Lương', 'hien luong': 'Hiền Lương',
+            'miền trung': 'Miền Trung', 'mien trung': 'Miền Trung'
+        }
+        
+        for keyword, location in location_keywords.items():
+            if keyword in text_lower:
+                metadata['location'] = location
+                metadata['region'] = location
+                break
+        
+        # Extract price mentions
+        price_patterns = [
+            r'giá\s+(\d+[\.,]?\d*)\s*(k|tr|triệu|triệu đồng|vnđ|vnd|đồng)',
+            r'(\d+[\.,]?\d*)\s*(k|tr|triệu|triệu đồng|vnđ|vnd|đồng)',
+            r'giá.*dưới\s+(\d+[\.,]?\d*)',
+            r'giá.*khoảng\s+(\d+[\.,]?\d*)'
+        ]
+        
+        for pattern in price_patterns:
+            match = re.search(pattern, text_lower)
+            if match:
+                try:
+                    price_num = float(match.group(1).replace(',', '.'))
+                    # Convert to VND if needed
+                    if 'k' in match.group(2).lower():
+                        price_num *= 1000
+                    elif 'tr' in match.group(2).lower() or 'triệu' in match.group(2).lower():
+                        price_num *= 1000000
+                    metadata['price_max'] = price_num
+                    break
+                except:
+                    pass
+        
+        # Extract tags/keywords
+        tag_keywords = {
+            'thiền': 'thiền', 'meditation': 'thiền',
+            'retreat': 'retreat',
+            'chữa lành': 'chữa lành', 'healing': 'chữa lành',
+            'trải nghiệm': 'trải nghiệm', 'experience': 'trải nghiệm',
+            'thiên nhiên': 'thiên nhiên', 'nature': 'thiên nhiên',
+            'lịch sử': 'lịch sử', 'history': 'lịch sử'
+        }
+        
+        for keyword, tag in tag_keywords.items():
+            if keyword in text_lower:
+                metadata['tags'].append(tag)
+        
+        # ==================== INTENT CLASSIFICATION ====================
+        # 1. GREETING & FAREWELL
+        greeting_words = ['xin chào', 'chào', 'hello', 'hi', 'helo', 'chao']
+        farewell_words = ['tạm biệt', 'bye', 'goodbye', 'cảm ơn', 'thank you', 'thanks']
+        
+        if any(word in text_lower for word in greeting_words):
+            return Intent.GREETING, 0.95, metadata
+        
+        if any(word in text_lower for word in farewell_words):
+            return Intent.FAREWELL, 0.95, metadata
+        
+        # 2. COMPANY INFO
+        company_keywords = [
+            'ruby wings', 'công ty', 'đơn vị', 'bạn là ai', 
+            'giới thiệu', 'công ty bạn', 'cty', 'doanh nghiệp',
+            'tổ chức', 'cty ruby', 'rubywings'
+        ]
+        
+        if any(keyword in text_lower for keyword in company_keywords):
+            return Intent.ABOUT_COMPANY, 0.92, metadata
+        
+        # 3. TOUR LIST (general inquiry about tours)
+        tour_list_keywords = [
+            'tour nào', 'tour gì', 'có những tour nào', 
+            'danh sách tour', 'các tour', 'tour của bạn',
+            'bạn có tour nào', 'dịch vụ nào', 'sản phẩm nào'
+        ]
+        
+        if any(keyword in text_lower for keyword in tour_list_keywords):
+            return Intent.TOUR_LIST, 0.90, metadata
+        
+        # 4. TOUR FILTER (specific filtering)
+        filter_indicators = [
+            'có tour', 'tour nào', 'tìm tour', 'lọc tour',
+            'tour 1 ngày', 'tour 2 ngày', 'tour 3 ngày',
+            'tour huế', 'tour đà nẵng', 'tour quảng trị',
+            'tour giá', 'tour rẻ', 'tour thiền', 'tour retreat'
+        ]
+        
+        # Check if any filter criteria are present
+        has_filter_criteria = (
+            metadata['duration_days'] is not None or
+            metadata['location'] is not None or
+            metadata['price_max'] is not None or
+            len(metadata['tags']) > 0
+        )
+        
+        filter_words = ['tour', 'du lịch', 'trải nghiệm', 'retreat', 'hành trình']
+        has_tour_word = any(word in text_lower for word in filter_words)
+        
+        if has_tour_word and has_filter_criteria:
+            return Intent.TOUR_FILTER, 0.88, metadata
+        
+        # 5. TOUR INQUIRY (general tour question)
+        if has_tour_word:
+            return Intent.TOUR_INQUIRY, 0.85, metadata
+        
+        # 6. PRICE ASK
+        price_words = ['giá', 'bao nhiêu tiền', 'cost', 'price', 'chi phí']
+        if any(word in text_lower for word in price_words):
+            return Intent.PRICE_ASK, 0.85, metadata
+        
+        # 7. BOOKING REQUEST
+        booking_words = ['đặt', 'book', 'đăng ký', 'reserve', 'booking']
+        if any(word in text_lower for word in booking_words):
+            return Intent.BOOKING_REQUEST, 0.90, metadata
+        
+        # 8. PHONE PROVIDE
+        phone = detect_phone_number(text)
+        if phone:
+            metadata['phone_number'] = phone
+            return Intent.PROVIDE_PHONE, 0.98, metadata
+        
+        # 9. CALLBACK REQUEST
+        callback_words = ['gọi lại', 'liên hệ lại', 'call back', 'tư vấn']
+        if any(word in text_lower for word in callback_words):
+            return Intent.CALLBACK_REQUEST, 0.87, metadata
+        
+        # 10. CONTACT INFO
+        contact_words = ['số điện thoại', 'hotline', 'liên hệ', 'contact']
+        if any(word in text_lower for word in contact_words):
+            return Intent.CONTACT_INFO, 0.89, metadata
+        
+        # Default to SMALLTALK for other queries
+        return Intent.SMALLTALK, 0.70, metadata
     
     def detect_phone_number(text):
-        # Simple VN phone detection
+        """Detect Vietnamese phone numbers"""
         patterns = [
             r'0\d{9,10}',
             r'\+84\d{9,10}',
-            r'84\d{9,10}'
+            r'84\d{9,10}',
+            r'\(\+84\)\d{9,10}'
         ]
         for pattern in patterns:
             match = re.search(pattern, text)
@@ -293,10 +480,32 @@ except ImportError as e:
         return None
     
     def extract_location_from_query(text): 
+        """Extract location from query"""
+        # This is a simple version - real implementation should be in entities.py
+        location_keywords = {
+            'huế': 'Huế',
+            'đà nẵng': 'Đà Nẵng', 
+            'hội an': 'Hội An',
+            'quảng trị': 'Quảng Trị',
+            'bạch mã': 'Bạch Mã'
+        }
+        
+        text_lower = text.lower()
+        for keyword, location in location_keywords.items():
+            if keyword in text_lower:
+                return location
         return None
     
     def get_region_from_location(location): 
-        return None
+        """Get region from location"""
+        region_map = {
+            'Huế': 'Miền Trung',
+            'Đà Nẵng': 'Miền Trung',
+            'Hội An': 'Miền Trung',
+            'Quảng Trị': 'Miền Trung',
+            'Bạch Mã': 'Miền Trung'
+        }
+        return region_map.get(location, 'Miền Trung')
     
     class Tour:
         pass
@@ -322,7 +531,6 @@ except ImportError as e:
     logger.warning(f"⚠️ meta_capi.py not available: {e}")
     META_CAPI_AVAILABLE = False
     
-    # Dummy functions
     def send_meta_pageview(request): 
         pass
     
@@ -357,14 +565,14 @@ except ImportError as e:
 # ==================== FLASK APP ====================
 app = Flask(__name__)
 app.secret_key = Config.SECRET_KEY
-app.config['MAX_CONTENT_LENGTH'] = int(os.getenv("MAX_CONTENT_LENGTH", "1048576"))  # 1MB
+app.config['MAX_CONTENT_LENGTH'] = int(os.getenv("MAX_CONTENT_LENGTH", "1048576"))
 app.config['JSON_AS_ASCII'] = False
 app.config['JSON_SORT_KEYS'] = False
 
 # Apply ProxyFix for Render
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
-# CORS (FIXED)
+# CORS
 if Config.CORS_ORIGINS == "*":
     CORS(app, 
          origins="*",
@@ -382,7 +590,7 @@ logger.info(f"✅ CORS configured for: {Config.CORS_ORIGINS}")
 
 # ==================== GLOBAL STATE ====================
 class GlobalState:
-    """Memory-optimized global state"""
+    """Enhanced global state with company info and tour entities"""
     
     _instance = None
     _lock = threading.RLock()
@@ -395,10 +603,14 @@ class GlobalState:
             return cls._instance
     
     def _initialize(self):
-        """Initialize state"""
+        """Initialize state with all data structures"""
         # Core data
         self.tours_db: Dict[int, Dict] = {}
         self.tour_name_index: Dict[str, int] = {}
+        self.tour_entities: List[Dict] = []
+        
+        # Company info
+        self.about_company: Dict = {}
         
         # Session management
         self.session_contexts: Dict[str, Dict] = {}
@@ -422,17 +634,115 @@ class GlobalState:
             "errors": 0,
             "meta_capi_calls": 0,
             "meta_capi_errors": 0,
+            "intent_counts": defaultdict(int),
             "start_time": datetime.now()
         }
         
+        # Track initialization status
         self._knowledge_loaded = False
         self._index_loaded = False
+        self._tour_entities_loaded = False
+        self._company_info_loaded = False
         
-        logger.info("🌐 Global state initialized")
+        logger.info("🌐 Global state initialized (enhanced with intent tracking)")
     
     def get_tour(self, index: int) -> Optional[Dict]:
         """Get tour by index"""
         return self.tours_db.get(index)
+    
+    def get_tour_by_name(self, name: str) -> Optional[Dict]:
+        """Get tour by name (case-insensitive)"""
+        idx = self.tour_name_index.get(name.lower())
+        if idx is not None:
+            return self.tours_db.get(idx)
+        return None
+    
+    def filter_tours(self, **filters) -> List[Dict]:
+        """Filter tours based on criteria"""
+        if not self.tours_db:
+            return []
+        
+        filtered = []
+        for idx, tour in self.tours_db.items():
+            match = True
+            
+            # Duration filter
+            if 'duration_days' in filters and filters['duration_days'] is not None:
+                tour_duration = self._extract_duration_days(tour)
+                if tour_duration != filters['duration_days']:
+                    match = False
+            
+            # Location filter
+            if match and 'location' in filters and filters['location']:
+                tour_location = tour.get('location', '').lower()
+                filter_location = filters['location'].lower()
+                if filter_location not in tour_location:
+                    match = False
+            
+            # Price filter
+            if match and 'price_max' in filters and filters['price_max'] is not None:
+                tour_price = self._extract_price(tour)
+                if tour_price is None or tour_price > filters['price_max']:
+                    match = False
+            
+            # Tag filter
+            if match and 'tags' in filters and filters['tags']:
+                tour_tags = set(tag.lower() for tag in tour.get('tags', []))
+                filter_tags = set(tag.lower() for tag in filters['tags'])
+                if not filter_tags.intersection(tour_tags):
+                    match = False
+            
+            if match:
+                filtered.append(tour)
+        
+        return filtered
+    
+    def _extract_duration_days(self, tour: Dict) -> Optional[int]:
+        """Extract duration in days from tour"""
+        duration = tour.get('duration', '')
+        if not duration:
+            return None
+        
+        # Try to extract number from duration string
+        match = re.search(r'(\d+)\s*ngày', duration.lower())
+        if match:
+            return int(match.group(1))
+        
+        # Check duration_days field if exists
+        if 'duration_days' in tour:
+            return tour['duration_days']
+        
+        return None
+    
+    def _extract_price(self, tour: Dict) -> Optional[float]:
+        """Extract price from tour"""
+        price_text = tour.get('price', '')
+        if not price_text:
+            return None
+        
+        # Try to extract price number
+        patterns = [
+            r'(\d+[\.,]?\d*)\s*(k|tr|triệu|triệu đồng|vnđ|vnd|đồng)',
+            r'(\d+[\.,]?\d*)\s*-\s*(\d+[\.,]?\d*)',
+            r'từ\s*(\d+[\.,]?\d*)'
+        ]
+        
+        for pattern in patterns:
+            match = re.search(pattern, price_text.lower())
+            if match:
+                try:
+                    price_num = float(match.group(1).replace(',', '.'))
+                    if len(match.groups()) > 1 and match.group(2):
+                        unit = match.group(2).lower()
+                        if 'k' in unit:
+                            price_num *= 1000
+                        elif 'tr' in unit or 'triệu' in unit:
+                            price_num *= 1000000
+                    return price_num
+                except:
+                    pass
+        
+        return None
     
     def get_session(self, session_id: str) -> Dict:
         """Get or create session context"""
@@ -442,6 +752,7 @@ class GlobalState:
                     "session_id": session_id,
                     "stage": ConversationStage.EXPLORE,
                     "intent": Intent.UNKNOWN,
+                    "intent_metadata": {},
                     "mentioned_tours": [],
                     "selected_tour_id": None,
                     "location_filter": None,
@@ -452,7 +763,6 @@ class GlobalState:
                 }
                 self.stats["sessions"] += 1
                 
-                # Cleanup old sessions if needed
                 if len(self.session_contexts) > Config.MAX_SESSIONS:
                     self._cleanup_sessions()
             
@@ -461,13 +771,11 @@ class GlobalState:
     def _cleanup_sessions(self):
         """Remove old sessions"""
         with self._lock:
-            # Sort by last_updated
             sorted_sessions = sorted(
                 self.session_contexts.items(),
                 key=lambda x: x[1].get("last_updated", datetime.min)
             )
             
-            # Remove oldest 30%
             remove_count = max(1, len(sorted_sessions) // 3)
             for sid, _ in sorted_sessions[:remove_count]:
                 del self.session_contexts[sid]
@@ -482,7 +790,6 @@ class GlobalState:
         with self._lock:
             if key in self.response_cache:
                 entry = self.response_cache[key]
-                # Check TTL
                 if time.time() - entry['ts'] < Config.CACHE_TTL_SECONDS:
                     self.response_cache.move_to_end(key)
                     self.stats["cache_hits"] += 1
@@ -504,7 +811,6 @@ class GlobalState:
                 'ts': time.time()
             }
             
-            # LRU eviction
             if len(self.response_cache) > Config.MAX_EMBEDDING_CACHE:
                 self.response_cache.popitem(last=False)
     
@@ -512,53 +818,67 @@ class GlobalState:
         """Get statistics"""
         with self._lock:
             uptime = datetime.now() - self.stats["start_time"]
+            
+            # Calculate intent distribution
+            intent_dist = {}
+            total_intents = sum(self.stats["intent_counts"].values())
+            if total_intents > 0:
+                for intent, count in self.stats["intent_counts"].items():
+                    intent_dist[intent] = {
+                        "count": count,
+                        "percentage": round(count / total_intents * 100, 1)
+                    }
+            
             return {
                 **self.stats,
                 "uptime_seconds": int(uptime.total_seconds()),
                 "active_sessions": len(self.session_contexts),
                 "tours_loaded": len(self.tours_db),
-                "cache_size": len(self.response_cache)
+                "tour_entities_loaded": len(self.tour_entities),
+                "mapping_entries": len(self.mapping),
+                "cache_size": len(self.response_cache),
+                "knowledge_loaded": self._knowledge_loaded,
+                "intent_distribution": intent_dist,
+                "company_info_loaded": self._company_info_loaded
             }
 
-# Initialize global state
+# Initialize global state FIRST
 state = GlobalState()
 
 # ==================== KNOWLEDGE LOADER ====================
-def load_knowledge():
-    """Load knowledge base"""
+def load_knowledge() -> bool:
+    """Load knowledge base with company info"""
+    
     if state._knowledge_loaded:
-        logger.info("✅ Knowledge already loaded")
+        logger.info("📚 Knowledge already loaded, skipping")
         return True
     
     try:
-        logger.info("=" * 60)
         logger.info(f"📚 Loading knowledge from {Config.KNOWLEDGE_PATH}")
-        logger.info(f"🔍 RAM profile: {Config.RAM_PROFILE}MB")
-        logger.info(f"🔍 FAISS enabled: {Config.FAISS_ENABLED}")
         
         if not os.path.exists(Config.KNOWLEDGE_PATH):
             logger.error(f"❌ Knowledge file not found: {Config.KNOWLEDGE_PATH}")
-            logger.error(f"❌ Current working directory: {os.getcwd()}")
-            logger.error(f"❌ Please ensure knowledge.json exists")
             return False
         
         with open(Config.KNOWLEDGE_PATH, 'r', encoding='utf-8') as f:
             knowledge = json.load(f)
         
+        # Load company info
+        state.about_company = knowledge.get('about_company', {})
+        if state.about_company:
+            logger.info(f"✅ Company info loaded: {len(state.about_company)} fields")
+            state._company_info_loaded = True
+        
         # Load tours
         tours_data = knowledge.get('tours', [])
         
         if not tours_data:
-            logger.error("❌ No tours found in knowledge.json")
-            return False
-        
-        logger.info(f"📦 Found {len(tours_data)} tours in knowledge file")
+            logger.warning("⚠️ No tours found in knowledge.json")
         
         for idx, tour_data in enumerate(tours_data):
             try:
                 state.tours_db[idx] = tour_data
                 
-                # Index by name
                 name = tour_data.get('tour_name', '')
                 if name:
                     state.tour_name_index[name.lower()] = idx
@@ -567,64 +887,86 @@ def load_knowledge():
                 logger.error(f"❌ Error loading tour {idx}: {e}")
                 continue
         
-        logger.info(f"✅ Loaded {len(state.tours_db)} tours into database")
+        logger.info(f"✅ Knowledge loaded: {len(state.tours_db)} tours")
         
-        # Load mapping
+        # Load tour entities if available
+        if os.path.exists(Config.TOUR_ENTITIES_PATH):
+            try:
+                with open(Config.TOUR_ENTITIES_PATH, 'r', encoding='utf-8') as f:
+                    state.tour_entities = json.load(f)
+                logger.info(f"✅ Tour entities loaded: {len(state.tour_entities)} entities")
+                state._tour_entities_loaded = True
+            except Exception as e:
+                logger.error(f"❌ Error loading tour entities: {e}")
+                state.tour_entities = []
+        
+        # Load or create mapping
         if os.path.exists(Config.FAISS_MAPPING_PATH):
-            with open(Config.FAISS_MAPPING_PATH, 'r', encoding='utf-8') as f:
-                state.mapping = json.load(f)
-            logger.info(f"✅ Loaded {len(state.mapping)} mapping entries from file")
+            try:
+                with open(Config.FAISS_MAPPING_PATH, 'r', encoding='utf-8') as f:
+                    state.mapping = json.load(f)
+                logger.info(f"✅ Mapping loaded: {len(state.mapping)} entries")
+            except Exception as e:
+                logger.error(f"❌ Error loading mapping: {e}")
+                state.mapping = []
         else:
-            # Create comprehensive mapping from tours
-            logger.info("📝 Creating mapping from tours (no mapping file found)")
+            logger.info("📝 Creating mapping from tours...")
             state.mapping = []
+            
             for idx, tour in state.tours_db.items():
-                # Add key fields to mapping (expanded for better search coverage)
-                fields_to_index = [
-                    'tour_name', 'location', 'duration', 'price', 'summary',
-                    'includes', 'style', 'highlights', 'notes', 'region',
-                    'target_audience', 'best_time', 'accommodation', 'meals',
-                    'transport'
-                ]
+                if not tour:
+                    continue
+                    
+                fields_to_map = ['tour_name', 'location', 'duration', 'price', 
+                                'summary', 'includes', 'style', 'description']
                 
-                for field in fields_to_index:
+                for field in fields_to_map:
                     value = tour.get(field, '')
                     if value:
                         if isinstance(value, list):
-                            value = ' '.join(str(v) for v in value)
-                        elif isinstance(value, dict):
-                            # For nested objects, just stringify
-                            value = json.dumps(value, ensure_ascii=False)
+                            value = ' '.join(str(v) for v in value if v)
                         value_str = str(value).strip()
-                        if value_str and len(value_str) > 3:  # Skip very short values
+                        if value_str and len(value_str) > 3:
                             state.mapping.append({
                                 "path": f"tours[{idx}].{field}",
                                 "text": value_str,
-                                "tour_index": idx
+                                "tour_index": idx,
+                                "field": field
                             })
-            logger.info(f"✅ Created {len(state.mapping)} mapping entries from tours")
+            
+            logger.info(f"✅ Mapping created: {len(state.mapping)} entries from tours")
         
         state._knowledge_loaded = True
-        logger.info("=" * 60)
-        logger.info("✅ KNOWLEDGE BASE LOADED SUCCESSFULLY")
-        logger.info(f"   Tours: {len(state.tours_db)}")
-        logger.info(f"   Mappings: {len(state.mapping)}")
-        logger.info("=" * 60)
+        logger.info(f"✅ Knowledge initialization complete")
+        logger.info(f"   - Tours: {len(state.tours_db)}")
+        logger.info(f"   - Mapping: {len(state.mapping)} entries")
+        logger.info(f"   - Company info: {'Yes' if state._company_info_loaded else 'No'}")
+        logger.info(f"   - Tour entities: {'Yes' if state._tour_entities_loaded else 'No'}")
         return True
         
+    except json.JSONDecodeError as e:
+        logger.error(f"❌ JSON decode error in knowledge file: {e}")
+        return False
     except Exception as e:
-        logger.error("=" * 60)
-        logger.error(f"❌ FAILED TO LOAD KNOWLEDGE: {e}")
-        logger.error("=" * 60)
+        logger.error(f"❌ Failed to load knowledge: {e}")
         traceback.print_exc()
         return False
 
-# ==================== SEARCH ENGINE ====================
+# ==================== ENHANCED SEARCH ENGINE ====================
 class SearchEngine:
-    """Unified search engine"""
+    """Enhanced search engine with intent-aware searching"""
     
     def __init__(self):
+        logger.info("🧠 Initializing enhanced search engine (intent-aware)")
         self.openai_client = None
+        
+        # Log search mode
+        if Config.FAISS_ENABLED:
+            logger.info("🧠 Search mode: FAISS (if available)")
+        elif NUMPY_AVAILABLE:
+            logger.info("🧠 Search mode: Numpy")
+        else:
+            logger.info("🧠 Search mode: Text-based (fallback)")
         
         if OPENAI_AVAILABLE and Config.OPENAI_API_KEY:
             try:
@@ -634,28 +976,25 @@ class SearchEngine:
                 logger.info("✅ OpenAI client initialized")
             except Exception as e:
                 logger.error(f"❌ OpenAI init failed: {e}")
+        else:
+            logger.info("ℹ️ OpenAI not available, using text search")
     
-    def load_index(self):
+    def load_index(self) -> bool:
         """Load search index"""
         if state._index_loaded:
-            logger.info("✅ Search index already loaded")
+            logger.info("📦 Index already loaded, skipping")
             return True
         
         try:
-            logger.info("🧠 Initializing search engine (low-RAM mode: {})".format(Config.IS_LOW_RAM))
-            
-            # Try FAISS first
             if Config.FAISS_ENABLED and FAISS_AVAILABLE and os.path.exists(Config.FAISS_INDEX_PATH):
-                logger.info(f"📦 Loading FAISS index from {Config.FAISS_INDEX_PATH}...")
+                logger.info(f"📦 Loading FAISS index from {Config.FAISS_INDEX_PATH}")
                 state.index = faiss.read_index(Config.FAISS_INDEX_PATH)
                 logger.info(f"✅ FAISS loaded: {state.index.ntotal} vectors")
-                logger.info("🧠 Search mode: FAISS")
                 state._index_loaded = True
                 return True
             
-            # Try numpy fallback
             if NUMPY_AVAILABLE and os.path.exists(Config.FALLBACK_VECTORS_PATH):
-                logger.info(f"📦 Loading numpy vectors from {Config.FALLBACK_VECTORS_PATH}...")
+                logger.info(f"📦 Loading numpy vectors from {Config.FALLBACK_VECTORS_PATH}")
                 data = np.load(Config.FALLBACK_VECTORS_PATH)
                 
                 if 'mat' in data:
@@ -666,35 +1005,209 @@ class SearchEngine:
                     first_key = list(data.keys())[0]
                     state.vectors = data[first_key]
                 
-                # Normalize
                 if state.vectors is not None:
                     norms = np.linalg.norm(state.vectors, axis=1, keepdims=True)
                     state.vectors = state.vectors / (norms + 1e-12)
                 
                 logger.info(f"✅ Numpy loaded: {state.vectors.shape[0]} vectors")
-                logger.info("🧠 Search mode: Numpy cosine similarity")
                 state._index_loaded = True
                 return True
             
-            logger.warning("⚠️ No vector index found, using text search")
-            logger.info("🧠 Search mode: Text-based (keyword matching)")
-            return False
+            logger.info("ℹ️ No vector index found, will use text-based search")
+            state._index_loaded = True
+            return True
             
         except Exception as e:
             logger.error(f"❌ Failed to load index: {e}")
+            logger.info("⚠️ Continuing with text-based search only")
+            state._index_loaded = True
             return False
+    
+    def search(self, query: str, top_k: int = None, intent: str = None, metadata: Dict = None) -> List[Tuple[float, Dict]]:
+        """Enhanced search with intent awareness"""
+        if top_k is None:
+            top_k = Config.TOP_K
+        
+        if not state.mapping:
+            logger.warning("⚠️ Search called but mapping is empty")
+            return []
+        
+        # Intent-specific search optimization
+        if intent == Intent.ABOUT_COMPANY:
+            # Search for company info
+            return self._search_company_info(query, top_k)
+        
+        # Get query embedding if available
+        embedding = self.get_embedding(query)
+        
+        # FAISS search
+        if embedding is not None and state.index is not None and FAISS_AVAILABLE:
+            try:
+                query_vec = np.array([embedding], dtype='float32')
+                scores, indices = state.index.search(query_vec, top_k)
+                
+                results = []
+                for score, idx in zip(scores[0], indices[0]):
+                    if 0 <= idx < len(state.mapping):
+                        results.append((float(score), state.mapping[idx]))
+                
+                if results:
+                    logger.debug(f"🔍 FAISS search found {len(results)} results")
+                    return results
+            except Exception as e:
+                logger.error(f"FAISS search error: {e}")
+        
+        # Numpy search
+        if embedding is not None and state.vectors is not None and NUMPY_AVAILABLE:
+            try:
+                query_vec = np.array([embedding], dtype='float32')
+                query_norm = query_vec / (np.linalg.norm(query_vec) + 1e-12)
+                
+                similarities = np.dot(state.vectors, query_norm.T).flatten()
+                top_indices = np.argsort(-similarities)[:top_k]
+                
+                results = []
+                for idx in top_indices:
+                    if 0 <= idx < len(state.mapping):
+                        results.append((float(similarities[idx]), state.mapping[idx]))
+                
+                if results:
+                    logger.debug(f"🔍 Numpy search found {len(results)} results")
+                    return results
+            except Exception as e:
+                logger.error(f"Numpy search error: {e}")
+        
+        # Text fallback
+        return self._text_search(query, top_k, intent, metadata)
+    
+    def _search_company_info(self, query: str, top_k: int) -> List[Tuple[float, Dict]]:
+        """Search for company information"""
+        if not state.about_company:
+            return []
+        
+        # Create mapping entries for company info
+        company_mapping = []
+        for key, value in state.about_company.items():
+            if isinstance(value, str) and value.strip():
+                company_mapping.append({
+                    "path": f"about_company.{key}",
+                    "text": value,
+                    "type": "company_info",
+                    "field": key
+                })
+        
+        query_lower = query.lower()
+        results = []
+        
+        for entry in company_mapping:
+            text = entry.get('text', '').lower()
+            score = 0
+            
+            # Simple keyword matching
+            company_keywords = ['ruby wings', 'công ty', 'đơn vị', 'giới thiệu', 'sứ mệnh', 'tầm nhìn']
+            for keyword in company_keywords:
+                if keyword in query_lower:
+                    score += 2
+                if keyword in text:
+                    score += 1
+            
+            if score > 0:
+                results.append((float(score), entry))
+        
+        results.sort(key=lambda x: x[0], reverse=True)
+        return results[:top_k]
+    
+    def _text_search(self, query: str, top_k: int, intent: str = None, metadata: Dict = None) -> List[Tuple[float, Dict]]:
+        """Enhanced text-based search with intent awareness"""
+        if not state.mapping:
+            return []
+        
+        query_lower = query.lower().strip()
+        if not query_lower:
+            import random
+            results = []
+            for entry in random.sample(state.mapping, min(len(state.mapping), top_k)):
+                results.append((0.5, entry))
+            return results
+        
+        query_words = [w for w in query_lower.split() if len(w) > 2]
+        
+        if not query_words:
+            import random
+            results = []
+            for entry in random.sample(state.mapping, min(len(state.mapping), top_k)):
+                results.append((0.3, entry))
+            return results
+        
+        results = []
+        for entry in state.mapping[:500]:
+            text = entry.get('text', '').lower()
+            
+            score = 0
+            for word in query_words:
+                if word in text:
+                    score += 1
+                elif any(word in t for t in text.split()):
+                    score += 0.5
+            
+            # Boost score based on intent
+            if intent:
+                if intent == Intent.TOUR_FILTER and metadata:
+                    # Check if this entry matches filter criteria
+                    tour_idx = entry.get('tour_index')
+                    if tour_idx is not None:
+                        tour = state.get_tour(tour_idx)
+                        if tour and self._matches_filter(tour, metadata):
+                            score += 3
+                
+                # Boost tour_name matches for tour-related intents
+                if intent in [Intent.TOUR_LIST, Intent.TOUR_INQUIRY, Intent.TOUR_FILTER]:
+                    if entry.get('field') == 'tour_name':
+                        score += 2
+            
+            if score > 0:
+                results.append((float(score), entry))
+        
+        results.sort(key=lambda x: x[0], reverse=True)
+        
+        if not results and state.mapping:
+            import random
+            results = []
+            for entry in random.sample(state.mapping, min(len(state.mapping), top_k)):
+                results.append((0.1, entry))
+        
+        logger.debug(f"🔍 Text search found {len(results[:top_k])} results for query: '{query}'")
+        return results[:top_k]
+    
+    def _matches_filter(self, tour: Dict, metadata: Dict) -> bool:
+        """Check if tour matches filter criteria"""
+        match = True
+        
+        # Duration filter
+        if 'duration_days' in metadata and metadata['duration_days'] is not None:
+            tour_duration = state._extract_duration_days(tour)
+            if tour_duration != metadata['duration_days']:
+                match = False
+        
+        # Location filter
+        if match and 'location' in metadata and metadata['location']:
+            tour_location = tour.get('location', '').lower()
+            filter_location = metadata['location'].lower()
+            if filter_location not in tour_location:
+                match = False
+        
+        return match
     
     def get_embedding(self, text: str) -> Optional[List[float]]:
         """Get embedding for text"""
         if not text:
             return None
         
-        # Try OpenAI
         if self.openai_client:
             try:
                 response = self.openai_client.embeddings.create(
                     model=Config.EMBEDDING_MODEL,
-                    input=text[:2000]  # Truncate
+                    input=text[:2000]
                 )
                 return response.data[0].embedding
             except Exception as e:
@@ -711,85 +1224,18 @@ class SearchEngine:
             val = (val + (i % 7) / 7.0) % 1.0
             embedding.append(float(val))
         
-        # Normalize
         norm = sum(x*x for x in embedding) ** 0.5
         if norm > 0:
             embedding = [x/norm for x in embedding]
         
         return embedding
-    
-    def search(self, query: str, top_k: int = None) -> List[Tuple[float, Dict]]:
-        """Search for relevant passages"""
-        if top_k is None:
-            top_k = Config.TOP_K
-        
-        # Get query embedding
-        embedding = self.get_embedding(query)
-        if not embedding:
-            return self._text_search(query, top_k)
-        
-        # FAISS search
-        if state.index is not None and FAISS_AVAILABLE:
-            try:
-                query_vec = np.array([embedding], dtype='float32')
-                scores, indices = state.index.search(query_vec, top_k)
-                
-                results = []
-                for score, idx in zip(scores[0], indices[0]):
-                    if 0 <= idx < len(state.mapping):
-                        results.append((float(score), state.mapping[idx]))
-                
-                return results
-            except Exception as e:
-                logger.error(f"FAISS search error: {e}")
-        
-        # Numpy search
-        if state.vectors is not None and NUMPY_AVAILABLE:
-            try:
-                query_vec = np.array([embedding], dtype='float32')
-                query_norm = query_vec / (np.linalg.norm(query_vec) + 1e-12)
-                
-                similarities = np.dot(state.vectors, query_norm.T).flatten()
-                top_indices = np.argsort(-similarities)[:top_k]
-                
-                results = []
-                for idx in top_indices:
-                    if 0 <= idx < len(state.mapping):
-                        results.append((float(similarities[idx]), state.mapping[idx]))
-                
-                return results
-            except Exception as e:
-                logger.error(f"Numpy search error: {e}")
-        
-        # Text fallback
-        return self._text_search(query, top_k)
-    
-    def _text_search(self, query: str, top_k: int) -> List[Tuple[float, Dict]]:
-        """Simple text-based search"""
-        query_lower = query.lower()
-        query_words = set(query_lower.split())
-        
-        results = []
-        for entry in state.mapping[:200]:  # Limit for performance
-            text = entry.get('text', '').lower()
-            
-            score = 0
-            for word in query_words:
-                if len(word) > 2 and word in text:
-                    score += 1
-            
-            if score > 0:
-                results.append((float(score), entry))
-        
-        results.sort(key=lambda x: x[0], reverse=True)
-        return results[:top_k]
 
 # Initialize search engine
 search_engine = SearchEngine()
 
-# ==================== RESPONSE GENERATOR ====================
+# ==================== INTENT-DRIVEN RESPONSE GENERATOR ====================
 class ResponseGenerator:
-    """Generate responses"""
+    """Intent-driven response generator"""
     
     def __init__(self):
         self.llm_client = None
@@ -803,38 +1249,232 @@ class ResponseGenerator:
                 logger.error(f"LLM client init failed: {e}")
     
     def generate(self, user_message: str, search_results: List, context: Dict) -> str:
-        """Generate response"""
+        """Generate response based on intent"""
         
-        # Handle special intents
         intent = context.get("intent", Intent.UNKNOWN)
+        metadata = context.get("intent_metadata", {})
         
-        if intent == Intent.GREETING or intent == "GREETING":
-            return random.choice([
-                "Xin chào! Tôi là trợ lý AI của Ruby Wings. Rất vui được hỗ trợ bạn! 😊\n\nBạn muốn tìm hiểu về tour nào?",
-                "Chào bạn! Tôi có thể giúp gì cho bạn về các tour Ruby Wings? 🌿"
-            ])
+        logger.info(f"🎯 Generating response for intent: {intent}")
         
-        if intent == Intent.FAREWELL or intent == "FAREWELL":
-            return random.choice([
-                "Cảm ơn bạn! Chúc một ngày tuyệt vời! ✨",
-                "Tạm biệt! Liên hệ **0332510486** nếu cần hỗ trợ nhé! 👋"
-            ])
+        # ==================== INTENT ROUTING ====================
+        # 1. GREETING
+        if intent == Intent.GREETING:
+            return self._generate_greeting()
         
-        # Check if we have results
+        # 2. FAREWELL
+        if intent == Intent.FAREWELL:
+            return self._generate_farewell()
+        
+        # 3. ABOUT_COMPANY
+        if intent == Intent.ABOUT_COMPANY:
+            return self._generate_about_company(metadata)
+        
+        # 4. TOUR_LIST
+        if intent == Intent.TOUR_LIST:
+            return self._generate_tour_list(metadata)
+        
+        # 5. TOUR_FILTER
+        if intent == Intent.TOUR_FILTER:
+            return self._generate_tour_filter(metadata)
+        
+        # 6. TOUR_INQUIRY
+        if intent == Intent.TOUR_INQUIRY:
+            return self._generate_tour_inquiry(search_results, metadata)
+        
+        # 7. PRICE_ASK
+        if intent in [Intent.PRICE_ASK, Intent.PRICE_COMPARE, Intent.PRICE_RANGE]:
+            return self._generate_price_info(search_results, metadata)
+        
+        # 8. BOOKING_REQUEST
+        if intent in [Intent.BOOKING_REQUEST, Intent.BOOKING_PROCESS]:
+            return self._generate_booking_info(search_results, metadata)
+        
+        # 9. CONTACT_INFO
+        if intent == Intent.CONTACT_INFO:
+            return self._generate_contact_info()
+        
+        # 10. CALLBACK_REQUEST
+        if intent == Intent.CALLBACK_REQUEST:
+            return self._generate_callback_request(metadata)
+        
+        # 11. PROVIDE_PHONE / LEAD_CAPTURED
+        if intent in [Intent.PROVIDE_PHONE, Intent.LEAD_CAPTURED]:
+            return self._generate_lead_confirm(metadata)
+        
+        # 12. SMALLTALK
+        if intent == Intent.SMALLTALK:
+            return self._generate_smalltalk(search_results, metadata)
+        
+        # Default: UNKNOWN
+        return self._generate_fallback(search_results, metadata)
+    
+    # ==================== INTENT HANDLERS ====================
+    
+    def _generate_greeting(self) -> str:
+        """Generate greeting response"""
+        greetings = [
+            "Xin chào! Tôi là trợ lý AI của Ruby Wings. Rất vui được hỗ trợ bạn! 😊\n\nBạn muốn tìm hiểu về tour nào?",
+            "Chào bạn! Tôi có thể giúp gì cho bạn về các tour Ruby Wings? 🌿",
+            "Xin chào! Ruby Wings hân hạnh được phục vụ bạn. Bạn cần tư vấn về tour nào ạ? 🎒"
+        ]
+        return random.choice(greetings)
+    
+    def _generate_farewell(self) -> str:
+        """Generate farewell response"""
+        farewells = [
+            "Cảm ơn bạn! Chúc một ngày tuyệt vời! ✨",
+            "Tạm biệt! Liên hệ **0332510486** nếu cần hỗ trợ nhé! 👋",
+            "Cảm ơn đã trò chuyện! Hy vọng sớm được đồng hành cùng bạn trên hành trình Ruby Wings! 🌈"
+        ]
+        return random.choice(farewells)
+    
+    def _generate_about_company(self, metadata: Dict) -> str:
+        """Generate company information response"""
+        if not state.about_company:
+            return "Ruby Wings là đơn vị tổ chức du lịch trải nghiệm, retreat, và hành trình chữa lành tại Miền Trung Việt Nam. 🌿"
+        
+        overview = state.about_company.get('overview', '')
+        mission = state.about_company.get('mission', '')
+        vision = state.about_company.get('vision', '')
+        
+        response = "**Ruby Wings** - Tổ chức du lịch trải nghiệm & chữa lành 🌈\n\n"
+        
+        if overview:
+            response += f"{overview}\n\n"
+        
+        if mission:
+            response += f"**Sứ mệnh:** {mission}\n\n"
+        
+        if vision:
+            response += f"**Tầm nhìn:** {vision}\n\n"
+        
+        response += "👉 Khám phá các hành trình của chúng tôi hoặc liên hệ **0332510486** để được tư vấn!"
+        
+        return response
+    
+    def _generate_tour_list(self, metadata: Dict) -> str:
+        """Generate list of all tours"""
+        if not state.tours_db:
+            return "Hiện tại chưa có tour nào. Vui lòng liên hệ **0332510486** để biết thêm chi tiết! 📞"
+        
+        tours = list(state.tours_db.values())
+        
+        if len(tours) > Config.MAX_TOURS_PER_RESPONSE:
+            response = f"Ruby Wings hiện có **{len(tours)}** tour đa dạng. Dưới đây là một số tour tiêu biểu:\n\n"
+            tours = random.sample(tours, min(Config.MAX_TOURS_PER_RESPONSE, len(tours)))
+        else:
+            response = f"Ruby Wings có **{len(tours)}** tour:\n\n"
+        
+        for idx, tour in enumerate(tours[:Config.MAX_TOURS_PER_RESPONSE], 1):
+            response += f"{idx}. **{tour.get('tour_name', 'Tour')}**\n"
+            
+            if tour.get('duration'):
+                response += f"   ⏱️ {tour['duration']}\n"
+            
+            if tour.get('location'):
+                response += f"   📍 {tour['location']}\n"
+            
+            if tour.get('price'):
+                price = tour['price']
+                if len(price) > 50:
+                    price = price[:50] + "..."
+                response += f"   💰 {price}\n"
+            
+            response += "\n"
+        
+        response += "Bạn muốn tìm hiểu chi tiết về tour nào? Hoặc có thể lọc tour theo thời gian/địa điểm nữa nhé! 😊"
+        
+        return response
+    
+    def _generate_tour_filter(self, metadata: Dict) -> str:
+        """Generate filtered tour response"""
+        if not state.tours_db:
+            return "Hiện tại chưa có tour nào phù hợp. Vui lòng liên hệ **0332510486** để được tư vấn cụ thể! 📞"
+        
+        # Extract filter criteria
+        duration_days = metadata.get('duration_days')
+        location = metadata.get('location')
+        price_max = metadata.get('price_max')
+        tags = metadata.get('tags', [])
+        
+        # Build filter description
+        filter_desc = []
+        if duration_days:
+            filter_desc.append(f"{duration_days} ngày")
+        if location:
+            filter_desc.append(f"địa điểm {location}")
+        if price_max:
+            filter_desc.append(f"giá dưới {price_max:,} VNĐ")
+        if tags:
+            filter_desc.append(f"chủ đề {', '.join(tags)}")
+        
+        # Filter tours
+        filtered_tours = state.filter_tours(
+            duration_days=duration_days,
+            location=location,
+            price_max=price_max,
+            tags=tags
+        )
+        
+        if not filtered_tours:
+            filter_text = " và ".join(filter_desc) if filter_desc else "theo yêu cầu của bạn"
+            return f"Hiện chưa có tour {filter_text}. Bạn có thể:\n\n1. Thử tìm với tiêu chí khác\n2. Xem tất cả tour\n3. Liên hệ **0332510486** để đặt tour riêng! 📞"
+        
+        # Build response
+        if filter_desc:
+            filter_text = " và ".join(filter_desc)
+            response = f"Tìm thấy **{len(filtered_tours)}** tour {filter_text}:\n\n"
+        else:
+            response = f"Tìm thấy **{len(filtered_tours)}** tour:\n\n"
+        
+        for idx, tour in enumerate(filtered_tours[:Config.MAX_TOURS_PER_RESPONSE], 1):
+            response += f"{idx}. **{tour.get('tour_name', 'Tour')}**\n"
+            
+            if tour.get('duration'):
+                response += f"   ⏱️ {tour['duration']}\n"
+            
+            if tour.get('location'):
+                response += f"   📍 {tour['location']}\n"
+            
+            if tour.get('price'):
+                price = tour['price']
+                if len(price) > 50:
+                    price = price[:50] + "..."
+                response += f"   💰 {price}\n"
+            
+            if tour.get('summary'):
+                summary = tour['summary']
+                if len(summary) > 100:
+                    summary = summary[:100] + "..."
+                response += f"   📝 {summary}\n"
+            
+            response += "\n"
+        
+        if len(filtered_tours) > Config.MAX_TOURS_PER_RESPONSE:
+            response += f"... và {len(filtered_tours) - Config.MAX_TOURS_PER_RESPONSE} tour khác.\n\n"
+        
+        response += "Bạn muốn biết thêm chi tiết về tour nào? Hoặc liên hệ **0332510486** để đặt tour ngay! 📱"
+        
+        return response
+    
+    def _generate_tour_inquiry(self, search_results: List, metadata: Dict) -> str:
+        """Generate response for general tour inquiry"""
         if not search_results:
-            return "Xin lỗi, tôi chưa tìm thấy thông tin phù hợp. Vui lòng liên hệ hotline **0332510486** để được tư vấn! 📞"
+            return self._generate_tour_list(metadata)
         
-        # Build response from search results
         response = "Dựa trên yêu cầu của bạn, tôi tìm thấy:\n\n"
         
-        # Group by tour
         tours_mentioned = set()
+        added_count = 0
+        
         for score, entry in search_results[:Config.MAX_TOURS_PER_RESPONSE]:
             tour_idx = entry.get('tour_index')
             if tour_idx is not None and tour_idx not in tours_mentioned:
                 tour = state.get_tour(tour_idx)
                 if tour:
                     tours_mentioned.add(tour_idx)
+                    added_count += 1
+                    
                     response += f"**{tour.get('tour_name', 'Tour')}**\n"
                     
                     if tour.get('location'):
@@ -853,40 +1493,158 @@ class ResponseGenerator:
                         response += f"📝 {summary}\n"
                     response += "\n"
         
+        if added_count == 0:
+            return self._generate_tour_list(metadata)
+        
         response += "Bạn muốn biết thêm chi tiết gì? Hoặc liên hệ **0332510486** để đặt tour! 😊"
         
         return response
+    
+    def _generate_price_info(self, search_results: List, metadata: Dict) -> str:
+        """Generate price information response"""
+        if not search_results:
+            return "Để biết giá cụ thể, vui lòng:\n\n1. Chọn tour bạn quan tâm\n2. Liên hệ **0332510486** để được báo giá chi tiết\n\n💰 Giá tour thường từ 890.000 VNĐ - 3.500.000 VNĐ tùy loại."
+        
+        response = "Thông tin giá các tour:\n\n"
+        
+        tours_mentioned = set()
+        
+        for score, entry in search_results[:Config.MAX_TOURS_PER_RESPONSE]:
+            tour_idx = entry.get('tour_index')
+            if tour_idx is not None and tour_idx not in tours_mentioned:
+                tour = state.get_tour(tour_idx)
+                if tour and tour.get('price'):
+                    tours_mentioned.add(tour_idx)
+                    
+                    response += f"**{tour.get('tour_name', 'Tour')}**\n"
+                    response += f"💰 {tour['price']}\n\n"
+        
+        if not tours_mentioned:
+            response = "Các tour Ruby Wings có giá từ **890.000 VNĐ** đến **3.500.000 VNĐ** tùy thời lượng và dịch vụ.\n\n"
+            response += "Để biết giá chính xác, vui lòng:\n"
+            response += "1. Chọn tour cụ thể\n"
+            response += "2. Liên hệ **0332510486** để được báo giá chi tiết và ưu đãi! 📞"
+        
+        return response
+    
+    def _generate_booking_info(self, search_results: List, metadata: Dict) -> str:
+        """Generate booking information response"""
+        response = "🎯 **Đặt tour Ruby Wings**\n\n"
+        response += "Để đặt tour, bạn có thể:\n\n"
+        response += "1. **Chọn tour** từ danh sách trên\n"
+        response += "2. **Cung cấp số điện thoại** để chúng tôi liên hệ tư vấn\n"
+        response += "3. **Gọi trực tiếp 0332510486** để đặt ngay\n\n"
+        response += "📋 **Thông tin cần chuẩn bị:**\n"
+        response += "- Họ tên đầy đủ\n"
+        response += "- Số điện thoại\n"
+        response += "- Ngày dự kiến đi tour\n"
+        response += "- Số lượng người tham gia\n\n"
+        response += "Sau khi đặt, bạn sẽ nhận được xác nhận và hướng dẫn chi tiết qua SMS/Zalo. 📱"
+        
+        return response
+    
+    def _generate_contact_info(self) -> str:
+        """Generate contact information response"""
+        response = "📞 **Liên hệ Ruby Wings**\n\n"
+        response += "**Hotline:** 0332510486\n"
+        response += "**Zalo:** 0332510486\n"
+        response += "**Email:** info@rubywings.vn\n\n"
+        response += "⏰ **Thời gian làm việc:**\n"
+        response += "- Thứ 2 - Thứ 6: 8:00 - 17:00\n"
+        response += "- Thứ 7: 8:00 - 12:00\n"
+        response += "- Chủ nhật: Nghỉ\n\n"
+        response += "📍 **Địa chỉ:** Đà Nẵng, Việt Nam\n\n"
+        response += "Chúng tôi sẵn sàng tư vấn và hỗ trợ bạn 24/7 qua hotline! 😊"
+        
+        return response
+    
+    def _generate_callback_request(self, metadata: Dict) -> str:
+        """Generate callback request response"""
+        response = "✅ **Yêu cầu gọi lại đã được ghi nhận!**\n\n"
+        response += "Đội ngũ Ruby Wings sẽ liên hệ với bạn trong thời gian sớm nhất.\n\n"
+        response += "📋 **Thông tin đã ghi nhận:**\n"
+        
+        if metadata.get('duration_days'):
+            response += f"- Tour {metadata['duration_days']} ngày\n"
+        
+        if metadata.get('location'):
+            response += f"- Địa điểm: {metadata['location']}\n"
+        
+        response += "\n**Hoặc bạn có thể gọi ngay:** 0332510486\n\n"
+        response += "Cảm ơn bạn đã quan tâm đến Ruby Wings! 🌿"
+        
+        return response
+    
+    def _generate_lead_confirm(self, metadata: Dict) -> str:
+        """Generate lead confirmation response"""
+        phone = metadata.get('phone_number', '')
+        masked_phone = phone[:3] + '***' + phone[-2:] if phone else '***'
+        
+        response = "✅ **Thông tin của bạn đã được lưu thành công!**\n\n"
+        response += f"Số điện thoại: {masked_phone}\n"
+        response += "Đội ngũ Ruby Wings sẽ liên hệ với bạn trong vòng 15 phút.\n\n"
+        response += "📱 **Các bước tiếp theo:**\n"
+        response += "1. Nhân viên sẽ gọi tư vấn chi tiết về tour\n"
+        response += "2. Xác nhận thông tin và ngày đi\n"
+        response += "3. Hướng dẫn thanh toán và chuẩn bị\n\n"
+        response += "Cảm ơn bạn đã tin tưởng Ruby Wings! 🌈"
+        
+        return response
+    
+    def _generate_smalltalk(self, search_results: List, metadata: Dict) -> str:
+        """Generate smalltalk response"""
+        responses = [
+            "Tôi có thể giúp gì cho bạn về các tour Ruby Wings? 😊",
+            "Bạn muốn tìm hiểu về tour nào ạ? Tôi sẵn sàng hỗ trợ! 🌿",
+            "Ruby Wings có nhiều tour trải nghiệm thú vị. Bạn quan tâm đến chủ đề nào? 🎒"
+        ]
+        
+        return random.choice(responses)
+    
+    def _generate_fallback(self, search_results: List, metadata: Dict) -> str:
+        """Generate fallback response"""
+        return "Tôi có thể giúp gì cho bạn về các tour Ruby Wings? Bạn có thể:\n\n1. Hỏi về tour cụ thể\n2. Tìm tour theo thời gian/địa điểm\n3. Hỏi về giá cả\n4. Yêu cầu tư vấn đặt tour\n\nHoặc liên hệ **0332510486** để được hỗ trợ nhanh nhất! 📞"
 
 # Initialize response generator
 response_gen = ResponseGenerator()
 
-# ==================== CHAT PROCESSOR ====================
+# ==================== ENHANCED CHAT PROCESSOR ====================
 class ChatProcessor:
-    """Main chat processing engine"""
+    """Enhanced chat processor with intent-driven flow"""
     
     def __init__(self):
         self.response_generator = response_gen
         self.search_engine = search_engine
     
+    def ensure_knowledge_loaded(self):
+        """Ensure knowledge is loaded before processing"""
+        if not state._knowledge_loaded:
+            logger.warning("⚠️ Knowledge not initialized – initializing now")
+            if not load_knowledge():
+                logger.error("❌ Failed to load knowledge in chat processor")
+                return False
+            
+            search_engine.load_index()
+            logger.info("✅ Knowledge ready for chat")
+            return True
+        
+        return True
+    
     def process(self, user_message: str, session_id: str) -> Dict[str, Any]:
-        """Process user message"""
+        """Process user message with enhanced intent handling"""
         start_time = time.time()
         
         try:
-            # CRITICAL: Ensure knowledge is loaded (lazy init if needed)
-            if not state._knowledge_loaded or not state.mapping:
-                logger.warning("⚠️ Knowledge not initialized – initializing now...")
-                if not load_knowledge():
-                    logger.error("❌ Failed to load knowledge during chat request")
-                    return {
-                        'reply': "Xin lỗi, hệ thống đang khởi động. Vui lòng thử lại sau hoặc liên hệ **0332510486**! 🙏",
-                        'session_id': session_id,
-                        'error': 'Knowledge not loaded',
-                        'processing_time_ms': int((time.time() - start_time) * 1000),
-                        'timestamp': datetime.now().isoformat()
-                    }
-                else:
-                    logger.info("✅ Knowledge loaded successfully during chat request")
+            # CRITICAL: Ensure knowledge is loaded
+            if not self.ensure_knowledge_loaded():
+                logger.error("❌ Cannot process chat without knowledge")
+                return {
+                    'reply': "Xin lỗi, hệ thống đang khởi tạo dữ liệu. Vui lòng thử lại sau 5 giây hoặc liên hệ **0332510486**! 🙏",
+                    'session_id': session_id,
+                    'error': 'knowledge_not_loaded',
+                    'processing_time_ms': int((time.time() - start_time) * 1000),
+                    'timestamp': datetime.now().isoformat()
+                }
             
             # Get session context
             context = state.get_session(session_id)
@@ -901,9 +1659,13 @@ class ChatProcessor:
                 cached['from_cache'] = True
                 return cached
             
-            # Detect intent
+            # Detect intent with metadata
             intent, confidence, metadata = detect_intent(user_message)
             context['intent'] = intent.name if hasattr(intent, 'name') else str(intent)
+            context['intent_metadata'] = metadata
+            
+            # Update intent statistics
+            state.stats['intent_counts'][context['intent']] += 1
             
             # Detect phone number
             phone = metadata.get('phone_number') or detect_phone_number(user_message)
@@ -924,8 +1686,13 @@ class ChatProcessor:
             if Config.STATE_MACHINE_ENABLED:
                 context['stage'] = self._next_stage(context['stage'], intent)
             
-            # Search for relevant information
-            search_results = self.search_engine.search(user_message, Config.TOP_K)
+            # Intent-aware search
+            search_results = self.search_engine.search(
+                user_message, 
+                Config.TOP_K, 
+                intent=context['intent'],
+                metadata=metadata
+            )
             
             # Extract mentioned tours
             mentioned_tours = []
@@ -936,7 +1703,7 @@ class ChatProcessor:
             
             context['mentioned_tours'] = mentioned_tours
             
-            # Generate response
+            # Generate intent-driven response
             response_text = self.response_generator.generate(
                 user_message,
                 search_results,
@@ -971,19 +1738,21 @@ class ChatProcessor:
             if len(context['conversation_history']) > Config.CONVERSATION_HISTORY_LIMIT * 2:
                 context['conversation_history'] = context['conversation_history'][-Config.CONVERSATION_HISTORY_LIMIT * 2:]
             
-            # Build result
+            # Build enhanced result
             result = {
                 'reply': response_text,
                 'session_id': session_id,
                 'session_state': {
                     'stage': context.get('stage').value if hasattr(context.get('stage'), 'value') else context.get('stage'),
                     'intent': context.get('intent'),
+                    'intent_metadata': metadata,
                     'mentioned_tours': mentioned_tours,
                     'has_phone': bool(phone)
                 },
                 'intent': {
                     'name': intent.name if hasattr(intent, 'name') else str(intent),
-                    'confidence': confidence
+                    'confidence': confidence,
+                    'metadata': metadata
                 },
                 'search': {
                     'results_count': len(search_results),
@@ -991,7 +1760,8 @@ class ChatProcessor:
                 },
                 'processing_time_ms': int((time.time() - start_time) * 1000),
                 'from_cache': False,
-                'timestamp': datetime.now().isoformat()
+                'timestamp': datetime.now().isoformat(),
+                'response_type': self._get_response_type(context['intent'])
             }
             
             # Cache result
@@ -1000,10 +1770,14 @@ class ChatProcessor:
             # Update stats
             state.stats['requests'] += 1
             
-            logger.info(f"⏱️ Processed in {result['processing_time_ms']}ms | "
-                       f"Intent: {intent.name if hasattr(intent, 'name') else intent} | "
-                       f"Stage: {context.get('stage')} | "
-                       f"Results: {len(search_results)}")
+            # Log with intent and processing time
+            processing_time = result['processing_time_ms']
+            intent_name = context['intent']
+            
+            logger.info(f"⏱️ Processed in {processing_time}ms | "
+                       f"Intent: {intent_name} | "
+                       f"Results: {len(search_results)} | "
+                       f"Mapping: {len(state.mapping)} entries")
             
             return result
             
@@ -1021,15 +1795,10 @@ class ChatProcessor:
                 'timestamp': datetime.now().isoformat()
             }
     
-    def _next_stage(self, current_stage, intent):
-        """Determine next conversation stage
-        
-        Returns:
-            str: Stage value as string (e.g., "explore", "suggest", "lead")
-        """
+    def _next_stage(self, current_stage: str, intent) -> str:
+        """Determine next conversation stage"""
         intent_name = intent.name if hasattr(intent, 'name') else str(intent)
         
-        # Convert string to Enum if needed for comparison
         if isinstance(current_stage, str):
             try:
                 current_stage = ConversationStage(current_stage)
@@ -1039,13 +1808,18 @@ class ChatProcessor:
         transitions = {
             ConversationStage.EXPLORE: {
                 'TOUR_INQUIRY': ConversationStage.SUGGEST,
+                'TOUR_LIST': ConversationStage.SUGGEST,
+                'TOUR_FILTER': ConversationStage.SUGGEST,
                 'PRICE_ASK': ConversationStage.SUGGEST,
+                'ABOUT_COMPANY': ConversationStage.EXPLORE,
                 'PROVIDE_PHONE': ConversationStage.LEAD,
                 'CALLBACK_REQUEST': ConversationStage.CALLBACK
             },
             ConversationStage.SUGGEST: {
                 'BOOKING_REQUEST': ConversationStage.SELECT,
-                'PROVIDE_PHONE': ConversationStage.LEAD
+                'PROVIDE_PHONE': ConversationStage.LEAD,
+                'TOUR_FILTER': ConversationStage.SUGGEST,
+                'PRICE_ASK': ConversationStage.SUGGEST
             },
             ConversationStage.SELECT: {
                 'BOOKING_REQUEST': ConversationStage.BOOK,
@@ -1059,16 +1833,34 @@ class ChatProcessor:
         next_stages = transitions.get(current_stage, {})
         next_stage = next_stages.get(intent_name, current_stage)
         
-        # Always return string value for JSON serialization
         return next_stage.value if hasattr(next_stage, 'value') else str(next_stage)
+    
+    def _get_response_type(self, intent: str) -> str:
+        """Get response type based on intent"""
+        response_types = {
+            'GREETING': 'GREETING',
+            'FAREWELL': 'FAREWELL',
+            'ABOUT_COMPANY': 'COMPANY_INFO',
+            'TOUR_LIST': 'TOUR_LIST',
+            'TOUR_FILTER': 'TOUR_FILTER_RESULT',
+            'TOUR_INQUIRY': 'TOUR_DETAILS',
+            'PRICE_ASK': 'PRICE_INFO',
+            'BOOKING_REQUEST': 'BOOKING_INFO',
+            'CONTACT_INFO': 'CONTACT_INFO',
+            'CALLBACK_REQUEST': 'CALLBACK_CONFIRM',
+            'PROVIDE_PHONE': 'LEAD_CONFIRM',
+            'LEAD_CAPTURED': 'LEAD_CONFIRM',
+            'SMALLTALK': 'SMALLTALK',
+            'UNKNOWN': 'GENERAL'
+        }
+        
+        return response_types.get(intent, 'GENERAL')
     
     def _capture_lead(self, phone: str, session_id: str, message: str, context: Dict):
         """Capture lead data"""
         try:
-            # Clean phone
             phone_clean = re.sub(r'[^\d+]', '', phone)
             
-            # Create lead data following LeadData.to_row() (13 columns)
             lead_data = {
                 'timestamp': datetime.now().isoformat(),
                 'source_channel': 'Website',
@@ -1140,7 +1932,6 @@ class ChatProcessor:
             sh = gc.open_by_key(Config.GOOGLE_SHEET_ID)
             ws = sh.worksheet(Config.GOOGLE_SHEET_NAME)
             
-            # FIXED: 13 columns with str() cast
             row = [
                 str(lead_data.get('timestamp', '')),
                 str(lead_data.get('source_channel', '')),
@@ -1162,25 +1953,19 @@ class ChatProcessor:
             
         except Exception as e:
             logger.error(f"Google Sheets error: {e}")
-            # Don't raise - fallback storage will catch it
     
     def _save_to_fallback(self, lead_data: Dict):
         """Save to fallback JSON file"""
         try:
-            # Load existing
             if os.path.exists(Config.FALLBACK_STORAGE_PATH):
                 with open(Config.FALLBACK_STORAGE_PATH, 'r', encoding='utf-8') as f:
                     leads = json.load(f)
             else:
                 leads = []
             
-            # Add new lead
             leads.append(lead_data)
-            
-            # Keep only last 1000
             leads = leads[-1000:]
             
-            # Save
             with open(Config.FALLBACK_STORAGE_PATH, 'w', encoding='utf-8') as f:
                 json.dump(leads, f, ensure_ascii=False, indent=2)
             
@@ -1192,13 +1977,12 @@ class ChatProcessor:
 # Initialize chat processor
 chat_processor = ChatProcessor()
 
-# ==================== ROUTES ====================
+# ==================== ROUTES (UNCHANGED - PRESERVE EXISTING FEATURES) ====================
 @app.before_request
 def before_request():
     """Before request handler"""
     g.start_time = time.time()
     
-    # Track pageview for Meta CAPI
     if Config.ENABLE_META_CAPI and META_CAPI_AVAILABLE:
         try:
             if request.path not in ['/health', '/stats', '/favicon.ico']:
@@ -1211,7 +1995,6 @@ def before_request():
 @app.after_request
 def after_request(response):
     """After request handler"""
-    # Add processing time header
     if hasattr(g, 'start_time'):
         elapsed = (time.time() - g.start_time) * 1000
         response.headers['X-Processing-Time'] = f"{elapsed:.2f}ms"
@@ -1223,12 +2006,14 @@ def health():
     """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'version': '5.2.2',
+        'version': '5.2.3-intent',
         'timestamp': datetime.now().isoformat(),
-        'config': {
-            'ram_profile': f"{Config.RAM_PROFILE}MB",
-            'faiss_enabled': Config.FAISS_ENABLED,
-            'low_ram_mode': Config.IS_LOW_RAM
+        'knowledge': {
+            'loaded': state._knowledge_loaded,
+            'tours': len(state.tours_db),
+            'mapping_entries': len(state.mapping),
+            'company_info_loaded': state._company_info_loaded,
+            'tour_entities_loaded': state._tour_entities_loaded
         },
         'modules': {
             'openai': OPENAI_AVAILABLE and bool(Config.OPENAI_API_KEY),
@@ -1237,18 +2022,7 @@ def health():
             'response_guard': RESPONSE_GUARD_AVAILABLE,
             'faiss': FAISS_AVAILABLE,
             'numpy': NUMPY_AVAILABLE
-        },
-        'knowledge': {
-            'loaded': state._knowledge_loaded,
-            'tours': len(state.tours_db),
-            'mappings': len(state.mapping),
-            'index_loaded': state._index_loaded
-        },
-        'search_mode': (
-            'faiss' if state.index is not None 
-            else 'numpy' if state.vectors is not None 
-            else 'text'
-        )
+        }
     })
 
 @app.route('/', methods=['GET'])
@@ -1256,8 +2030,10 @@ def index():
     """Index route"""
     return jsonify({
         'service': 'Ruby Wings AI Chatbot',
-        'version': '5.2.2',
+        'version': '5.2.3 (Intent-Driven Fix)',
         'status': 'running',
+        'knowledge_loaded': state._knowledge_loaded,
+        'tours_available': len(state.tours_db),
         'endpoints': {
             'chat': '/api/chat',
             'save_lead': '/api/save-lead',
@@ -1285,7 +2061,6 @@ def chat():
         if not user_message:
             return jsonify({'error': 'Message is required'}), 400
         
-        # Process message
         result = chat_processor.process(user_message, session_id)
         
         return jsonify(result)
@@ -1302,7 +2077,7 @@ def chat():
 
 @app.route('/chat', methods=['POST', 'OPTIONS'])
 def chat_legacy():
-    """Legacy /chat endpoint - backward compatible"""
+    """Legacy /chat endpoint"""
     if request.method == 'OPTIONS':
         return jsonify({'status': 'ok'}), 200
     
@@ -1338,7 +2113,6 @@ def save_lead():
     try:
         data = request.get_json() or {}
         
-        # Extract data
         phone = data.get('phone', '').strip()
         name = data.get('name', '').strip()
         email = data.get('email', '').strip()
@@ -1351,14 +2125,11 @@ def save_lead():
         if not phone:
             return jsonify({'error': 'Phone number is required'}), 400
         
-        # Clean phone
         phone_clean = re.sub(r'[^\d+]', '', phone)
         
-        # Validate phone
         if not re.match(r'^(0|\+?84)\d{9,10}$', phone_clean):
             return jsonify({'error': 'Invalid phone number format'}), 400
         
-        # Create lead data (13 columns)
         lead_data = {
             'timestamp': datetime.now().isoformat(),
             'source_channel': source_channel,
@@ -1375,7 +2146,6 @@ def save_lead():
             'stage': ''
         }
         
-        # Send to Meta CAPI
         if Config.ENABLE_META_CAPI and META_CAPI_AVAILABLE:
             try:
                 result = send_meta_lead(
@@ -1395,7 +2165,6 @@ def save_lead():
                 state.stats['meta_capi_errors'] += 1
                 logger.error(f"Meta CAPI error: {e}")
         
-        # Save to Google Sheets
         if Config.ENABLE_GOOGLE_SHEETS:
             try:
                 import gspread
@@ -1412,7 +2181,6 @@ def save_lead():
                     sh = gc.open_by_key(Config.GOOGLE_SHEET_ID)
                     ws = sh.worksheet(Config.GOOGLE_SHEET_NAME)
                     
-                    # FIXED: 13 columns
                     row = [
                         str(lead_data['timestamp']),
                         str(lead_data['source_channel']),
@@ -1434,7 +2202,6 @@ def save_lead():
             except Exception as e:
                 logger.error(f"Google Sheets error: {e}")
         
-        # Fallback storage
         if Config.ENABLE_FALLBACK_STORAGE:
             try:
                 if os.path.exists(Config.FALLBACK_STORAGE_PATH):
@@ -1453,7 +2220,6 @@ def save_lead():
             except Exception as e:
                 logger.error(f"Fallback storage error: {e}")
         
-        # Update stats
         state.stats['leads'] += 1
         
         return jsonify({
@@ -1483,7 +2249,6 @@ def call_button():
         page_url = data.get('page_url', '')
         call_type = data.get('call_type', 'regular')
         
-        # Send to Meta CAPI
         if Config.ENABLE_META_CAPI_CALL and META_CAPI_AVAILABLE:
             try:
                 result = send_meta_call_button(
@@ -1548,11 +2313,9 @@ def reindex():
         return jsonify({'error': 'Unauthorized'}), 403
     
     try:
-        # Reset flags
         state._knowledge_loaded = False
         state._index_loaded = False
         
-        # Reload
         load_knowledge()
         search_engine.load_index()
         
@@ -1606,41 +2369,23 @@ def internal_error(error):
 def initialize_app():
     """Initialize application"""
     try:
-        logger.info("=" * 60)
-        logger.info("🚀 RUBY WINGS CHATBOT v5.2.2 STARTING...")
-        logger.info("=" * 60)
-        logger.info(f"🔧 RAM profile: {Config.RAM_PROFILE}MB")
-        logger.info(f"🔧 FAISS enabled: {Config.FAISS_ENABLED}")
-        logger.info(f"🔧 Low RAM mode: {Config.IS_LOW_RAM}")
-        logger.info("=" * 60)
+        logger.info("🚀 Initializing Ruby Wings Chatbot v5.2.3 (Intent-Driven)...")
+        logger.info(f"🚀 App startup – RAM profile: {Config.RAM_PROFILE}MB")
         
-        # Log configuration
         Config.log_config()
         
-        # Load knowledge - CRITICAL
-        logger.info("📚 Loading knowledge base...")
-        knowledge_loaded = load_knowledge()
-        
-        if not knowledge_loaded:
-            logger.error("=" * 60)
-            logger.error("❌ CRITICAL: Knowledge base failed to load!")
-            logger.error("❌ Chatbot will not work without knowledge")
-            logger.error("❌ Please check KNOWLEDGE_PATH and file existence")
-            logger.error("=" * 60)
+        logger.info("🔍 Step 1: Loading knowledge base...")
+        if not load_knowledge():
+            logger.error("❌ Failed to load knowledge base on startup")
+            logger.info("⚠️ Continuing anyway - features that don't need knowledge will work")
         else:
-            logger.info("✅ Knowledge base loaded successfully")
+            logger.info("✅ Knowledge loaded successfully at startup")
         
-        # Load search index
-        logger.info("🧠 Loading search index...")
-        index_loaded = search_engine.load_index()
-        
-        if not index_loaded:
-            logger.warning("⚠️ Search index not loaded, will use text search")
+        logger.info("🔍 Step 2: Loading search index...")
+        if not search_engine.load_index():
+            logger.warning("⚠️ Search index not loaded, using text search only")
         else:
-            logger.info("✅ Search index loaded successfully")
-        
-        # Check integrations
-        logger.info("🔌 Checking integrations...")
+            logger.info("✅ Search engine ready")
         
         if META_CAPI_AVAILABLE and Config.ENABLE_META_CAPI:
             logger.info("✅ Meta CAPI ready")
@@ -1650,30 +2395,23 @@ def initialize_app():
         if OPENAI_AVAILABLE and Config.OPENAI_API_KEY:
             logger.info("✅ OpenAI ready")
         else:
-            logger.warning("⚠️ OpenAI not available, using fallback")
+            logger.info("ℹ️ OpenAI not available, using intent-based responses")
         
-        # Final status
         logger.info("=" * 60)
-        if knowledge_loaded:
-            logger.info("✅ RUBY WINGS CHATBOT READY!")
-            logger.info(f"📊 Tours loaded: {len(state.tours_db)}")
-            logger.info(f"📊 Mappings loaded: {len(state.mapping)}")
-        else:
-            logger.error("⚠️ CHATBOT STARTED WITH WARNINGS")
-            logger.error("⚠️ Knowledge not loaded - chatbot may not work")
-        
+        logger.info("✅ RUBY WINGS CHATBOT READY!")
+        logger.info(f"📊 Tours loaded: {len(state.tours_db)}")
+        logger.info(f"🔍 Mapping entries: {len(state.mapping)}")
+        logger.info(f"🏢 Company info: {'Yes' if state._company_info_loaded else 'No'}")
         logger.info(f"🌐 Server: {Config.HOST}:{Config.PORT}")
         logger.info("=" * 60)
         
     except Exception as e:
-        logger.error("=" * 60)
-        logger.error(f"❌ INITIALIZATION FAILED: {e}")
-        logger.error("=" * 60)
+        logger.error(f"❌ Initialization failed: {e}")
         traceback.print_exc()
+        logger.error("❌ App may not function correctly")
 
 # ==================== APPLICATION ENTRY POINT ====================
 if __name__ == '__main__':
-    # Development mode
     initialize_app()
     
     app.run(
@@ -1684,5 +2422,4 @@ if __name__ == '__main__':
         use_reloader=False
     )
 else:
-    # Production mode (Gunicorn)
     initialize_app()
