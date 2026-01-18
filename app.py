@@ -3328,12 +3328,6 @@ if __name__ == '__main__':
 # CRITICAL FIX: Lazy evaluation to ensure components are initialized
 # when accessed by gunicorn_conf.py, not when module is imported
 
-# Property-based access for search_engine (lazy init on access)
-@property
-def _get_search_engine():
-    """Get search engine with lazy initialization"""
-    return state.get_search_engine()
-
 # For gunicorn_conf.py compatibility: create a simple object wrapper
 class _SearchEngineProxy:
     """Proxy object that lazily initializes search_engine on attribute access"""
@@ -3356,10 +3350,25 @@ class _SearchEngineProxy:
 # Export proxy object (will work even before initialize_app is called)
 search_engine = _SearchEngineProxy()
 
-# Export availability flags
-OPENAI_AVAILABLE = OPENAI_AVAILABLE
-FAISS_AVAILABLE = FAISS_AVAILABLE  
-NUMPY_AVAILABLE = NUMPY_AVAILABLE
+# Export availability flags for gunicorn health checks
+# Simple boolean flags based on successful imports
+try:
+    from openai import OpenAI
+    OPENAI_AVAILABLE = True
+except:
+    OPENAI_AVAILABLE = False
+
+try:
+    import faiss
+    FAISS_AVAILABLE = Config.FAISS_ENABLED
+except:
+    FAISS_AVAILABLE = False
+
+try:
+    import numpy
+    NUMPY_AVAILABLE = True
+except:
+    NUMPY_AVAILABLE = False
 
 __all__ = [
     "app",
