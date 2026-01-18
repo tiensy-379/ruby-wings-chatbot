@@ -710,6 +710,13 @@ try:
     )
     META_CAPI_AVAILABLE = True
     logger.info("✅ Meta CAPI module loaded")
+    logger.info(
+  f"META FLAGS | CALL={Config.ENABLE_META_CAPI_CALL}, "
+  f"LEAD={Config.ENABLE_META_CAPI_LEAD}, "
+  f"PIXEL={'OK' if Config.META_PIXEL_ID else 'MISSING'}, "
+  f"TOKEN={'OK' if Config.META_CAPI_TOKEN else 'MISSING'}"
+)
+
 except ImportError as e:
     logger.warning(f"⚠️ meta_capi.py not available: {e}")
     META_CAPI_AVAILABLE = False
