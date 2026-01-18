@@ -551,7 +551,7 @@ class SearchEngine:
         try:
             from openai import OpenAI
             if Config.OPENAI_API_KEY:
-                # FIX: Removed 'proxies' parameter
+                # FIX: Removed 'proxies' parameter - OpenAI v1.6.1+ doesn't support it
                 self.openai_client = OpenAI(
                     api_key=Config.OPENAI_API_KEY,
                     base_url=Config.OPENAI_BASE_URL,
@@ -890,22 +890,22 @@ class ResponseGenerator:
     def __init__(self):
         self.openai_client = None
         
-        # Initialize OpenAI client - NO PROXIES PARAMETER
+                # Initialize OpenAI client - NO PROXIES PARAMETER
         try:
             from openai import OpenAI
             if Config.OPENAI_API_KEY:
-                # FIX: Removed 'proxies' parameter
+                # FIX: OpenAI v1.6.1+ không còn hỗ trợ tham số 'proxies'
                 self.openai_client = OpenAI(
                     api_key=Config.OPENAI_API_KEY,
                     base_url=Config.OPENAI_BASE_URL,
-                    timeout=60.0
+                    timeout=30.0
                 )
 
-                logger.info("✅ ResponseGenerator OpenAI client initialized (api_key + base_url + timeout only)")
+                logger.info("✅ SearchEngine OpenAI client initialized (api_key + base_url + timeout only)")
             else:
-                logger.error("❌ OpenAI API key not configured for ResponseGenerator")
+                logger.error("❌ OpenAI API key not configured")
         except Exception as e:
-            logger.error(f"❌ Failed to initialize ResponseGenerator OpenAI client: {e}")
+            logger.error(f"❌ Failed to initialize OpenAI client: {e}")
             traceback.print_exc()
     
     def generate(self, query: str, search_results: List[Dict[str, Any]], 
