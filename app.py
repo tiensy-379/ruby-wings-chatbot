@@ -897,8 +897,15 @@ class ResponseGenerator:
         Generate response with GUARANTEED detailed output for advisory intents
         CRITICAL FIX: Never returns empty/generic response when context exists
         """
+        
         if not self.openai_client:
             return self._generate_fallback_response(query, search_results, intent)
+        if not search_results:
+            return (
+        "🌿 Ruby Wings chuyên các hành trình du lịch trải nghiệm và chữa lành. "
+        "Dựa trên nhu cầu của bạn, tôi sẽ tư vấn hướng đi phù hợp ngay khi có thêm thông tin."
+    )
+
         
         # Build context from search results
         context_texts = []
@@ -944,15 +951,17 @@ HÃY TRẢ LỜI:"""
                 {"role": "user", "content": user_prompt}
             ]
             
-            response = self.openai_client.chat.completions.create(
+            response = self.openai_client.responses.create(
                 model=Config.CHAT_MODEL,
-                messages=messages,
-                temperature=0.7,
-                max_tokens=800,
-                top_p=0.9
+                input=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_output_tokens=800
             )
-            
-            answer = response.choices[0].message.content.strip()
+
+            answer = response.output_text.strip()
+
             
             # Validate response quality
             if self._is_low_quality_response(answer):
@@ -1696,19 +1705,15 @@ class ChatProcessor:
             }
         
         except Exception as e:
-            logger.error(f"❌ Chat processing error: {e}")
-            traceback.print_exc()
-            
-            with state.stats_lock:
-                state.stats['errors'] += 1
-            
-            return {
-                'message': 'Xin lỗi, tôi gặp lỗi khi xử lý. Vui lòng thử lại hoặc liên hệ 0332510486!',
-                'intent': Intent.UNKNOWN,
-                'confidence': 0.0,
-                'session_id': session_id,
-                'error': str(e)
-            }
+                logger.error(f"CHAT ERROR: {str(e)}")
+        traceback.print_exc()
+
+        return {
+            'message': 'Xin lỗi, dịch vụ tạm thời gián đoạn. Vui lòng thử lại.',
+            'intent': Intent.UNKNOWN,
+            'confidence': 0.0,
+            'session_id': session_id
+        }
     
     def _get_session(self, session_id: str) -> Dict[str, Any]:
         """Get or create session data"""
