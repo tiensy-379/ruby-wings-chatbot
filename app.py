@@ -1,11 +1,33 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-RUBY WINGS AI CHATBOT - PRODUCTION VERSION 5.2.2 FIXED (DATA INITIALIZATION FIX)
+RUBY WINGS AI CHATBOT - PRODUCTION VERSION 5.2.2 FIXED
 Created: 2025-01-17
 Author: Ruby Wings AI Team
 
-FIX: KHỞI TẠO DỮ LIỆU KHI APP STARTUP - ĐẢM BẢO CHATBOT CÓ DỮ LIỆU ĐỂ TRẢ LỜI
+ARCHITECTURE:
+- Fully compatible with Render 512MB RAM
+- Ready to scale to 2GB RAM with env variables only
+- State Machine for conversation flow
+- Location Filter with region fallback
+- Intent Detection with phone capture
+- Meta CAPI tracking (FIXED & ENHANCED)
+- FAISS/Numpy hybrid search
+- Session management with auto-cleanup
+- Enhanced error handling
+- Better lead capture integration
+
+ĐỒNG BỘ: entities.py, meta_capi.py, response_guard.py, gunicorn.conf.py,
+         build_index.py, knowledge.json, .env variables from Render
+
+CHANGES IN v5.2.2:
+- Fixed Meta CAPI integration
+- Enhanced lead capture with fallback storage
+- Better error handling for Google Sheets
+- Improved session management
+- Fixed CORS configuration
+- Enhanced logging
+- Better cache management
 """
 
 # ==================== CORE IMPORTS ====================
@@ -55,7 +77,7 @@ logging.basicConfig(
         logging.FileHandler('ruby_wings.log') if IS_PRODUCTION else logging.NullHandler()
     ]
 )
-logger = logging.getLogger("ruby-wings-v5.2.2-fixed")
+logger = logging.getLogger("ruby-wings-v5.2.2")
 
 # ==================== CONFIGURATION ====================
 class Config:
@@ -84,13 +106,13 @@ class Config:
     CHAT_MODEL = os.getenv("CHAT_MODEL", "gpt-4o-mini")
     OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "https://api.openai.com/v1")
     
-    # Feature Toggles
+    # Feature Toggles (QUAN TRỌNG: Đồng bộ với Render env vars)
     FAISS_ENABLED = os.getenv("FAISS_ENABLED", "false").lower() == "true"
     ENABLE_INTENT_DETECTION = os.getenv("ENABLE_INTENT_DETECTION", "true").lower() == "true"
     ENABLE_PHONE_DETECTION = os.getenv("ENABLE_PHONE_DETECTION", "true").lower() == "true"
     ENABLE_LEAD_CAPTURE = os.getenv("ENABLE_GOOGLE_SHEETS", "true").lower() == "true"
-    ENABLE_LLM_FALLBACK = True
-    ENABLE_CACHING = True
+    ENABLE_LLM_FALLBACK = True  # Always enabled
+    ENABLE_CACHING = True  # Always enabled
     ENABLE_GOOGLE_SHEETS = os.getenv("ENABLE_GOOGLE_SHEETS", "true").lower() == "true"
     ENABLE_META_CAPI = os.getenv("ENABLE_META_CAPI_LEAD", "true").lower() == "true"
     ENABLE_META_CAPI_CALL = os.getenv("ENABLE_META_CAPI_CALL", "true").lower() == "true"
@@ -101,7 +123,7 @@ class Config:
     ENABLE_LOCATION_FILTER = True
     ENABLE_SEMANTIC_ANALYSIS = True
     
-    # Performance Settings
+    # Performance Settings (tối ưu cho 512MB)
     TOP_K = int(os.getenv("TOP_K", "5" if IS_LOW_RAM else "10"))
     MAX_TOURS_PER_RESPONSE = 3
     CACHE_TTL_SECONDS = 300
@@ -115,7 +137,7 @@ class Config:
     TIMEOUT = int(os.getenv("TIMEOUT", "60"))
     DEBUG = os.getenv("DEBUG", "false").lower() == "true"
     
-    # CORS
+    # CORS (FIXED)
     CORS_ORIGINS_RAW = os.getenv("CORS_ORIGINS", "*")
     CORS_ORIGINS = CORS_ORIGINS_RAW if CORS_ORIGINS_RAW == "*" else [
         o.strip() for o in CORS_ORIGINS_RAW.split(",") if o.strip()
@@ -135,12 +157,13 @@ class Config:
     def log_config(cls):
         """Log configuration on startup"""
         logger.info("=" * 60)
-        logger.info("🚀 RUBY WINGS CHATBOT v5.2.2 FIXED (DATA INIT FIX)")
+        logger.info("🚀 RUBY WINGS CHATBOT v5.2.2 PRODUCTION (FIXED)")
         logger.info("=" * 60)
         logger.info(f"📊 RAM Profile: {cls.RAM_PROFILE}MB")
         logger.info(f"🌍 Environment: {'Production' if IS_PRODUCTION else 'Development'}")
         logger.info(f"🔧 Platform: {platform.system()}")
         
+        # Features
         features = []
         if cls.STATE_MACHINE_ENABLED:
             features.append("State Machine")
@@ -161,7 +184,6 @@ class Config:
         
         logger.info(f"🎯 Features: {', '.join(features)}")
         logger.info(f"🔑 OpenAI: {'✅' if cls.OPENAI_API_KEY else '❌'}")
-        logger.info(f"🔍 FAISS enabled: {cls.FAISS_ENABLED}")
         
         if cls.META_PIXEL_ID and len(cls.META_PIXEL_ID) > 10:
             logger.info(f"📞 Meta Pixel: {cls.META_PIXEL_ID[:6]}...{cls.META_PIXEL_ID[-4:]}")
@@ -225,6 +247,7 @@ except ImportError as e:
     logger.warning(f"⚠️ Failed to import entities.py: {e}")
     ENTITIES_AVAILABLE = False
     
+    # Fallback definitions
     class ConversationStage:
         EXPLORE = "explore"
         SUGGEST = "suggest"
@@ -257,6 +280,7 @@ except ImportError as e:
         return Intent.UNKNOWN, 0.5, {}
     
     def detect_phone_number(text):
+        # Simple VN phone detection
         patterns = [
             r'0\d{9,10}',
             r'\+84\d{9,10}',
@@ -298,6 +322,7 @@ except ImportError as e:
     logger.warning(f"⚠️ meta_capi.py not available: {e}")
     META_CAPI_AVAILABLE = False
     
+    # Dummy functions
     def send_meta_pageview(request): 
         pass
     
@@ -332,14 +357,14 @@ except ImportError as e:
 # ==================== FLASK APP ====================
 app = Flask(__name__)
 app.secret_key = Config.SECRET_KEY
-app.config['MAX_CONTENT_LENGTH'] = int(os.getenv("MAX_CONTENT_LENGTH", "1048576"))
+app.config['MAX_CONTENT_LENGTH'] = int(os.getenv("MAX_CONTENT_LENGTH", "1048576"))  # 1MB
 app.config['JSON_AS_ASCII'] = False
 app.config['JSON_SORT_KEYS'] = False
 
 # Apply ProxyFix for Render
 app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 
-# CORS
+# CORS (FIXED)
 if Config.CORS_ORIGINS == "*":
     CORS(app, 
          origins="*",
@@ -357,7 +382,7 @@ logger.info(f"✅ CORS configured for: {Config.CORS_ORIGINS}")
 
 # ==================== GLOBAL STATE ====================
 class GlobalState:
-    """Memory-optimized global state - FIXED DATA INITIALIZATION"""
+    """Memory-optimized global state"""
     
     _instance = None
     _lock = threading.RLock()
@@ -370,15 +395,15 @@ class GlobalState:
             return cls._instance
     
     def _initialize(self):
-        """Initialize state - FIXED: Ensure data structures exist"""
-        # Core data - MUST BE INITIALIZED
+        """Initialize state"""
+        # Core data
         self.tours_db: Dict[int, Dict] = {}
         self.tour_name_index: Dict[str, int] = {}
         
         # Session management
         self.session_contexts: Dict[str, Dict] = {}
         
-        # Search data - MUST BE INITIALIZED
+        # Search data
         self.mapping: List[Dict] = []
         self.index = None
         self.vectors = None
@@ -400,12 +425,10 @@ class GlobalState:
             "start_time": datetime.now()
         }
         
-        # Track initialization status
         self._knowledge_loaded = False
         self._index_loaded = False
-        self._initialized_at_startup = False
         
-        logger.info("🌐 Global state initialized (data structures ready)")
+        logger.info("🌐 Global state initialized")
     
     def get_tour(self, index: int) -> Optional[Dict]:
         """Get tour by index"""
@@ -429,6 +452,7 @@ class GlobalState:
                 }
                 self.stats["sessions"] += 1
                 
+                # Cleanup old sessions if needed
                 if len(self.session_contexts) > Config.MAX_SESSIONS:
                     self._cleanup_sessions()
             
@@ -437,11 +461,13 @@ class GlobalState:
     def _cleanup_sessions(self):
         """Remove old sessions"""
         with self._lock:
+            # Sort by last_updated
             sorted_sessions = sorted(
                 self.session_contexts.items(),
                 key=lambda x: x[1].get("last_updated", datetime.min)
             )
             
+            # Remove oldest 30%
             remove_count = max(1, len(sorted_sessions) // 3)
             for sid, _ in sorted_sessions[:remove_count]:
                 del self.session_contexts[sid]
@@ -456,6 +482,7 @@ class GlobalState:
         with self._lock:
             if key in self.response_cache:
                 entry = self.response_cache[key]
+                # Check TTL
                 if time.time() - entry['ts'] < Config.CACHE_TTL_SECONDS:
                     self.response_cache.move_to_end(key)
                     self.stats["cache_hits"] += 1
@@ -477,6 +504,7 @@ class GlobalState:
                 'ts': time.time()
             }
             
+            # LRU eviction
             if len(self.response_cache) > Config.MAX_EMBEDDING_CACHE:
                 self.response_cache.popitem(last=False)
     
@@ -489,32 +517,29 @@ class GlobalState:
                 "uptime_seconds": int(uptime.total_seconds()),
                 "active_sessions": len(self.session_contexts),
                 "tours_loaded": len(self.tours_db),
-                "mapping_entries": len(self.mapping),
-                "cache_size": len(self.response_cache),
-                "knowledge_loaded": self._knowledge_loaded,
-                "initialized_at_startup": self._initialized_at_startup
+                "cache_size": len(self.response_cache)
             }
 
-# Initialize global state FIRST
+# Initialize global state
 state = GlobalState()
 
 # ==================== KNOWLEDGE LOADER ====================
-def load_knowledge() -> bool:
-    """Load knowledge base - FIXED: Proper initialization and logging"""
-    
-    # Already loaded
+def load_knowledge():
+    """Load knowledge base"""
     if state._knowledge_loaded:
-        logger.info("📚 Knowledge already loaded, skipping")
+        logger.info("✅ Knowledge already loaded")
         return True
     
     try:
+        logger.info("=" * 60)
         logger.info(f"📚 Loading knowledge from {Config.KNOWLEDGE_PATH}")
-        logger.info(f"📁 Absolute path: {os.path.abspath(Config.KNOWLEDGE_PATH)}")
-        logger.info(f"📁 File exists: {os.path.exists(Config.KNOWLEDGE_PATH)}")
+        logger.info(f"🔍 RAM profile: {Config.RAM_PROFILE}MB")
+        logger.info(f"🔍 FAISS enabled: {Config.FAISS_ENABLED}")
         
         if not os.path.exists(Config.KNOWLEDGE_PATH):
             logger.error(f"❌ Knowledge file not found: {Config.KNOWLEDGE_PATH}")
-            logger.error("❌ Chatbot will not work without knowledge.json")
+            logger.error(f"❌ Current working directory: {os.getcwd()}")
+            logger.error(f"❌ Please ensure knowledge.json exists")
             return False
         
         with open(Config.KNOWLEDGE_PATH, 'r', encoding='utf-8') as f:
@@ -524,12 +549,16 @@ def load_knowledge() -> bool:
         tours_data = knowledge.get('tours', [])
         
         if not tours_data:
-            logger.warning("⚠️ No tours found in knowledge.json")
+            logger.error("❌ No tours found in knowledge.json")
+            return False
+        
+        logger.info(f"📦 Found {len(tours_data)} tours in knowledge file")
         
         for idx, tour_data in enumerate(tours_data):
             try:
                 state.tours_db[idx] = tour_data
                 
+                # Index by name
                 name = tour_data.get('tour_name', '')
                 if name:
                     state.tour_name_index[name.lower()] = idx
@@ -538,84 +567,64 @@ def load_knowledge() -> bool:
                 logger.error(f"❌ Error loading tour {idx}: {e}")
                 continue
         
-        logger.info(f"✅ Knowledge loaded: {len(state.tours_db)} tours")
+        logger.info(f"✅ Loaded {len(state.tours_db)} tours into database")
         
-        # Load or create mapping
+        # Load mapping
         if os.path.exists(Config.FAISS_MAPPING_PATH):
-            try:
-                with open(Config.FAISS_MAPPING_PATH, 'r', encoding='utf-8') as f:
-                    state.mapping = json.load(f)
-                logger.info(f"✅ Mapping loaded: {len(state.mapping)} entries")
-            except Exception as e:
-                logger.error(f"❌ Error loading mapping: {e}")
-                state.mapping = []
+            with open(Config.FAISS_MAPPING_PATH, 'r', encoding='utf-8') as f:
+                state.mapping = json.load(f)
+            logger.info(f"✅ Loaded {len(state.mapping)} mapping entries from file")
         else:
-            logger.info("📝 Creating mapping from tours...")
+            # Create comprehensive mapping from tours
+            logger.info("📝 Creating mapping from tours (no mapping file found)")
             state.mapping = []
-            
-            # Create mapping entries from tour data
             for idx, tour in state.tours_db.items():
-                if not tour:
-                    continue
-                    
-                # Add key fields to mapping
-                fields_to_map = ['tour_name', 'location', 'duration', 'price', 'summary', 'includes', 'style', 'description']
+                # Add key fields to mapping (expanded for better search coverage)
+                fields_to_index = [
+                    'tour_name', 'location', 'duration', 'price', 'summary',
+                    'includes', 'style', 'highlights', 'notes', 'region',
+                    'target_audience', 'best_time', 'accommodation', 'meals',
+                    'transport'
+                ]
                 
-                for field in fields_to_map:
+                for field in fields_to_index:
                     value = tour.get(field, '')
                     if value:
                         if isinstance(value, list):
-                            value = ' '.join(str(v) for v in value if v)
+                            value = ' '.join(str(v) for v in value)
+                        elif isinstance(value, dict):
+                            # For nested objects, just stringify
+                            value = json.dumps(value, ensure_ascii=False)
                         value_str = str(value).strip()
-                        if value_str and len(value_str) > 3:
+                        if value_str and len(value_str) > 3:  # Skip very short values
                             state.mapping.append({
                                 "path": f"tours[{idx}].{field}",
                                 "text": value_str,
-                                "tour_index": idx,
-                                "field": field
+                                "tour_index": idx
                             })
-            
-            logger.info(f"✅ Mapping created: {len(state.mapping)} entries from tours")
-        
-        # CRITICAL: Ensure mapping is not empty
-        if not state.mapping and state.tours_db:
-            logger.warning("⚠️ Mapping is empty but tours exist, creating fallback mapping")
-            for idx, tour in state.tours_db.items():
-                if tour.get('tour_name'):
-                    state.mapping.append({
-                        "path": f"tours[{idx}].tour_name",
-                        "text": tour['tour_name'],
-                        "tour_index": idx,
-                        "field": "tour_name"
-                    })
+            logger.info(f"✅ Created {len(state.mapping)} mapping entries from tours")
         
         state._knowledge_loaded = True
-        logger.info(f"✅ Knowledge initialization complete: {len(state.tours_db)} tours, {len(state.mapping)} mapping entries")
+        logger.info("=" * 60)
+        logger.info("✅ KNOWLEDGE BASE LOADED SUCCESSFULLY")
+        logger.info(f"   Tours: {len(state.tours_db)}")
+        logger.info(f"   Mappings: {len(state.mapping)}")
+        logger.info("=" * 60)
         return True
         
-    except json.JSONDecodeError as e:
-        logger.error(f"❌ JSON decode error in knowledge file: {e}")
-        return False
     except Exception as e:
-        logger.error(f"❌ Failed to load knowledge: {e}")
+        logger.error("=" * 60)
+        logger.error(f"❌ FAILED TO LOAD KNOWLEDGE: {e}")
+        logger.error("=" * 60)
         traceback.print_exc()
         return False
 
 # ==================== SEARCH ENGINE ====================
 class SearchEngine:
-    """Unified search engine - FIXED: Initialize on creation"""
+    """Unified search engine"""
     
     def __init__(self):
-        logger.info("🧠 Initializing search engine (low-RAM mode)")
         self.openai_client = None
-        
-        # Log search mode
-        if Config.FAISS_ENABLED:
-            logger.info("🧠 Search mode: FAISS (if available)")
-        elif NUMPY_AVAILABLE:
-            logger.info("🧠 Search mode: Numpy")
-        else:
-            logger.info("🧠 Search mode: Text-based (fallback)")
         
         if OPENAI_AVAILABLE and Config.OPENAI_API_KEY:
             try:
@@ -625,27 +634,28 @@ class SearchEngine:
                 logger.info("✅ OpenAI client initialized")
             except Exception as e:
                 logger.error(f"❌ OpenAI init failed: {e}")
-        else:
-            logger.info("ℹ️ OpenAI not available, using text search")
     
-    def load_index(self) -> bool:
-        """Load search index - FIXED: Better error handling"""
+    def load_index(self):
+        """Load search index"""
         if state._index_loaded:
-            logger.info("📦 Index already loaded, skipping")
+            logger.info("✅ Search index already loaded")
             return True
         
         try:
+            logger.info("🧠 Initializing search engine (low-RAM mode: {})".format(Config.IS_LOW_RAM))
+            
             # Try FAISS first
             if Config.FAISS_ENABLED and FAISS_AVAILABLE and os.path.exists(Config.FAISS_INDEX_PATH):
-                logger.info(f"📦 Loading FAISS index from {Config.FAISS_INDEX_PATH}")
+                logger.info(f"📦 Loading FAISS index from {Config.FAISS_INDEX_PATH}...")
                 state.index = faiss.read_index(Config.FAISS_INDEX_PATH)
                 logger.info(f"✅ FAISS loaded: {state.index.ntotal} vectors")
+                logger.info("🧠 Search mode: FAISS")
                 state._index_loaded = True
                 return True
             
             # Try numpy fallback
             if NUMPY_AVAILABLE and os.path.exists(Config.FALLBACK_VECTORS_PATH):
-                logger.info(f"📦 Loading numpy vectors from {Config.FALLBACK_VECTORS_PATH}")
+                logger.info(f"📦 Loading numpy vectors from {Config.FALLBACK_VECTORS_PATH}...")
                 data = np.load(Config.FALLBACK_VECTORS_PATH)
                 
                 if 'mat' in data:
@@ -656,22 +666,22 @@ class SearchEngine:
                     first_key = list(data.keys())[0]
                     state.vectors = data[first_key]
                 
+                # Normalize
                 if state.vectors is not None:
                     norms = np.linalg.norm(state.vectors, axis=1, keepdims=True)
                     state.vectors = state.vectors / (norms + 1e-12)
                 
                 logger.info(f"✅ Numpy loaded: {state.vectors.shape[0]} vectors")
+                logger.info("🧠 Search mode: Numpy cosine similarity")
                 state._index_loaded = True
                 return True
             
-            logger.info("ℹ️ No vector index found, will use text-based search")
-            state._index_loaded = True  # Mark as loaded even without vectors
-            return True
+            logger.warning("⚠️ No vector index found, using text search")
+            logger.info("🧠 Search mode: Text-based (keyword matching)")
+            return False
             
         except Exception as e:
             logger.error(f"❌ Failed to load index: {e}")
-            logger.info("⚠️ Continuing with text-based search only")
-            state._index_loaded = True  # Mark as loaded to avoid retries
             return False
     
     def get_embedding(self, text: str) -> Optional[List[float]]:
@@ -684,7 +694,7 @@ class SearchEngine:
             try:
                 response = self.openai_client.embeddings.create(
                     model=Config.EMBEDDING_MODEL,
-                    input=text[:2000]
+                    input=text[:2000]  # Truncate
                 )
                 return response.data[0].embedding
             except Exception as e:
@@ -701,6 +711,7 @@ class SearchEngine:
             val = (val + (i % 7) / 7.0) % 1.0
             embedding.append(float(val))
         
+        # Normalize
         norm = sum(x*x for x in embedding) ** 0.5
         if norm > 0:
             embedding = [x/norm for x in embedding]
@@ -708,20 +719,17 @@ class SearchEngine:
         return embedding
     
     def search(self, query: str, top_k: int = None) -> List[Tuple[float, Dict]]:
-        """Search for relevant passages - FIXED: Always return results if mapping exists"""
+        """Search for relevant passages"""
         if top_k is None:
             top_k = Config.TOP_K
         
-        # Ensure we have mapping
-        if not state.mapping:
-            logger.warning("⚠️ Search called but mapping is empty")
-            return []
-        
-        # Get query embedding if available
+        # Get query embedding
         embedding = self.get_embedding(query)
+        if not embedding:
+            return self._text_search(query, top_k)
         
         # FAISS search
-        if embedding is not None and state.index is not None and FAISS_AVAILABLE:
+        if state.index is not None and FAISS_AVAILABLE:
             try:
                 query_vec = np.array([embedding], dtype='float32')
                 scores, indices = state.index.search(query_vec, top_k)
@@ -731,14 +739,12 @@ class SearchEngine:
                     if 0 <= idx < len(state.mapping):
                         results.append((float(score), state.mapping[idx]))
                 
-                if results:
-                    logger.debug(f"🔍 FAISS search found {len(results)} results")
-                    return results
+                return results
             except Exception as e:
                 logger.error(f"FAISS search error: {e}")
         
         # Numpy search
-        if embedding is not None and state.vectors is not None and NUMPY_AVAILABLE:
+        if state.vectors is not None and NUMPY_AVAILABLE:
             try:
                 query_vec = np.array([embedding], dtype='float32')
                 query_norm = query_vec / (np.linalg.norm(query_vec) + 1e-12)
@@ -751,69 +757,31 @@ class SearchEngine:
                     if 0 <= idx < len(state.mapping):
                         results.append((float(similarities[idx]), state.mapping[idx]))
                 
-                if results:
-                    logger.debug(f"🔍 Numpy search found {len(results)} results")
-                    return results
+                return results
             except Exception as e:
                 logger.error(f"Numpy search error: {e}")
         
-        # Text fallback - ALWAYS WORKS
+        # Text fallback
         return self._text_search(query, top_k)
     
     def _text_search(self, query: str, top_k: int) -> List[Tuple[float, Dict]]:
-        """Simple text-based search - FIXED: More robust"""
-        if not state.mapping:
-            return []
-        
-        query_lower = query.lower().strip()
-        if not query_lower:
-            # Return some random tours if query is empty
-            import random
-            results = []
-            for entry in random.sample(state.mapping, min(len(state.mapping), top_k)):
-                results.append((0.5, entry))
-            return results
-        
-        query_words = [w for w in query_lower.split() if len(w) > 2]
-        
-        if not query_words:
-            # Return random results for short queries
-            import random
-            results = []
-            for entry in random.sample(state.mapping, min(len(state.mapping), top_k)):
-                results.append((0.3, entry))
-            return results
+        """Simple text-based search"""
+        query_lower = query.lower()
+        query_words = set(query_lower.split())
         
         results = []
-        for entry in state.mapping[:500]:  # Limit for performance
+        for entry in state.mapping[:200]:  # Limit for performance
             text = entry.get('text', '').lower()
             
             score = 0
             for word in query_words:
-                if word in text:
+                if len(word) > 2 and word in text:
                     score += 1
-                # Partial matches
-                elif any(word in t for t in text.split()):
-                    score += 0.5
             
             if score > 0:
-                # Boost score for tour_name matches
-                if entry.get('field') == 'tour_name' and any(word in text for word in query_words):
-                    score += 2
-                
                 results.append((float(score), entry))
         
-        # Sort by score
         results.sort(key=lambda x: x[0], reverse=True)
-        
-        # If no good matches, return some random tours
-        if not results and state.mapping:
-            import random
-            results = []
-            for entry in random.sample(state.mapping, min(len(state.mapping), top_k)):
-                results.append((0.1, entry))
-        
-        logger.debug(f"🔍 Text search found {len(results[:top_k])} results for query: '{query}'")
         return results[:top_k]
 
 # Initialize search engine
@@ -835,7 +803,7 @@ class ResponseGenerator:
                 logger.error(f"LLM client init failed: {e}")
     
     def generate(self, user_message: str, search_results: List, context: Dict) -> str:
-        """Generate response - FIXED: Always produce meaningful response"""
+        """Generate response"""
         
         # Handle special intents
         intent = context.get("intent", Intent.UNKNOWN)
@@ -854,47 +822,19 @@ class ResponseGenerator:
         
         # Check if we have results
         if not search_results:
-            # If no search results but we have tours, suggest some
-            if state.tours_db:
-                logger.info("⚠️ No search results but tours exist, showing random tours")
-                response = "Xin chào! Dưới đây là một số tour phổ biến của Ruby Wings:\n\n"
-                
-                # Show up to 3 random tours
-                import random
-                tour_indices = list(state.tours_db.keys())
-                if len(tour_indices) > 3:
-                    tour_indices = random.sample(tour_indices, 3)
-                
-                for idx in tour_indices:
-                    tour = state.get_tour(idx)
-                    if tour:
-                        response += f"**{tour.get('tour_name', 'Tour')}**\n"
-                        if tour.get('location'):
-                            response += f"📍 {tour['location']}\n"
-                        if tour.get('duration'):
-                            response += f"⏱️ {tour['duration']}\n"
-                        response += "\n"
-                
-                response += "Bạn muốn biết thêm chi tiết về tour nào? Hoặc liên hệ **0332510486** để đặt tour! 😊"
-                return response
-            else:
-                return "Xin lỗi, tôi chưa tìm thấy thông tin phù hợp. Vui lòng liên hệ hotline **0332510486** để được tư vấn! 📞"
+            return "Xin lỗi, tôi chưa tìm thấy thông tin phù hợp. Vui lòng liên hệ hotline **0332510486** để được tư vấn! 📞"
         
         # Build response from search results
         response = "Dựa trên yêu cầu của bạn, tôi tìm thấy:\n\n"
         
         # Group by tour
         tours_mentioned = set()
-        added_count = 0
-        
         for score, entry in search_results[:Config.MAX_TOURS_PER_RESPONSE]:
             tour_idx = entry.get('tour_index')
             if tour_idx is not None and tour_idx not in tours_mentioned:
                 tour = state.get_tour(tour_idx)
                 if tour:
                     tours_mentioned.add(tour_idx)
-                    added_count += 1
-                    
                     response += f"**{tour.get('tour_name', 'Tour')}**\n"
                     
                     if tour.get('location'):
@@ -913,15 +853,6 @@ class ResponseGenerator:
                         response += f"📝 {summary}\n"
                     response += "\n"
         
-        if added_count == 0:
-            # Fallback to showing some tours
-            response = "Xin chào! Dưới đây là các tour Ruby Wings:\n\n"
-            for idx, tour in list(state.tours_db.items())[:3]:
-                response += f"**{tour.get('tour_name', 'Tour')}**\n"
-                if tour.get('location'):
-                    response += f"📍 {tour['location']}\n"
-                response += "\n"
-        
         response += "Bạn muốn biết thêm chi tiết gì? Hoặc liên hệ **0332510486** để đặt tour! 😊"
         
         return response
@@ -931,67 +862,31 @@ response_gen = ResponseGenerator()
 
 # ==================== CHAT PROCESSOR ====================
 class ChatProcessor:
-    """Main chat processing engine - FIXED: Ensure knowledge is loaded before processing"""
+    """Main chat processing engine"""
     
     def __init__(self):
         self.response_generator = response_gen
         self.search_engine = search_engine
     
-    def ensure_knowledge_loaded(self):
-        """Ensure knowledge is loaded before processing - CRITICAL FIX"""
-        if not state._knowledge_loaded:
-            logger.warning("⚠️ Knowledge not initialized – initializing now")
-            if not load_knowledge():
-                logger.error("❌ Failed to load knowledge in chat processor")
-                return False
-            
-            # Load index after knowledge
-            search_engine.load_index()
-            logger.info("✅ Knowledge ready for chat")
-            return True
-        
-        return True
-    
     def process(self, user_message: str, session_id: str) -> Dict[str, Any]:
-        """Process user message - FIXED: Check knowledge first"""
+        """Process user message"""
         start_time = time.time()
         
         try:
-            # CRITICAL: Ensure knowledge is loaded
-            if not self.ensure_knowledge_loaded():
-                logger.error("❌ Cannot process chat without knowledge")
-                return {
-                    'reply': "Xin lỗi, hệ thống đang khởi tạo dữ liệu. Vui lòng thử lại sau 5 giây hoặc liên hệ **0332510486**! 🙏",
-                    'session_id': session_id,
-                    'error': 'knowledge_not_loaded',
-                    'processing_time_ms': int((time.time() - start_time) * 1000),
-                    'timestamp': datetime.now().isoformat()
-                }
-            
-            # Check mapping status
-            if not state.mapping:
-                logger.error("❌ Mapping is empty, chatbot cannot search")
-                # But we still have tours_db, so we can show something
-                if state.tours_db:
-                    response = "Xin chào! Dưới đây là các tour Ruby Wings:\n\n"
-                    for idx, tour in list(state.tours_db.items())[:3]:
-                        response += f"**{tour.get('tour_name', 'Tour')}**\n"
-                        if tour.get('location'):
-                            response += f"📍 {tour['location']}\n"
-                        response += "\n"
-                    response += "Liên hệ **0332510486** để biết thêm chi tiết! 📞"
-                    
+            # CRITICAL: Ensure knowledge is loaded (lazy init if needed)
+            if not state._knowledge_loaded or not state.mapping:
+                logger.warning("⚠️ Knowledge not initialized – initializing now...")
+                if not load_knowledge():
+                    logger.error("❌ Failed to load knowledge during chat request")
                     return {
-                        'reply': response,
+                        'reply': "Xin lỗi, hệ thống đang khởi động. Vui lòng thử lại sau hoặc liên hệ **0332510486**! 🙏",
                         'session_id': session_id,
-                        'session_state': {'stage': 'explore', 'has_phone': False},
-                        'intent': {'name': 'TOUR_INQUIRY', 'confidence': 0.5},
-                        'search': {'results_count': 0, 'tours': []},
+                        'error': 'Knowledge not loaded',
                         'processing_time_ms': int((time.time() - start_time) * 1000),
-                        'from_cache': False,
-                        'timestamp': datetime.now().isoformat(),
-                        'warning': 'mapping_empty_using_tours_fallback'
+                        'timestamp': datetime.now().isoformat()
                     }
+                else:
+                    logger.info("✅ Knowledge loaded successfully during chat request")
             
             # Get session context
             context = state.get_session(session_id)
@@ -1107,8 +1002,8 @@ class ChatProcessor:
             
             logger.info(f"⏱️ Processed in {result['processing_time_ms']}ms | "
                        f"Intent: {intent.name if hasattr(intent, 'name') else intent} | "
-                       f"Results: {len(search_results)} | "
-                       f"Mapping: {len(state.mapping)} entries")
+                       f"Stage: {context.get('stage')} | "
+                       f"Results: {len(search_results)}")
             
             return result
             
@@ -1126,10 +1021,15 @@ class ChatProcessor:
                 'timestamp': datetime.now().isoformat()
             }
     
-    def _next_stage(self, current_stage: str, intent) -> str:
-        """Determine next conversation stage"""
+    def _next_stage(self, current_stage, intent):
+        """Determine next conversation stage
+        
+        Returns:
+            str: Stage value as string (e.g., "explore", "suggest", "lead")
+        """
         intent_name = intent.name if hasattr(intent, 'name') else str(intent)
         
+        # Convert string to Enum if needed for comparison
         if isinstance(current_stage, str):
             try:
                 current_stage = ConversationStage(current_stage)
@@ -1159,13 +1059,16 @@ class ChatProcessor:
         next_stages = transitions.get(current_stage, {})
         next_stage = next_stages.get(intent_name, current_stage)
         
+        # Always return string value for JSON serialization
         return next_stage.value if hasattr(next_stage, 'value') else str(next_stage)
     
     def _capture_lead(self, phone: str, session_id: str, message: str, context: Dict):
         """Capture lead data"""
         try:
+            # Clean phone
             phone_clean = re.sub(r'[^\d+]', '', phone)
             
+            # Create lead data following LeadData.to_row() (13 columns)
             lead_data = {
                 'timestamp': datetime.now().isoformat(),
                 'source_channel': 'Website',
@@ -1237,6 +1140,7 @@ class ChatProcessor:
             sh = gc.open_by_key(Config.GOOGLE_SHEET_ID)
             ws = sh.worksheet(Config.GOOGLE_SHEET_NAME)
             
+            # FIXED: 13 columns with str() cast
             row = [
                 str(lead_data.get('timestamp', '')),
                 str(lead_data.get('source_channel', '')),
@@ -1258,19 +1162,25 @@ class ChatProcessor:
             
         except Exception as e:
             logger.error(f"Google Sheets error: {e}")
+            # Don't raise - fallback storage will catch it
     
     def _save_to_fallback(self, lead_data: Dict):
         """Save to fallback JSON file"""
         try:
+            # Load existing
             if os.path.exists(Config.FALLBACK_STORAGE_PATH):
                 with open(Config.FALLBACK_STORAGE_PATH, 'r', encoding='utf-8') as f:
                     leads = json.load(f)
             else:
                 leads = []
             
+            # Add new lead
             leads.append(lead_data)
+            
+            # Keep only last 1000
             leads = leads[-1000:]
             
+            # Save
             with open(Config.FALLBACK_STORAGE_PATH, 'w', encoding='utf-8') as f:
                 json.dump(leads, f, ensure_ascii=False, indent=2)
             
@@ -1288,6 +1198,7 @@ def before_request():
     """Before request handler"""
     g.start_time = time.time()
     
+    # Track pageview for Meta CAPI
     if Config.ENABLE_META_CAPI and META_CAPI_AVAILABLE:
         try:
             if request.path not in ['/health', '/stats', '/favicon.ico']:
@@ -1300,6 +1211,7 @@ def before_request():
 @app.after_request
 def after_request(response):
     """After request handler"""
+    # Add processing time header
     if hasattr(g, 'start_time'):
         elapsed = (time.time() - g.start_time) * 1000
         response.headers['X-Processing-Time'] = f"{elapsed:.2f}ms"
@@ -1308,16 +1220,15 @@ def after_request(response):
 
 @app.route('/health', methods=['GET'])
 def health():
-    """Health check endpoint - FIXED: Show knowledge status"""
+    """Health check endpoint"""
     return jsonify({
         'status': 'healthy',
-        'version': '5.2.2-fixed',
+        'version': '5.2.2',
         'timestamp': datetime.now().isoformat(),
-        'knowledge': {
-            'loaded': state._knowledge_loaded,
-            'tours': len(state.tours_db),
-            'mapping_entries': len(state.mapping),
-            'file_exists': os.path.exists(Config.KNOWLEDGE_PATH)
+        'config': {
+            'ram_profile': f"{Config.RAM_PROFILE}MB",
+            'faiss_enabled': Config.FAISS_ENABLED,
+            'low_ram_mode': Config.IS_LOW_RAM
         },
         'modules': {
             'openai': OPENAI_AVAILABLE and bool(Config.OPENAI_API_KEY),
@@ -1326,7 +1237,18 @@ def health():
             'response_guard': RESPONSE_GUARD_AVAILABLE,
             'faiss': FAISS_AVAILABLE,
             'numpy': NUMPY_AVAILABLE
-        }
+        },
+        'knowledge': {
+            'loaded': state._knowledge_loaded,
+            'tours': len(state.tours_db),
+            'mappings': len(state.mapping),
+            'index_loaded': state._index_loaded
+        },
+        'search_mode': (
+            'faiss' if state.index is not None 
+            else 'numpy' if state.vectors is not None 
+            else 'text'
+        )
     })
 
 @app.route('/', methods=['GET'])
@@ -1334,10 +1256,8 @@ def index():
     """Index route"""
     return jsonify({
         'service': 'Ruby Wings AI Chatbot',
-        'version': '5.2.2-fixed (Data Init Fix)',
+        'version': '5.2.2',
         'status': 'running',
-        'knowledge_loaded': state._knowledge_loaded,
-        'tours_available': len(state.tours_db),
         'endpoints': {
             'chat': '/api/chat',
             'save_lead': '/api/save-lead',
@@ -1382,7 +1302,7 @@ def chat():
 
 @app.route('/chat', methods=['POST', 'OPTIONS'])
 def chat_legacy():
-    """Legacy /chat endpoint"""
+    """Legacy /chat endpoint - backward compatible"""
     if request.method == 'OPTIONS':
         return jsonify({'status': 'ok'}), 200
     
@@ -1418,6 +1338,7 @@ def save_lead():
     try:
         data = request.get_json() or {}
         
+        # Extract data
         phone = data.get('phone', '').strip()
         name = data.get('name', '').strip()
         email = data.get('email', '').strip()
@@ -1430,11 +1351,14 @@ def save_lead():
         if not phone:
             return jsonify({'error': 'Phone number is required'}), 400
         
+        # Clean phone
         phone_clean = re.sub(r'[^\d+]', '', phone)
         
+        # Validate phone
         if not re.match(r'^(0|\+?84)\d{9,10}$', phone_clean):
             return jsonify({'error': 'Invalid phone number format'}), 400
         
+        # Create lead data (13 columns)
         lead_data = {
             'timestamp': datetime.now().isoformat(),
             'source_channel': source_channel,
@@ -1488,6 +1412,7 @@ def save_lead():
                     sh = gc.open_by_key(Config.GOOGLE_SHEET_ID)
                     ws = sh.worksheet(Config.GOOGLE_SHEET_NAME)
                     
+                    # FIXED: 13 columns
                     row = [
                         str(lead_data['timestamp']),
                         str(lead_data['source_channel']),
@@ -1528,6 +1453,7 @@ def save_lead():
             except Exception as e:
                 logger.error(f"Fallback storage error: {e}")
         
+        # Update stats
         state.stats['leads'] += 1
         
         return jsonify({
@@ -1557,6 +1483,7 @@ def call_button():
         page_url = data.get('page_url', '')
         call_type = data.get('call_type', 'regular')
         
+        # Send to Meta CAPI
         if Config.ENABLE_META_CAPI_CALL and META_CAPI_AVAILABLE:
             try:
                 result = send_meta_call_button(
@@ -1621,9 +1548,11 @@ def reindex():
         return jsonify({'error': 'Unauthorized'}), 403
     
     try:
+        # Reset flags
         state._knowledge_loaded = False
         state._index_loaded = False
         
+        # Reload
         load_knowledge()
         search_engine.load_index()
         
@@ -1675,31 +1604,44 @@ def internal_error(error):
 
 # ==================== INITIALIZATION ====================
 def initialize_app():
-    """Initialize application - FIXED: Proper startup sequence"""
+    """Initialize application"""
     try:
-        logger.info("🚀 Initializing Ruby Wings Chatbot v5.2.2 (Data Init Fix)...")
-        logger.info(f"🚀 App startup – RAM profile: {Config.RAM_PROFILE}MB")
+        logger.info("=" * 60)
+        logger.info("🚀 RUBY WINGS CHATBOT v5.2.2 STARTING...")
+        logger.info("=" * 60)
+        logger.info(f"🔧 RAM profile: {Config.RAM_PROFILE}MB")
+        logger.info(f"🔧 FAISS enabled: {Config.FAISS_ENABLED}")
+        logger.info(f"🔧 Low RAM mode: {Config.IS_LOW_RAM}")
+        logger.info("=" * 60)
         
         # Log configuration
         Config.log_config()
         
-        # Load knowledge FIRST
-        logger.info("🔍 Step 1: Loading knowledge base...")
-        if not load_knowledge():
-            logger.error("❌ Failed to load knowledge base on startup")
-            logger.error("❌ Chatbot may not work properly")
-            logger.info("⚠️ Continuing anyway - features that don't need knowledge will work")
-        else:
-            logger.info("✅ Knowledge loaded successfully at startup")
+        # Load knowledge - CRITICAL
+        logger.info("📚 Loading knowledge base...")
+        knowledge_loaded = load_knowledge()
         
-        # Load search index SECOND
-        logger.info("🔍 Step 2: Loading search index...")
-        if not search_engine.load_index():
-            logger.warning("⚠️ Search index not loaded, using text search only")
+        if not knowledge_loaded:
+            logger.error("=" * 60)
+            logger.error("❌ CRITICAL: Knowledge base failed to load!")
+            logger.error("❌ Chatbot will not work without knowledge")
+            logger.error("❌ Please check KNOWLEDGE_PATH and file existence")
+            logger.error("=" * 60)
         else:
-            logger.info("✅ Search engine ready")
+            logger.info("✅ Knowledge base loaded successfully")
+        
+        # Load search index
+        logger.info("🧠 Loading search index...")
+        index_loaded = search_engine.load_index()
+        
+        if not index_loaded:
+            logger.warning("⚠️ Search index not loaded, will use text search")
+        else:
+            logger.info("✅ Search index loaded successfully")
         
         # Check integrations
+        logger.info("🔌 Checking integrations...")
+        
         if META_CAPI_AVAILABLE and Config.ENABLE_META_CAPI:
             logger.info("✅ Meta CAPI ready")
         else:
@@ -1708,22 +1650,26 @@ def initialize_app():
         if OPENAI_AVAILABLE and Config.OPENAI_API_KEY:
             logger.info("✅ OpenAI ready")
         else:
-            logger.info("ℹ️ OpenAI not available, using fallback")
+            logger.warning("⚠️ OpenAI not available, using fallback")
         
-        # Mark as initialized
-        state._initialized_at_startup = True
-        
+        # Final status
         logger.info("=" * 60)
-        logger.info("✅ RUBY WINGS CHATBOT READY!")
-        logger.info(f"📊 Tours loaded: {len(state.tours_db)}")
-        logger.info(f"🔍 Mapping entries: {len(state.mapping)}")
+        if knowledge_loaded:
+            logger.info("✅ RUBY WINGS CHATBOT READY!")
+            logger.info(f"📊 Tours loaded: {len(state.tours_db)}")
+            logger.info(f"📊 Mappings loaded: {len(state.mapping)}")
+        else:
+            logger.error("⚠️ CHATBOT STARTED WITH WARNINGS")
+            logger.error("⚠️ Knowledge not loaded - chatbot may not work")
+        
         logger.info(f"🌐 Server: {Config.HOST}:{Config.PORT}")
         logger.info("=" * 60)
         
     except Exception as e:
-        logger.error(f"❌ Initialization failed: {e}")
+        logger.error("=" * 60)
+        logger.error(f"❌ INITIALIZATION FAILED: {e}")
+        logger.error("=" * 60)
         traceback.print_exc()
-        logger.error("❌ App may not function correctly")
 
 # ==================== APPLICATION ENTRY POINT ====================
 if __name__ == '__main__':
