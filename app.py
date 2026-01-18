@@ -497,8 +497,9 @@ state.start_time = time.time()
 
 # ==================== FLASK APP SETUP ====================
 app = Flask(__name__)
-@app.route("/chat", methods=["POST", "OPTIONS"])
-def chat():
+@app.route("/chat", methods=["POST", "OPTIONS"], endpoint="chat_api")
+def chat_api():
+
     if request.method == "OPTIONS":
         return "", 200
 
