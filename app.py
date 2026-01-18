@@ -5,33 +5,7 @@ RUBY WINGS AI CHATBOT - PRODUCTION VERSION 6.0.0 (COMPREHENSIVE FIX)
 Created: 2025-01-18
 Author: Ruby Wings AI Team
 
-MAJOR FIXES IN V6.0.0:
-======================
-1. ✅ FIXED: OpenAI Client initialization - removed invalid 'proxies' parameter
-2. ✅ FIXED: SearchEngine always returns results - fallback to company_info & tour_entities
-3. ✅ FIXED: Intent upgrade logic - GREETING/UNKNOWN with advisory content → TOUR_INQUIRY/TOUR_FILTER
-4. ✅ FIXED: ResponseGenerator always gets context - never runs with empty search_results
-5. ✅ ADDED: Enhanced advisory response generation - rich, detailed consulting responses
-6. ✅ ADDED: Multi-level fallback system - vector → structured_data → company_info
-7. ✅ ADDED: Smart intent detection - semantic analysis of user queries
-8. ✅ OPTIMIZED: Memory management for 512MB RAM profile
-9. ✅ ENHANCED: Conversation flow with better state transitions
-10. ✅ PRESERVED: All existing features (Meta CAPI, Google Sheets, lead capture, etc.)
 
-TECHNICAL IMPROVEMENTS:
-=======================
-- Proper OpenAI SDK usage (no proxies param)
-- Guaranteed non-empty context for LLM generation
-- Intent elevation based on semantic content
-- Company info always available as fallback
-- Tour entities pre-loaded for quick filtering
-- Enhanced prompt engineering for detailed responses
-- Better error handling and logging
-- State machine improvements
-- Cache optimization
-
-This version ensures the chatbot ALWAYS provides detailed, helpful responses
-instead of generic greetings or "no information" messages.
 """
 
 # ==================== CORE IMPORTS ====================
@@ -541,11 +515,11 @@ class SearchEngine:
         self.vectors = None
         self.openai_client = None
         
-        # Initialize OpenAI client (FIXED: No proxies parameter)
+        # Initialize OpenAI client 
         try:
             from openai import OpenAI
             if Config.OPENAI_API_KEY:
-                # CRITICAL FIX: Do NOT pass 'proxies' parameter
+                # CRITICAL FIX: Do NOT pass
                 self.openai_client = OpenAI(
                     api_key=Config.OPENAI_API_KEY,
                     base_url=Config.OPENAI_BASE_URL,
@@ -883,7 +857,7 @@ class ResponseGenerator:
     def __init__(self):
         self.openai_client = None
         
-        # Initialize OpenAI client (FIXED: No proxies parameter)
+        # Initialize OpenAI client 
         try:
             from openai import OpenAI
             if Config.OPENAI_API_KEY:
