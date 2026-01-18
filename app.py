@@ -2060,8 +2060,8 @@ def health():
         'timestamp': datetime.now().isoformat()
     })
 
-@app.route('/api/chat', methods=['POST', 'OPTIONS'])
-def chat():
+@app.route('/api/chat', methods=['POST', 'OPTIONS'], endpoint='api_chat')
+def api_chat():
     """Main chat endpoint"""
     if request.method == 'OPTIONS':
         return jsonify({'status': 'ok'}), 200
