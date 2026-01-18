@@ -472,19 +472,15 @@ class AppState:
         self.stats_lock = threading.RLock()
     
     def get_search_engine(self):
-        """Get or create search engine"""
         if self._search_engine is None:
-            from app import SearchEngine
             self._search_engine = SearchEngine()
         return self._search_engine
+
     
     def get_chat_processor(self):
-        """Get or create chat processor"""
         if self._chat_processor is None:
-            from app import ChatProcessor
             self._chat_processor = ChatProcessor()
         return self._chat_processor
-    
     def get_stats(self) -> Dict[str, Any]:
         """Get statistics"""
         with self.stats_lock:
@@ -501,6 +497,20 @@ state.start_time = time.time()
 
 # ==================== FLASK APP SETUP ====================
 app = Flask(__name__)
+@app.route("/chat", methods=["POST", "OPTIONS"])
+def chat():
+    if request.method == "OPTIONS":
+        return "", 200
+
+    data = request.get_json(force=True, silent=True) or {}
+    message = data.get("message", "")
+    session_id = data.get("session_id", str(uuid.uuid4()))
+
+    processor = state.get_chat_processor()
+    result = processor.process(message, session_id)
+
+    return jsonify(result)
+
 app.secret_key = Config.SECRET_KEY
 app.config['MAX_CONTENT_LENGTH'] = Config.MAX_CONTENT_LENGTH
 
