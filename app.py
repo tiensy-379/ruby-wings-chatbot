@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-RUBY WINGS AI CHATBOT - PRODUCTION VERSION 5.2.4 (ENUM FIX)
+RUBY WINGS AI CHATBOT - PRODUCTION VERSION 5.2.4 (ENUM FIX + IMPORT FIX)
 Created: 2025-01-17
 Author: Ruby Wings AI Team
 
-FIX V5.2.4: FIXED ENUM INTENT MISMATCH
+FIX V5.2.4: FIXED ENUM INTENT MISMATCH & IMPORT CIRCULARITY
 - Fixed AttributeError: ABOUT_COMPANY
 - Added string-to-Enum conversion with guards
 - Enhanced error handling for intent processing
+- FIXED: Circular import causing Gunicorn startup failure
+- FIXED: search_engine import error during module loading
 - Preserved all existing features
 """
 
@@ -141,7 +143,7 @@ class Config:
     def log_config(cls):
         """Log configuration on startup"""
         logger.info("=" * 60)
-        logger.info("🚀 RUBY WINGS CHATBOT v5.2.4 (ENUM FIX)")
+        logger.info("🚀 RUBY WINGS CHATBOT v5.2.4 (ENUM FIX + IMPORT FIX)")
         logger.info("=" * 60)
         logger.info(f"📊 RAM Profile: {cls.RAM_PROFILE}MB")
         logger.info(f"🌍 Environment: {'Production' if IS_PRODUCTION else 'Development'}")
@@ -495,80 +497,7 @@ def extract_location_from_query(text):
             return location
     return None
 
-# ==================== IMPORT CUSTOM MODULES ====================
-try:
-    from meta_capi import (
-        send_meta_pageview,
-        send_meta_lead,
-        send_meta_lead_from_entities,
-        send_meta_call_button,
-        check_meta_capi_health,
-        config as meta_config
-    )
-    META_CAPI_AVAILABLE = True
-    logger.info("✅ Meta CAPI module loaded")
-except ImportError as e:
-    logger.warning(f"⚠️ meta_capi.py not available: {e}")
-    META_CAPI_AVAILABLE = False
-    
-    def send_meta_pageview(request): 
-        pass
-    
-    def send_meta_lead(*args, **kwargs): 
-        return {"status": "unavailable"}
-    
-    def send_meta_lead_from_entities(*args, **kwargs): 
-        return {"status": "unavailable"}
-    
-    def send_meta_call_button(*args, **kwargs): 
-        return {"status": "unavailable"}
-    
-    def check_meta_capi_health(): 
-        return {"status": "unavailable", "message": "Meta CAPI module not loaded"}
-
-try:
-    from response_guard import validate_and_format_answer
-    RESPONSE_GUARD_AVAILABLE = True
-    logger.info("✅ Response guard module loaded")
-except ImportError as e:
-    logger.warning(f"⚠️ response_guard.py not available: {e}")
-    RESPONSE_GUARD_AVAILABLE = False
-    
-    def validate_and_format_answer(llm_text, top_passages, **kwargs):
-        return {
-            "answer": llm_text or "Tôi đang tìm hiểu thông tin cho bạn...",
-            "sources": [],
-            "guard_passed": True,
-            "reason": "no_guard"
-        }
-
-# ==================== FLASK APP ====================
-app = Flask(__name__)
-app.secret_key = Config.SECRET_KEY
-app.config['MAX_CONTENT_LENGTH'] = int(os.getenv("MAX_CONTENT_LENGTH", "1048576"))
-app.config['JSON_AS_ASCII'] = False
-app.config['JSON_SORT_KEYS'] = False
-
-# Apply ProxyFix for Render
-app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
-
-# CORS
-if Config.CORS_ORIGINS == "*":
-    CORS(app, 
-         origins="*",
-         methods=["GET", "POST", "OPTIONS"],
-         allow_headers=["Content-Type", "X-Admin-Key"],
-         supports_credentials=True)
-else:
-    CORS(app, 
-         origins=Config.CORS_ORIGINS,
-         methods=["GET", "POST", "OPTIONS"],
-         allow_headers=["Content-Type", "X-Admin-Key"],
-         supports_credentials=True)
-
-logger.info(f"✅ CORS configured for: {Config.CORS_ORIGINS}")
-
-# ==================== GLOBAL STATE ====================
+# ==================== FIXED: GLOBAL STATE INIT (NO CIRCULAR IMPORTS) ====================
 class GlobalState:
     """Global state with intent tracking"""
     
@@ -614,7 +543,56 @@ class GlobalState:
         self._tour_entities_loaded = False
         self._company_info_loaded = False
         
+        self.search_engine = None  # Will be initialized later
+        self.response_generator = None
+        self.chat_processor = None
+        
         logger.info("🌐 Global state initialized")
+    
+    def init_components(self):
+        """Initialize components after knowledge loaded"""
+        with self._lock:
+            if self.search_engine is None:
+                try:
+                    from app import SearchEngine, ResponseGenerator, ChatProcessor
+                    self.search_engine = SearchEngine()
+                    logger.info("✅ SearchEngine initialized")
+                except Exception as e:
+                    logger.error(f"❌ Failed to initialize SearchEngine: {e}")
+            
+            if self.response_generator is None and self.search_engine is not None:
+                try:
+                    from app import ResponseGenerator
+                    self.response_generator = ResponseGenerator()
+                    logger.info("✅ ResponseGenerator initialized")
+                except Exception as e:
+                    logger.error(f"❌ Failed to initialize ResponseGenerator: {e}")
+            
+            if self.chat_processor is None and self.search_engine is not None and self.response_generator is not None:
+                try:
+                    from app import ChatProcessor
+                    self.chat_processor = ChatProcessor()
+                    logger.info("✅ ChatProcessor initialized")
+                except Exception as e:
+                    logger.error(f"❌ Failed to initialize ChatProcessor: {e}")
+    
+    def get_search_engine(self):
+        """Get or create search engine"""
+        if self.search_engine is None:
+            self.init_components()
+        return self.search_engine
+    
+    def get_response_generator(self):
+        """Get or create response generator"""
+        if self.response_generator is None:
+            self.init_components()
+        return self.response_generator
+    
+    def get_chat_processor(self):
+        """Get or create chat processor"""
+        if self.chat_processor is None:
+            self.init_components()
+        return self.chat_processor
     
     def get_tour(self, index: int) -> Optional[Dict]:
         """Get tour by index"""
@@ -713,11 +691,85 @@ class GlobalState:
                 "cache_size": len(self.response_cache),
                 "knowledge_loaded": self._knowledge_loaded,
                 "intent_distribution": intent_dist,
-                "company_info_loaded": self._company_info_loaded
+                "company_info_loaded": self._company_info_loaded,
+                "components_initialized": self.search_engine is not None
             }
 
-# Initialize global state
+# Initialize global state (NO circular dependencies)
 state = GlobalState()
+
+# ==================== IMPORT CUSTOM MODULES (AFTER STATE) ====================
+try:
+    from meta_capi import (
+        send_meta_pageview,
+        send_meta_lead,
+        send_meta_lead_from_entities,
+        send_meta_call_button,
+        check_meta_capi_health,
+        config as meta_config
+    )
+    META_CAPI_AVAILABLE = True
+    logger.info("✅ Meta CAPI module loaded")
+except ImportError as e:
+    logger.warning(f"⚠️ meta_capi.py not available: {e}")
+    META_CAPI_AVAILABLE = False
+    
+    def send_meta_pageview(request): 
+        pass
+    
+    def send_meta_lead(*args, **kwargs): 
+        return {"status": "unavailable"}
+    
+    def send_meta_lead_from_entities(*args, **kwargs): 
+        return {"status": "unavailable"}
+    
+    def send_meta_call_button(*args, **kwargs): 
+        return {"status": "unavailable"}
+    
+    def check_meta_capi_health(): 
+        return {"status": "unavailable", "message": "Meta CAPI module not loaded"}
+
+try:
+    from response_guard import validate_and_format_answer
+    RESPONSE_GUARD_AVAILABLE = True
+    logger.info("✅ Response guard module loaded")
+except ImportError as e:
+    logger.warning(f"⚠️ response_guard.py not available: {e}")
+    RESPONSE_GUARD_AVAILABLE = False
+    
+    def validate_and_format_answer(llm_text, top_passages, **kwargs):
+        return {
+            "answer": llm_text or "Tôi đang tìm hiểu thông tin cho bạn...",
+            "sources": [],
+            "guard_passed": True,
+            "reason": "no_guard"
+        }
+
+# ==================== FLASK APP ====================
+app = Flask(__name__)
+app.secret_key = Config.SECRET_KEY
+app.config['MAX_CONTENT_LENGTH'] = int(os.getenv("MAX_CONTENT_LENGTH", "1048576"))
+app.config['JSON_AS_ASCII'] = False
+app.config['JSON_SORT_KEYS'] = False
+
+# Apply ProxyFix for Render
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+# CORS
+if Config.CORS_ORIGINS == "*":
+    CORS(app, 
+         origins="*",
+         methods=["GET", "POST", "OPTIONS"],
+         allow_headers=["Content-Type", "X-Admin-Key"],
+         supports_credentials=True)
+else:
+    CORS(app, 
+         origins=Config.CORS_ORIGINS,
+         methods=["GET", "POST", "OPTIONS"],
+         allow_headers=["Content-Type", "X-Admin-Key"],
+         supports_credentials=True)
+
+logger.info(f"✅ CORS configured for: {Config.CORS_ORIGINS}")
 
 # ==================== KNOWLEDGE LOADER ====================
 def load_knowledge() -> bool:
@@ -792,6 +844,10 @@ def load_knowledge() -> bool:
             logger.info(f"✅ Mapping created: {len(state.mapping)} entries")
         
         state._knowledge_loaded = True
+        
+        # Initialize components after knowledge loaded
+        state.init_components()
+        
         return True
         
     except Exception as e:
@@ -953,9 +1009,6 @@ class SearchEngine:
             embedding = [x/norm for x in embedding]
         
         return embedding
-
-# Initialize search engine
-search_engine = SearchEngine()
 
 # ==================== INTENT-DRIVEN RESPONSE GENERATOR ====================
 class ResponseGenerator:
@@ -1254,16 +1307,13 @@ class ResponseGenerator:
         """Generate fallback response"""
         return "Tôi có thể giúp gì cho bạn về các tour Ruby Wings? Bạn có thể hỏi về tour, giá cả, hoặc liên hệ **0332510486** để được hỗ trợ! 📞"
 
-# Initialize response generator
-response_gen = ResponseGenerator()
-
 # ==================== FIXED CHAT PROCESSOR ====================
 class ChatProcessor:
     """Fixed chat processor with Enum safety"""
     
     def __init__(self):
-        self.response_generator = response_gen
-        self.search_engine = search_engine
+        self.response_generator = state.get_response_generator()
+        self.search_engine = state.get_search_engine()
     
     def ensure_knowledge_loaded(self):
         """Ensure knowledge is loaded"""
@@ -1273,166 +1323,169 @@ class ChatProcessor:
                 logger.error("❌ Failed to load knowledge")
                 return False
             
-            search_engine.load_index()
-            logger.info("✅ Knowledge ready")
-            return True
+            # Load index through search engine
+            search_engine = state.get_search_engine()
+            if search_engine:
+                search_engine.load_index()
+                logger.info("✅ Knowledge ready")
+                return True
+            else:
+                logger.error("❌ Search engine not available")
+                return False
         return True
     
-def process(self, user_message: str, session_id: str) -> Dict[str, Any]:
-    """Process user message with Enum safety + smart fallback"""
-    start_time = time.time()
-
-    try:
-        if not self.ensure_knowledge_loaded():
-            return {
-                'reply': "Xin lỗi, hệ thống đang khởi tạo. Vui lòng thử lại sau! 🙏",
+    def process(self, user_message: str, session_id: str) -> Dict[str, Any]:
+        """Process user message with Enum safety"""
+        start_time = time.time()
+        
+        try:
+            if not self.ensure_knowledge_loaded():
+                return {
+                    'reply': "Xin lỗi, hệ thống đang khởi tạo. Vui lòng thử lại sau! 🙏",
+                    'session_id': session_id,
+                    'error': 'knowledge_not_loaded',
+                    'processing_time_ms': int((time.time() - start_time) * 1000),
+                    'timestamp': datetime.now().isoformat()
+                }
+            
+            # Get session context
+            context = state.get_session(session_id)
+            context['last_updated'] = datetime.now()
+            
+            # Check cache
+            cache_key = f"{session_id}:{hashlib.md5(user_message.encode()).hexdigest()[:12]}"
+            cached = state.get_cached_response(cache_key)
+            if cached:
+                logger.info(f"💾 Cache hit: {session_id}")
+                cached['processing_time_ms'] = int((time.time() - start_time) * 1000)
+                cached['from_cache'] = True
+                return cached
+            
+            # Detect intent
+            intent, confidence, metadata = detect_intent(user_message)
+            
+            # FIXED: Store normalized intent string
+            context['intent'] = normalize_intent(intent)
+            context['intent_metadata'] = metadata
+            
+            # Update intent statistics
+            state.stats['intent_counts'][context['intent']] += 1
+            
+            # Detect phone number
+            phone = metadata.get('phone_number') or detect_phone_number(user_message)
+            if phone:
+                context['lead_phone'] = phone
+                context['stage'] = ConversationStage.LEAD.value
+                
+                if Config.ENABLE_LEAD_CAPTURE:
+                    self._capture_lead(phone, session_id, user_message, context)
+            
+            # FIXED: Safe search with normalized intent
+            search_results = []
+            if self.search_engine:
+                search_results = self.search_engine.search(
+                    user_message, 
+                    Config.TOP_K, 
+                    intent=context['intent'],  # Use normalized string
+                    metadata=metadata
+                )
+                
+            # Extract mentioned tours
+            mentioned_tours = []
+            for score, entry in search_results:
+                tour_idx = entry.get('tour_index')
+                if tour_idx is not None and tour_idx not in mentioned_tours:
+                    mentioned_tours.append(tour_idx)
+            
+            context['mentioned_tours'] = mentioned_tours
+            
+            # Generate response
+            response_text = ""
+            if self.response_generator:
+                response_text = self.response_generator.generate(
+                    user_message,
+                    search_results,
+                    context
+                )
+            else:
+                response_text = "Xin chào! Tôi có thể giúp gì cho bạn về các tour Ruby Wings? 🌿"
+            
+            # Apply response guard if available
+            if RESPONSE_GUARD_AVAILABLE:
+                try:
+                    guarded = validate_and_format_answer(
+                        response_text,
+                        [(s, e) for s, e in search_results],
+                        context=context
+                    )
+                    response_text = guarded.get('answer', response_text)
+                except Exception as e:
+                    logger.error(f"Response guard error: {e}")
+            
+            # Add conversation to history
+            context.setdefault('conversation_history', []).append({
+                'role': 'user',
+                'content': user_message[:200],
+                'timestamp': datetime.now().isoformat()
+            })
+            context['conversation_history'].append({
+                'role': 'assistant',
+                'content': response_text[:200],
+                'timestamp': datetime.now().isoformat()
+            })
+            
+            # Build result
+            result = {
+                'reply': response_text,
                 'session_id': session_id,
-                'error': 'knowledge_not_loaded',
+                'session_state': {
+                    'stage': context.get('stage'),
+                    'intent': context.get('intent'),
+                    'intent_metadata': metadata,
+                    'mentioned_tours': mentioned_tours,
+                    'has_phone': bool(phone)
+                },
+                'intent': {
+                    'name': context['intent'],  # Use normalized string
+                    'confidence': confidence,
+                    'metadata': metadata
+                },
+                'search': {
+                    'results_count': len(search_results),
+                    'tours': mentioned_tours
+                },
+                'processing_time_ms': int((time.time() - start_time) * 1000),
+                'from_cache': False,
+                'timestamp': datetime.now().isoformat()
+            }
+            
+            # Cache result
+            state.cache_response(cache_key, result)
+            
+            # Update stats
+            state.stats['requests'] += 1
+            
+            # Log
+            processing_time = result['processing_time_ms']
+            logger.info(f"⏱️ Processed in {processing_time}ms | "
+                       f"Intent: {context['intent']} | "
+                       f"Results: {len(search_results)}")
+            
+            return result
+            
+        except Exception as e:
+            logger.error(f"❌ Chat processing error: {e}")
+            traceback.print_exc()
+            
+            state.stats['errors'] += 1
+            
+            return {
+                'reply': "Xin lỗi, có lỗi xảy ra. Vui lòng thử lại hoặc liên hệ **0332510486**! 🙏",
+                'session_id': session_id,
+                'error': str(e),
                 'processing_time_ms': int((time.time() - start_time) * 1000),
                 'timestamp': datetime.now().isoformat()
             }
-
-        # Get session context
-        context = state.get_session(session_id)
-        context['last_updated'] = datetime.now()
-
-        # Cache
-        cache_key = f"{session_id}:{hashlib.md5(user_message.encode()).hexdigest()[:12]}"
-        cached = state.get_cached_response(cache_key)
-        if cached:
-            cached['processing_time_ms'] = int((time.time() - start_time) * 1000)
-            cached['from_cache'] = True
-            return cached
-
-        # Detect intent
-        intent, confidence, metadata = detect_intent(user_message)
-        context['intent'] = normalize_intent(intent)
-        context['intent_metadata'] = metadata
-        state.stats['intent_counts'][context['intent']] += 1
-
-        # Detect phone
-        phone = metadata.get('phone_number') or detect_phone_number(user_message)
-        if phone:
-            context['lead_phone'] = phone
-            context['stage'] = ConversationStage.LEAD.value
-            if Config.ENABLE_LEAD_CAPTURE:
-                self._capture_lead(phone, session_id, user_message, context)
-
-        # Search
-        search_results = self.search_engine.search(
-            user_message,
-            Config.TOP_K,
-            intent=context['intent'],
-            metadata=metadata
-        )
-
-        # SMART FALLBACK — ĐIỂM CHÈN DUY NHẤT
-        if not search_results:
-            fallback_context = dict(context)
-            fallback_context['fallback'] = True
-
-            # ABOUT COMPANY
-            if context['intent'] == "ABOUT_COMPANY" and hasattr(self, "company_info"):
-                search_results = [(1.0, {'content': self.company_info})]
-
-            # TOUR FILTER / INQUIRY
-            elif context['intent'] in ("TOUR_FILTER", "TOUR_INQUIRY"):
-                tours = getattr(self, "tour_entities", [])
-                if tours:
-                    search_results = [
-                        (1.0, {
-                            'content': tour,
-                            'tour_index': idx
-                        }) for idx, tour in enumerate(tours[:Config.TOP_K])
-                    ]
-
-        # Extract mentioned tours
-        mentioned_tours = []
-        for score, entry in search_results:
-            tour_idx = entry.get('tour_index')
-            if tour_idx is not None and tour_idx not in mentioned_tours:
-                mentioned_tours.append(tour_idx)
-        context['mentioned_tours'] = mentioned_tours
-
-        # Generate response (GIỮ NGUYÊN KIẾN TRÚC)
-        response_text = self.response_generator.generate(
-            user_message,
-            search_results,
-            context
-        )
-
-        # Guard
-        if RESPONSE_GUARD_AVAILABLE:
-            try:
-                guarded = validate_and_format_answer(
-                    response_text,
-                    [(s, e) for s, e in search_results],
-                    context=context
-                )
-                response_text = guarded.get('answer', response_text)
-            except Exception as e:
-                logger.error(f"Response guard error: {e}")
-
-        # History
-        context.setdefault('conversation_history', []).append({
-            'role': 'user',
-            'content': user_message[:200],
-            'timestamp': datetime.now().isoformat()
-        })
-        context['conversation_history'].append({
-            'role': 'assistant',
-            'content': response_text[:200],
-            'timestamp': datetime.now().isoformat()
-        })
-
-        result = {
-            'reply': response_text,
-            'session_id': session_id,
-            'session_state': {
-                'stage': context.get('stage'),
-                'intent': context.get('intent'),
-                'intent_metadata': metadata,
-                'mentioned_tours': mentioned_tours,
-                'has_phone': bool(phone)
-            },
-            'intent': {
-                'name': context['intent'],
-                'confidence': confidence,
-                'metadata': metadata
-            },
-            'search': {
-                'results_count': len(search_results),
-                'tours': mentioned_tours
-            },
-            'processing_time_ms': int((time.time() - start_time) * 1000),
-            'from_cache': False,
-            'timestamp': datetime.now().isoformat()
-        }
-
-        state.cache_response(cache_key, result)
-        state.stats['requests'] += 1
-
-        logger.info(
-            f"⏱️ Processed in {result['processing_time_ms']}ms | "
-            f"Intent: {context['intent']} | "
-            f"Results: {len(search_results)}"
-        )
-
-        return result
-
-    except Exception as e:
-        logger.error(f"❌ Chat processing error: {e}")
-        traceback.print_exc()
-        state.stats['errors'] += 1
-
-        return {
-            'reply': "Xin lỗi, có lỗi xảy ra. Vui lòng thử lại hoặc liên hệ **0332510486**! 🙏",
-            'session_id': session_id,
-            'error': str(e),
-            'processing_time_ms': int((time.time() - start_time) * 1000),
-            'timestamp': datetime.now().isoformat()
-        }
-
     
     def _capture_lead(self, phone: str, session_id: str, message: str, context: Dict):
         """Capture lead data"""
@@ -1544,10 +1597,7 @@ def process(self, user_message: str, session_id: str) -> Dict[str, Any]:
         except Exception as e:
             logger.error(f"Fallback storage error: {e}")
 
-# Initialize chat processor
-chat_processor = ChatProcessor()
-
-# ==================== ROUTES (UNCHANGED) ====================
+# ==================== ROUTES ====================
 @app.before_request
 def before_request():
     """Before request handler"""
@@ -1565,7 +1615,7 @@ def before_request():
 @app.after_request
 def after_request(response):
     """After request handler"""
-    if hasattr(g, 'start_name'):
+    if hasattr(g, 'start_time'):
         elapsed = (time.time() - g.start_time) * 1000
         response.headers['X-Processing-Time'] = f"{elapsed:.2f}ms"
     
@@ -1586,6 +1636,11 @@ def health():
         'modules': {
             'meta_capi': META_CAPI_AVAILABLE,
             'response_guard': RESPONSE_GUARD_AVAILABLE
+        },
+        'components': {
+            'search_engine': state.search_engine is not None,
+            'response_generator': state.response_generator is not None,
+            'chat_processor': state.chat_processor is not None
         }
     })
 
@@ -1594,7 +1649,7 @@ def index():
     """Index route"""
     return jsonify({
         'service': 'Ruby Wings AI Chatbot',
-        'version': '5.2.4 (Enum Fix)',
+        'version': '5.2.4 (Enum Fix + Import Fix)',
         'status': 'running',
         'tours_available': len(state.tours_db),
         'endpoints': {
@@ -1622,6 +1677,13 @@ def chat():
         
         if not user_message:
             return jsonify({'error': 'Message is required'}), 400
+        
+        chat_processor = state.get_chat_processor()
+        if chat_processor is None:
+            return jsonify({
+                'error': 'Chat processor not initialized',
+                'message': 'Xin lỗi, hệ thống đang khởi tạo. Vui lòng thử lại sau!'
+            }), 503
         
         result = chat_processor.process(user_message, session_id)
         
@@ -1653,6 +1715,13 @@ def chat_legacy():
         
         if not user_message:
             return jsonify({'error': 'Message is required'}), 400
+        
+        chat_processor = state.get_chat_processor()
+        if chat_processor is None:
+            return jsonify({
+                'error': 'Chat processor not initialized',
+                'message': 'Xin lỗi, hệ thống đang khởi tạo. Vui lòng thử lại sau!'
+            }), 503
         
         result = chat_processor.process(user_message, session_id)
         return jsonify(result)
@@ -1804,9 +1873,9 @@ def stats():
 
 # ==================== INITIALIZATION ====================
 def initialize_app():
-    """Initialize application"""
+    """Initialize application - ONLY CALLED IN MAIN"""
     try:
-        logger.info("🚀 Initializing Ruby Wings Chatbot v5.2.4 (Enum Fix)...")
+        logger.info("🚀 Initializing Ruby Wings Chatbot v5.2.4 (Enum Fix + Import Fix)...")
         
         Config.log_config()
         
@@ -1816,8 +1885,11 @@ def initialize_app():
         else:
             logger.info("✅ Knowledge loaded")
         
-        logger.info("🔍 Loading search index...")
-        search_engine.load_index()
+        # Load search index through search engine
+        search_engine = state.get_search_engine()
+        if search_engine:
+            logger.info("🔍 Loading search index...")
+            search_engine.load_index()
         
         logger.info("=" * 60)
         logger.info("✅ RUBY WINGS CHATBOT READY!")
@@ -1830,6 +1902,8 @@ def initialize_app():
         traceback.print_exc()
 
 # ==================== APPLICATION ENTRY POINT ====================
+# FIXED: initialize_app() ONLY called when running directly
+# NOT during module import by Gunicorn
 if __name__ == '__main__':
     initialize_app()
 
