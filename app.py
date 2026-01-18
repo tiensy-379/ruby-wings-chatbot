@@ -103,6 +103,8 @@ class Config:
     ENABLE_FALLBACK_STORAGE = os.getenv("ENABLE_FALLBACK_STORAGE", "true").lower() == "true"
     ENABLE_TOUR_FILTERING = os.getenv("ENABLE_TOUR_FILTERING", "true").lower() == "true"
     ENABLE_COMPANY_INFO = os.getenv("ENABLE_COMPANY_INFO", "true").lower() == "true"
+    ENABLE_META_CAPI_LEAD = os.getenv("ENABLE_META_CAPI_LEAD", "false").lower() == "true"
+
     
     # State Machine
     STATE_MACHINE_ENABLED = True
