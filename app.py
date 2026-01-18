@@ -3324,4 +3324,20 @@ if __name__ == '__main__':
         logger.error("❌ Application failed to initialize")
         sys.exit(1)
 
-__all__ = ["app"]
+# ==================== MODULE EXPORTS FOR GUNICORN ====================
+# Export search_engine for gunicorn worker initialization (gunicorn_conf.py line 283)
+search_engine = state.search_engine
+
+# Export availability flags for health checks (gunicorn_conf.py line 446)  
+OPENAI_AVAILABLE = OPENAI_AVAILABLE
+FAISS_AVAILABLE = FAISS_AVAILABLE
+NUMPY_AVAILABLE = NUMPY_AVAILABLE
+
+__all__ = [
+    "app",
+    "search_engine",  # Required by gunicorn_conf.py
+    "OPENAI_AVAILABLE",  # Required by gunicorn health checks
+    "FAISS_AVAILABLE",  # Required by gunicorn health checks
+    "NUMPY_AVAILABLE",  # For completeness
+    "state",  # Global state access
+]
