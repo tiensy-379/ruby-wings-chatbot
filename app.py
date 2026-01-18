@@ -1278,152 +1278,161 @@ class ChatProcessor:
             return True
         return True
     
-    def process(self, user_message: str, session_id: str) -> Dict[str, Any]:
-        """Process user message with Enum safety"""
-        start_time = time.time()
-        
-        try:
-            if not self.ensure_knowledge_loaded():
-                return {
-                    'reply': "Xin lỗi, hệ thống đang khởi tạo. Vui lòng thử lại sau! 🙏",
-                    'session_id': session_id,
-                    'error': 'knowledge_not_loaded',
-                    'processing_time_ms': int((time.time() - start_time) * 1000),
-                    'timestamp': datetime.now().isoformat()
-                }
-            
-            # Get session context
-            context = state.get_session(session_id)
-            context['last_updated'] = datetime.now()
-            
-            # Check cache
-            cache_key = f"{session_id}:{hashlib.md5(user_message.encode()).hexdigest()[:12]}"
-            cached = state.get_cached_response(cache_key)
-            if cached:
-                logger.info(f"💾 Cache hit: {session_id}")
-                cached['processing_time_ms'] = int((time.time() - start_time) * 1000)
-                cached['from_cache'] = True
-                return cached
-            
-            # Detect intent
-            intent, confidence, metadata = detect_intent(user_message)
-            
-            # FIXED: Store normalized intent string
-            context['intent'] = normalize_intent(intent)
-            context['intent_metadata'] = metadata
-            
-            # Update intent statistics
-            state.stats['intent_counts'][context['intent']] += 1
-            
-            # Detect phone number
-            phone = metadata.get('phone_number') or detect_phone_number(user_message)
-            if phone:
-                context['lead_phone'] = phone
-                context['stage'] = ConversationStage.LEAD.value
-                
-                if Config.ENABLE_LEAD_CAPTURE:
-                    self._capture_lead(phone, session_id, user_message, context)
-            
-            # FIXED: Safe search with normalized intent
-            search_results = self.search_engine.search(
-                user_message, 
-                Config.TOP_K, 
-                intent=context['intent'],  # Use normalized string
-                metadata=metadata
-            )
-            
-            # Extract mentioned tours
-            mentioned_tours = []
-            for score, entry in search_results:
-                tour_idx = entry.get('tour_index')
-                if tour_idx is not None and tour_idx not in mentioned_tours:
-                    mentioned_tours.append(tour_idx)
-            
-            context['mentioned_tours'] = mentioned_tours
-            
-            # Generate response
-            response_text = self.response_generator.generate(
-                user_message,
-                search_results,
-                context
-            )
-            
-            # Apply response guard if available
-            if RESPONSE_GUARD_AVAILABLE:
-                try:
-                    guarded = validate_and_format_answer(
-                        response_text,
-                        [(s, e) for s, e in search_results],
-                        context=context
-                    )
-                    response_text = guarded.get('answer', response_text)
-                except Exception as e:
-                    logger.error(f"Response guard error: {e}")
-            
-            # Add conversation to history
-            context.setdefault('conversation_history', []).append({
-                'role': 'user',
-                'content': user_message[:200],
-                'timestamp': datetime.now().isoformat()
-            })
-            context['conversation_history'].append({
-                'role': 'assistant',
-                'content': response_text[:200],
-                'timestamp': datetime.now().isoformat()
-            })
-            
-            # Build result
-            result = {
-                'reply': response_text,
-                'session_id': session_id,
-                'session_state': {
-                    'stage': context.get('stage'),
-                    'intent': context.get('intent'),
-                    'intent_metadata': metadata,
-                    'mentioned_tours': mentioned_tours,
-                    'has_phone': bool(phone)
-                },
-                'intent': {
-                    'name': context['intent'],  # Use normalized string
-                    'confidence': confidence,
-                    'metadata': metadata
-                },
-                'search': {
-                    'results_count': len(search_results),
-                    'tours': mentioned_tours
-                },
-                'processing_time_ms': int((time.time() - start_time) * 1000),
-                'from_cache': False,
-                'timestamp': datetime.now().isoformat()
-            }
-            
-            # Cache result
-            state.cache_response(cache_key, result)
-            
-            # Update stats
-            state.stats['requests'] += 1
-            
-            # Log
-            processing_time = result['processing_time_ms']
-            logger.info(f"⏱️ Processed in {processing_time}ms | "
-                       f"Intent: {context['intent']} | "
-                       f"Results: {len(search_results)}")
-            
-            return result
-            
-        except Exception as e:
-            logger.error(f"❌ Chat processing error: {e}")
-            traceback.print_exc()
-            
-            state.stats['errors'] += 1
-            
+def process(self, user_message: str, session_id: str) -> Dict[str, Any]:
+    """Process user message with Enum safety + smart fallback"""
+    start_time = time.time()
+
+    try:
+        if not self.ensure_knowledge_loaded():
             return {
-                'reply': "Xin lỗi, có lỗi xảy ra. Vui lòng thử lại hoặc liên hệ **0332510486**! 🙏",
+                'reply': "Xin lỗi, hệ thống đang khởi tạo. Vui lòng thử lại sau! 🙏",
                 'session_id': session_id,
-                'error': str(e),
+                'error': 'knowledge_not_loaded',
                 'processing_time_ms': int((time.time() - start_time) * 1000),
                 'timestamp': datetime.now().isoformat()
             }
+
+        # Get session context
+        context = state.get_session(session_id)
+        context['last_updated'] = datetime.now()
+
+        # Cache
+        cache_key = f"{session_id}:{hashlib.md5(user_message.encode()).hexdigest()[:12]}"
+        cached = state.get_cached_response(cache_key)
+        if cached:
+            cached['processing_time_ms'] = int((time.time() - start_time) * 1000)
+            cached['from_cache'] = True
+            return cached
+
+        # Detect intent
+        intent, confidence, metadata = detect_intent(user_message)
+        context['intent'] = normalize_intent(intent)
+        context['intent_metadata'] = metadata
+        state.stats['intent_counts'][context['intent']] += 1
+
+        # Detect phone
+        phone = metadata.get('phone_number') or detect_phone_number(user_message)
+        if phone:
+            context['lead_phone'] = phone
+            context['stage'] = ConversationStage.LEAD.value
+            if Config.ENABLE_LEAD_CAPTURE:
+                self._capture_lead(phone, session_id, user_message, context)
+
+        # Search
+        search_results = self.search_engine.search(
+            user_message,
+            Config.TOP_K,
+            intent=context['intent'],
+            metadata=metadata
+        )
+
+        # SMART FALLBACK — ĐIỂM CHÈN DUY NHẤT
+        if not search_results:
+            fallback_context = dict(context)
+            fallback_context['fallback'] = True
+
+            # ABOUT COMPANY
+            if context['intent'] == "ABOUT_COMPANY" and hasattr(self, "company_info"):
+                search_results = [(1.0, {'content': self.company_info})]
+
+            # TOUR FILTER / INQUIRY
+            elif context['intent'] in ("TOUR_FILTER", "TOUR_INQUIRY"):
+                tours = getattr(self, "tour_entities", [])
+                if tours:
+                    search_results = [
+                        (1.0, {
+                            'content': tour,
+                            'tour_index': idx
+                        }) for idx, tour in enumerate(tours[:Config.TOP_K])
+                    ]
+
+        # Extract mentioned tours
+        mentioned_tours = []
+        for score, entry in search_results:
+            tour_idx = entry.get('tour_index')
+            if tour_idx is not None and tour_idx not in mentioned_tours:
+                mentioned_tours.append(tour_idx)
+        context['mentioned_tours'] = mentioned_tours
+
+        # Generate response (GIỮ NGUYÊN KIẾN TRÚC)
+        response_text = self.response_generator.generate(
+            user_message,
+            search_results,
+            context
+        )
+
+        # Guard
+        if RESPONSE_GUARD_AVAILABLE:
+            try:
+                guarded = validate_and_format_answer(
+                    response_text,
+                    [(s, e) for s, e in search_results],
+                    context=context
+                )
+                response_text = guarded.get('answer', response_text)
+            except Exception as e:
+                logger.error(f"Response guard error: {e}")
+
+        # History
+        context.setdefault('conversation_history', []).append({
+            'role': 'user',
+            'content': user_message[:200],
+            'timestamp': datetime.now().isoformat()
+        })
+        context['conversation_history'].append({
+            'role': 'assistant',
+            'content': response_text[:200],
+            'timestamp': datetime.now().isoformat()
+        })
+
+        result = {
+            'reply': response_text,
+            'session_id': session_id,
+            'session_state': {
+                'stage': context.get('stage'),
+                'intent': context.get('intent'),
+                'intent_metadata': metadata,
+                'mentioned_tours': mentioned_tours,
+                'has_phone': bool(phone)
+            },
+            'intent': {
+                'name': context['intent'],
+                'confidence': confidence,
+                'metadata': metadata
+            },
+            'search': {
+                'results_count': len(search_results),
+                'tours': mentioned_tours
+            },
+            'processing_time_ms': int((time.time() - start_time) * 1000),
+            'from_cache': False,
+            'timestamp': datetime.now().isoformat()
+        }
+
+        state.cache_response(cache_key, result)
+        state.stats['requests'] += 1
+
+        logger.info(
+            f"⏱️ Processed in {result['processing_time_ms']}ms | "
+            f"Intent: {context['intent']} | "
+            f"Results: {len(search_results)}"
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"❌ Chat processing error: {e}")
+        traceback.print_exc()
+        state.stats['errors'] += 1
+
+        return {
+            'reply': "Xin lỗi, có lỗi xảy ra. Vui lòng thử lại hoặc liên hệ **0332510486**! 🙏",
+            'session_id': session_id,
+            'error': str(e),
+            'processing_time_ms': int((time.time() - start_time) * 1000),
+            'timestamp': datetime.now().isoformat()
+        }
+
     
     def _capture_lead(self, phone: str, session_id: str, message: str, context: Dict):
         """Capture lead data"""
