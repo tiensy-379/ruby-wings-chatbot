@@ -527,13 +527,19 @@ state = GlobalState()
 def load_knowledge():
     """Load knowledge base"""
     if state._knowledge_loaded:
+        logger.info("✅ Knowledge already loaded")
         return True
     
     try:
+        logger.info("=" * 60)
         logger.info(f"📚 Loading knowledge from {Config.KNOWLEDGE_PATH}")
+        logger.info(f"🔍 RAM profile: {Config.RAM_PROFILE}MB")
+        logger.info(f"🔍 FAISS enabled: {Config.FAISS_ENABLED}")
         
         if not os.path.exists(Config.KNOWLEDGE_PATH):
             logger.error(f"❌ Knowledge file not found: {Config.KNOWLEDGE_PATH}")
+            logger.error(f"❌ Current working directory: {os.getcwd()}")
+            logger.error(f"❌ Please ensure knowledge.json exists")
             return False
         
         with open(Config.KNOWLEDGE_PATH, 'r', encoding='utf-8') as f:
@@ -541,6 +547,12 @@ def load_knowledge():
         
         # Load tours
         tours_data = knowledge.get('tours', [])
+        
+        if not tours_data:
+            logger.error("❌ No tours found in knowledge.json")
+            return False
+        
+        logger.info(f"📦 Found {len(tours_data)} tours in knowledge file")
         
         for idx, tour_data in enumerate(tours_data):
             try:
@@ -555,15 +567,16 @@ def load_knowledge():
                 logger.error(f"❌ Error loading tour {idx}: {e}")
                 continue
         
-        logger.info(f"✅ Loaded {len(state.tours_db)} tours")
+        logger.info(f"✅ Loaded {len(state.tours_db)} tours into database")
         
         # Load mapping
         if os.path.exists(Config.FAISS_MAPPING_PATH):
             with open(Config.FAISS_MAPPING_PATH, 'r', encoding='utf-8') as f:
                 state.mapping = json.load(f)
-            logger.info(f"✅ Loaded {len(state.mapping)} mapping entries")
+            logger.info(f"✅ Loaded {len(state.mapping)} mapping entries from file")
         else:
             # Create simple mapping from tours
+            logger.info("📝 Creating mapping from tours (no mapping file found)")
             state.mapping = []
             for idx, tour in state.tours_db.items():
                 # Add key fields to mapping
@@ -579,13 +592,20 @@ def load_knowledge():
                                 "text": value_str,
                                 "tour_index": idx
                             })
-            logger.info(f"📝 Created {len(state.mapping)} mapping entries")
+            logger.info(f"✅ Created {len(state.mapping)} mapping entries from tours")
         
         state._knowledge_loaded = True
+        logger.info("=" * 60)
+        logger.info("✅ KNOWLEDGE BASE LOADED SUCCESSFULLY")
+        logger.info(f"   Tours: {len(state.tours_db)}")
+        logger.info(f"   Mappings: {len(state.mapping)}")
+        logger.info("=" * 60)
         return True
         
     except Exception as e:
-        logger.error(f"❌ Failed to load knowledge: {e}")
+        logger.error("=" * 60)
+        logger.error(f"❌ FAILED TO LOAD KNOWLEDGE: {e}")
+        logger.error("=" * 60)
         traceback.print_exc()
         return False
 
@@ -608,20 +628,24 @@ class SearchEngine:
     def load_index(self):
         """Load search index"""
         if state._index_loaded:
+            logger.info("✅ Search index already loaded")
             return True
         
         try:
+            logger.info("🧠 Initializing search engine (low-RAM mode: {})".format(Config.IS_LOW_RAM))
+            
             # Try FAISS first
             if Config.FAISS_ENABLED and FAISS_AVAILABLE and os.path.exists(Config.FAISS_INDEX_PATH):
-                logger.info("📦 Loading FAISS index...")
+                logger.info(f"📦 Loading FAISS index from {Config.FAISS_INDEX_PATH}...")
                 state.index = faiss.read_index(Config.FAISS_INDEX_PATH)
                 logger.info(f"✅ FAISS loaded: {state.index.ntotal} vectors")
+                logger.info("🧠 Search mode: FAISS")
                 state._index_loaded = True
                 return True
             
             # Try numpy fallback
             if NUMPY_AVAILABLE and os.path.exists(Config.FALLBACK_VECTORS_PATH):
-                logger.info("📦 Loading numpy vectors...")
+                logger.info(f"📦 Loading numpy vectors from {Config.FALLBACK_VECTORS_PATH}...")
                 data = np.load(Config.FALLBACK_VECTORS_PATH)
                 
                 if 'mat' in data:
@@ -638,10 +662,12 @@ class SearchEngine:
                     state.vectors = state.vectors / (norms + 1e-12)
                 
                 logger.info(f"✅ Numpy loaded: {state.vectors.shape[0]} vectors")
+                logger.info("🧠 Search mode: Numpy cosine similarity")
                 state._index_loaded = True
                 return True
             
-            logger.warning("⚠️ No index found, using text search")
+            logger.warning("⚠️ No vector index found, using text search")
+            logger.info("🧠 Search mode: Text-based (keyword matching)")
             return False
             
         except Exception as e:
@@ -837,6 +863,21 @@ class ChatProcessor:
         start_time = time.time()
         
         try:
+            # CRITICAL: Ensure knowledge is loaded (lazy init if needed)
+            if not state._knowledge_loaded or not state.mapping:
+                logger.warning("⚠️ Knowledge not initialized – initializing now...")
+                if not load_knowledge():
+                    logger.error("❌ Failed to load knowledge during chat request")
+                    return {
+                        'reply': "Xin lỗi, hệ thống đang khởi động. Vui lòng thử lại sau hoặc liên hệ **0332510486**! 🙏",
+                        'session_id': session_id,
+                        'error': 'Knowledge not loaded',
+                        'processing_time_ms': int((time.time() - start_time) * 1000),
+                        'timestamp': datetime.now().isoformat()
+                    }
+                else:
+                    logger.info("✅ Knowledge loaded successfully during chat request")
+            
             # Get session context
             context = state.get_session(session_id)
             context['last_updated'] = datetime.now()
@@ -970,8 +1011,12 @@ class ChatProcessor:
                 'timestamp': datetime.now().isoformat()
             }
     
-    def _next_stage(self, current_stage: str, intent) -> str:
-        """Determine next conversation stage"""
+    def _next_stage(self, current_stage, intent):
+        """Determine next conversation stage
+        
+        Returns:
+            str: Stage value as string (e.g., "explore", "suggest", "lead")
+        """
         intent_name = intent.name if hasattr(intent, 'name') else str(intent)
         
         # Convert string to Enum if needed for comparison
@@ -1170,6 +1215,11 @@ def health():
         'status': 'healthy',
         'version': '5.2.2',
         'timestamp': datetime.now().isoformat(),
+        'config': {
+            'ram_profile': f"{Config.RAM_PROFILE}MB",
+            'faiss_enabled': Config.FAISS_ENABLED,
+            'low_ram_mode': Config.IS_LOW_RAM
+        },
         'modules': {
             'openai': OPENAI_AVAILABLE and bool(Config.OPENAI_API_KEY),
             'entities': ENTITIES_AVAILABLE,
@@ -1180,8 +1230,15 @@ def health():
         },
         'knowledge': {
             'loaded': state._knowledge_loaded,
-            'tours': len(state.tours_db)
-        }
+            'tours': len(state.tours_db),
+            'mappings': len(state.mapping),
+            'index_loaded': state._index_loaded
+        },
+        'search_mode': (
+            'faiss' if state.index is not None 
+            else 'numpy' if state.vectors is not None 
+            else 'text'
+        )
     })
 
 @app.route('/', methods=['GET'])
@@ -1539,20 +1596,42 @@ def internal_error(error):
 def initialize_app():
     """Initialize application"""
     try:
-        logger.info("🚀 Initializing Ruby Wings Chatbot v5.2.2...")
+        logger.info("=" * 60)
+        logger.info("🚀 RUBY WINGS CHATBOT v5.2.2 STARTING...")
+        logger.info("=" * 60)
+        logger.info(f"🔧 RAM profile: {Config.RAM_PROFILE}MB")
+        logger.info(f"🔧 FAISS enabled: {Config.FAISS_ENABLED}")
+        logger.info(f"🔧 Low RAM mode: {Config.IS_LOW_RAM}")
+        logger.info("=" * 60)
         
         # Log configuration
         Config.log_config()
         
-        # Load knowledge
-        if not load_knowledge():
-            logger.warning("⚠️ Knowledge base not loaded, continuing anyway")
+        # Load knowledge - CRITICAL
+        logger.info("📚 Loading knowledge base...")
+        knowledge_loaded = load_knowledge()
+        
+        if not knowledge_loaded:
+            logger.error("=" * 60)
+            logger.error("❌ CRITICAL: Knowledge base failed to load!")
+            logger.error("❌ Chatbot will not work without knowledge")
+            logger.error("❌ Please check KNOWLEDGE_PATH and file existence")
+            logger.error("=" * 60)
+        else:
+            logger.info("✅ Knowledge base loaded successfully")
         
         # Load search index
-        if not search_engine.load_index():
-            logger.warning("⚠️ Search index not loaded, using text search")
+        logger.info("🧠 Loading search index...")
+        index_loaded = search_engine.load_index()
+        
+        if not index_loaded:
+            logger.warning("⚠️ Search index not loaded, will use text search")
+        else:
+            logger.info("✅ Search index loaded successfully")
         
         # Check integrations
+        logger.info("🔌 Checking integrations...")
+        
         if META_CAPI_AVAILABLE and Config.ENABLE_META_CAPI:
             logger.info("✅ Meta CAPI ready")
         else:
@@ -1563,13 +1642,23 @@ def initialize_app():
         else:
             logger.warning("⚠️ OpenAI not available, using fallback")
         
+        # Final status
         logger.info("=" * 60)
-        logger.info("✅ RUBY WINGS CHATBOT READY!")
+        if knowledge_loaded:
+            logger.info("✅ RUBY WINGS CHATBOT READY!")
+            logger.info(f"📊 Tours loaded: {len(state.tours_db)}")
+            logger.info(f"📊 Mappings loaded: {len(state.mapping)}")
+        else:
+            logger.error("⚠️ CHATBOT STARTED WITH WARNINGS")
+            logger.error("⚠️ Knowledge not loaded - chatbot may not work")
+        
         logger.info(f"🌐 Server: {Config.HOST}:{Config.PORT}")
         logger.info("=" * 60)
         
     except Exception as e:
-        logger.error(f"❌ Initialization failed: {e}")
+        logger.error("=" * 60)
+        logger.error(f"❌ INITIALIZATION FAILED: {e}")
+        logger.error("=" * 60)
         traceback.print_exc()
 
 # ==================== APPLICATION ENTRY POINT ====================
