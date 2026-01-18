@@ -33,6 +33,15 @@ TECHNICAL IMPROVEMENTS:
 This version ensures the chatbot ALWAYS provides detailed, helpful responses
 instead of generic greetings or "no information" messages.
 """
+# ===== HARD FIX OPENAI PROXY CRASH (RENDER) =====
+import os
+
+for k in [
+    "HTTP_PROXY", "HTTPS_PROXY",
+    "http_proxy", "https_proxy"
+]:
+    if k in os.environ:
+        del os.environ[k]
 
 # ==================== CORE IMPORTS ====================
 import os
