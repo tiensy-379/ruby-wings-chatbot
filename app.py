@@ -858,7 +858,7 @@ class ChatProcessor:
             phone = metadata.get('phone_number') or detect_phone_number(user_message)
             if phone:
                 context['lead_phone'] = phone
-                context['stage'] = ConversationStage.LEAD
+                context['stage'] = ConversationStage.LEAD.value
                 
                 # Capture lead
                 if Config.ENABLE_LEAD_CAPTURE:
@@ -925,7 +925,7 @@ class ChatProcessor:
                 'reply': response_text,
                 'session_id': session_id,
                 'session_state': {
-                    'stage': context.get('stage'),
+                    'stage': context.get('stage').value if hasattr(context.get('stage'), 'value') else context.get('stage'),
                     'intent': context.get('intent'),
                     'mentioned_tours': mentioned_tours,
                     'has_phone': bool(phone)
@@ -974,6 +974,13 @@ class ChatProcessor:
         """Determine next conversation stage"""
         intent_name = intent.name if hasattr(intent, 'name') else str(intent)
         
+        # Convert string to Enum if needed for comparison
+        if isinstance(current_stage, str):
+            try:
+                current_stage = ConversationStage(current_stage)
+            except (ValueError, AttributeError):
+                current_stage = ConversationStage.EXPLORE
+        
         transitions = {
             ConversationStage.EXPLORE: {
                 'TOUR_INQUIRY': ConversationStage.SUGGEST,
@@ -995,7 +1002,10 @@ class ChatProcessor:
         }
         
         next_stages = transitions.get(current_stage, {})
-        return next_stages.get(intent_name, current_stage)
+        next_stage = next_stages.get(intent_name, current_stage)
+        
+        # Always return string value for JSON serialization
+        return next_stage.value if hasattr(next_stage, 'value') else str(next_stage)
     
     def _capture_lead(self, phone: str, session_id: str, message: str, context: Dict):
         """Capture lead data"""
