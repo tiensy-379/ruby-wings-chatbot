@@ -545,12 +545,11 @@ class SearchEngine:
         try:
             from openai import OpenAI
             if Config.OPENAI_API_KEY:
-                # ABSOLUTE FIX: Only api_key, base_url, timeout - NO OTHER PARAMS
+                # FIX: Removed 'proxies' parameter
                 self.openai_client = OpenAI(
                     api_key=Config.OPENAI_API_KEY,
                     base_url=Config.OPENAI_BASE_URL,
                     timeout=30.0
-                    # NO proxies, NO http_client, NO other params
                 )
                 logger.info("✅ SearchEngine OpenAI client initialized (api_key + base_url + timeout only)")
             else:
@@ -888,12 +887,11 @@ class ResponseGenerator:
         try:
             from openai import OpenAI
             if Config.OPENAI_API_KEY:
-                # ABSOLUTE FIX: Only api_key, base_url, timeout - NO OTHER PARAMS
+                # FIX: Removed 'proxies' parameter
                 self.openai_client = OpenAI(
                     api_key=Config.OPENAI_API_KEY,
                     base_url=Config.OPENAI_BASE_URL,
                     timeout=60.0
-                    # NO proxies, NO http_client, NO other params
                 )
                 logger.info("✅ ResponseGenerator OpenAI client initialized (api_key + base_url + timeout only)")
             else:
