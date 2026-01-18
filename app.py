@@ -34,11 +34,11 @@ This version ensures the chatbot ALWAYS provides detailed, helpful responses
 instead of generic greetings or "no information" messages.
 """
 
-# ===== HARD PATCH FOR OPENAI + HTTPX PROXY BUG =====
-import os
+from openai import OpenAI
 
-for k in ("HTTP_PROXY", "HTTPS_PROXY", "http_proxy", "https_proxy"):
-    os.environ.pop(k, None)
+client = OpenAI(
+    api_key=Config.OPENAI_API_KEY
+)
 
 # ==================== CORE IMPORTS ====================
 import os
@@ -549,6 +549,13 @@ class SearchEngine:
         
         # Initialize OpenAI client - NO PROXIES PARAMETER
         try:
+            # ===== VERSION VERIFY (REMOVE AFTER TEST) =====
+            import openai
+            import httpx
+
+            print("===== OPENAI VERSION =====", openai.__version__)
+            print("===== HTTPX VERSION =====", httpx.__version__)
+
             from openai import OpenAI
             if Config.OPENAI_API_KEY:
                 # FIX: Removed 'proxies' parameter - OpenAI v1.6.1+ doesn't support it
