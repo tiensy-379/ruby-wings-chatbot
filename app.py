@@ -437,64 +437,6 @@ def send_meta_lead(request_obj, phone: str, contact_name: str = "",
         logger.error(f"Meta CAPI exception: {str(e)}")
         return {"success": False, "error": str(e)}
 
-# ==================== GLOBAL STATE ====================
-class AppState:
-    """Global application state"""
-    def __init__(self):
-        self.knowledge_data = None
-        self.tours_db = []
-        self.company_info = {}
-        self.tour_entities = {}
-        self.faqs = []
-        
-        # Components (initialized lazily)
-        self._search_engine = None
-        self._chat_processor = None
-        
-        # Session management
-        self.sessions = OrderedDict()
-        self.sessions_lock = threading.RLock()
-        
-        # Cache
-        self.embedding_cache = OrderedDict()
-        self.embedding_cache_lock = threading.RLock()
-        
-        # Stats
-        self.stats = {
-            'requests': 0,
-            'errors': 0,
-            'leads': 0,
-            'meta_capi_calls': 0,
-            'meta_capi_errors': 0,
-            'cache_hits': 0,
-            'cache_misses': 0
-        }
-        self.stats_lock = threading.RLock()
-    
-    def get_search_engine(self):
-        if self._search_engine is None:
-            self._search_engine = SearchEngine()
-        return self._search_engine
-    
-    def get_chat_processor(self):
-        if self._chat_processor is None:
-            self._chat_processor = ChatProcessor()
-        return self._chat_processor
-
-    def get_stats(self) -> Dict[str, Any]:
-        """Get statistics"""
-        with self.stats_lock:
-            return {
-                **self.stats,
-                'sessions': len(self.sessions),
-                'cache_size': len(self.embedding_cache),
-                'tours_loaded': len(self.tours_db),
-                'uptime_seconds': int(time.time() - getattr(self, 'start_time', time.time()))
-            }
-
-state = AppState()
-state.start_time = time.time()
-
 # ==================== FLASK APP SETUP ====================
 app = Flask(__name__)
 @app.route("/chat", methods=["POST", "OPTIONS"])
@@ -874,6 +816,63 @@ class SearchEngine:
             lines.append(f"Điểm nổi bật: {', '.join(str(h)[:100] for h in highlights)}")
         
         return "\n".join(lines)
+# ==================== GLOBAL STATE ====================
+class AppState:
+    """Global application state"""
+    def __init__(self):
+        self.knowledge_data = None
+        self.tours_db = []
+        self.company_info = {}
+        self.tour_entities = {}
+        self.faqs = []
+        
+        # Components (initialized lazily)
+        self._search_engine = None
+        self._chat_processor = None
+        
+        # Session management
+        self.sessions = OrderedDict()
+        self.sessions_lock = threading.RLock()
+        
+        # Cache
+        self.embedding_cache = OrderedDict()
+        self.embedding_cache_lock = threading.RLock()
+        
+        # Stats
+        self.stats = {
+            'requests': 0,
+            'errors': 0,
+            'leads': 0,
+            'meta_capi_calls': 0,
+            'meta_capi_errors': 0,
+            'cache_hits': 0,
+            'cache_misses': 0
+        }
+        self.stats_lock = threading.RLock()
+    
+    def get_search_engine(self):
+        if self._search_engine is None:
+            self._search_engine = SearchEngine()
+        return self._search_engine
+    
+    def get_chat_processor(self):
+        if self._chat_processor is None:
+            self._chat_processor = ChatProcessor()
+        return self._chat_processor
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get statistics"""
+        with self.stats_lock:
+            return {
+                **self.stats,
+                'sessions': len(self.sessions),
+                'cache_size': len(self.embedding_cache),
+                'tours_loaded': len(self.tours_db),
+                'uptime_seconds': int(time.time() - getattr(self, 'start_time', time.time()))
+            }
+
+state = AppState()
+state.start_time = time.time()
 
 # ==================== RESPONSE GENERATOR ====================
 class ResponseGenerator:
