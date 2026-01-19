@@ -2941,34 +2941,27 @@ def get_session_context(session_id: str) -> ConversationContext:
     return ctx
 
 
+def extract_session_id(request_data: Dict, remote_addr: str) -> str:
+    """Extract or create session ID"""
+    session_id = request_data.get("session_id")
+    if not session_id:
+        ip = remote_addr or "0.0.0.0"
+        current_hour = datetime.utcnow().strftime("%Y%m%d%H")
+        unique_str = f"{ip}_{current_hour}"
+        session_id = hashlib.md5(unique_str.encode()).hexdigest()[:12]
+    return f"session_{session_id}"
+
 def _prepare_llm_prompt(user_message: str, search_results: List, context: Dict) -> str:
-    """Prepare prompt for LLM với cải tiến xử lý câu hỏi chung"""
-    user_message_lower = user_message.lower()
-    
-    # Kiểm tra nếu là câu hỏi về chính sách chung
-    is_general_policy_question = any(phrase in user_message_lower for phrase in [
-        'giá tour đã bao gồm', 'bao gồm ăn uống', 'bao gồm xe đưa đón', 
-        'bao gồm khách sạn', 'đã bao gồm những gì', 'có bao gồm',
-        'đã có ăn uống chưa', 'đã có xe chưa', 'đã có khách sạn chưa'
-    ])
-    
+    """Prepare prompt for LLM"""
     prompt_parts = [
-        "Bạn là trợ lý AI thông minh của Ruby Wings - chuyên tư vấn du lịch trải nghiệm.",
+        "Bạn là trợ lý AI của Ruby Wings - chuyên tư vấn du lịch trải nghiệm.",
         "HƯỚNG DẪN QUAN TRỌNG:",
         "1. LUÔN sử dụng thông tin từ dữ liệu nội bộ được cung cấp bên dưới",
         "2. Nếu thiếu thông tin chi tiết, tổng hợp từ thông tin chung có sẵn",
         "3. KHÔNG BAO GIỜ nói 'không có thông tin', 'không biết', 'không rõ'",
-        "4. Luôn giữ thái độ nhiệt tình, hữu ích, chuyên nghiệp, thông minh",
-        "5. Nếu không tìm thấy thông tin chính xác, đưa ra thông tin tổng quát dựa trên kiến thức chung về tour du lịch",
+        "4. Luôn giữ thái độ nhiệt tình, hữu ích, chuyên nghiệp",
+        "5. Nếu không tìm thấy thông tin chính xác, đưa ra thông tin tổng quát",
         "6. KHÔNG tự ý bịa thông tin không có trong dữ liệu",
-        "7. Đối với câu hỏi về CHÍNH SÁCH CHUNG (giá tour bao gồm gì, dịch vụ đi kèm):",
-        "   - Chỉ cần trả lời ngắn gọn, tổng quát, thông minh",
-        "   - KHÔNG cần liệt kê tất cả các tour",
-        "   - Tập trung vào thông tin chung từ dữ liệu có sẵn",
-        "   - Nếu cần, đề cập rằng có thể điều chỉnh theo yêu cầu thực tế",
-        "8. Đối với câu hỏi về TOUR CỤ THỂ:",
-        "   - Trả lời chi tiết về tour đó",
-        "   - Chỉ liệt kê tour khác nếu cần so sánh hoặc đề xuất",
         "",
         "THÔNG TIN NGỮ CẢNH:",
     ]
@@ -3005,35 +2998,7 @@ def _prepare_llm_prompt(user_message: str, search_results: List, context: Dict) 
     prompt_parts.append("DỮ LIỆU NỘI BỘ RUBY WINGS:")
     
     if search_results:
-        # Ưu tiên hiển thị thông tin về dịch vụ bao gồm
-        includes_results = []
-        other_results = []
-        
-        for score, passage in search_results:
-            text = passage.get('text', '').lower()
-            path = passage.get('path', '').lower()
-            
-            # Ưu tiên thông tin về includes, meals, accommodation, transport
-            if any(keyword in text or keyword in path for keyword in 
-                  ['includes', 'bao gồm', 'ăn uống', 'meal', 'accommodation', 
-                   'khách sạn', 'hotel', 'transport', 'xe', 'đưa đón']):
-                includes_results.append((score, passage))
-            else:
-                other_results.append((score, passage))
-        
-        # Hiển thị thông tin dịch vụ bao gồm trước
-        displayed_count = 0
-        max_display = 5
-        
-        for i, (score, passage) in enumerate(includes_results[:max_display], 1):
-            text = passage.get('text', '')[:300]
-            prompt_parts.append(f"\n[{i}] (Độ liên quan: {score:.2f}) - Dịch vụ bao gồm")
-            prompt_parts.append(f"{text}")
-            displayed_count += 1
-        
-        # Hiển thị các kết quả khác
-        remaining_slots = max_display - displayed_count
-        for i, (score, passage) in enumerate(other_results[:remaining_slots], displayed_count + 1):
+        for i, (score, passage) in enumerate(search_results[:5], 1):
             text = passage.get('text', '')[:300]
             prompt_parts.append(f"\n[{i}] (Độ liên quan: {score:.2f})")
             prompt_parts.append(f"{text}")
@@ -3041,55 +3006,18 @@ def _prepare_llm_prompt(user_message: str, search_results: List, context: Dict) 
         prompt_parts.append("Không tìm thấy dữ liệu liên quan trực tiếp.")
     
     prompt_parts.append("")
-    prompt_parts.append("HƯỚNG DẪN TRẢ LỜI ĐẶC BIỆT:")
-    
-    if is_general_policy_question:
-        prompt_parts.append("🔹 ĐÂY LÀ CÂU HỎI VỀ CHÍNH SÁCH CHUNG:")
-        prompt_parts.append("1. Trả lời NGẮN GỌN, TỔNG QUÁT về chính sách giá tour bao gồm")
-        prompt_parts.append("2. KHÔNG liệt kê tất cả các tour")
-        prompt_parts.append("3. Tập trung vào thông tin chung: ăn uống, xe đưa đón, khách sạn")
-        prompt_parts.append("4. Đề cập rằng có thể điều chỉnh theo yêu cầu thực tế")
-        prompt_parts.append("5. Kết thúc bằng lời mời liên hệ hotline để biết chi tiết cụ thể")
-    else:
-        prompt_parts.append("1. Trả lời dựa trên dữ liệu trên")
-        prompt_parts.append("2. Nếu có thông tin từ dữ liệu, trích dẫn nó")
-        prompt_parts.append("3. Giữ câu trả lời rõ ràng, hữu ích")
-        prompt_parts.append("4. Kết thúc bằng lời mời liên hệ hotline 0332510486 nếu cần thêm thông tin")
-    
-    prompt_parts.append("")
-    prompt_parts.append("TRẢ LỜI CỦA BẠN (bằng tiếng Việt, thân thiện, chuyên nghiệp):")
+    prompt_parts.append("TRẢ LỜI:")
+    prompt_parts.append("1. Dựa trên dữ liệu trên, trả lời câu hỏi người dùng")
+    prompt_parts.append("2. Nếu có thông tin từ dữ liệu, trích dẫn nó")
+    prompt_parts.append("3. Giữ câu trả lời ngắn gọn, rõ ràng, hữu ích")
+    prompt_parts.append("4. Kết thúc bằng lời mời liên hệ hotline 0332510486 nếu cần thêm thông tin")
     
     return "\n".join(prompt_parts)
 
-def _prepare_llm_prompt(user_message: str, search_results: List, context: Dict) -> str:
-    """Prepare prompt for LLM"""
-    prompt_parts = [
-        # ... nội dung hiện tại ...
-    ]
-    
-    return "\n".join(prompt_parts)
-
-
-# =========== THÊM HÀM MỚI ===========
 def _generate_fallback_response(user_message: str, search_results: List, tour_indices: List[int] = None) -> str:
     """Generate fallback response when LLM is unavailable"""
     message_lower = user_message.lower()
     
-    # 1. Xử lý câu hỏi về chính sách bao gồm (ƯU TIÊN)
-    if any(phrase in message_lower for phrase in [
-        'giá tour đã bao gồm', 'bao gồm ăn uống', 'bao gồm xe đưa đón', 
-        'bao gồm khách sạn', 'đã bao gồm những gì', 'có bao gồm',
-        'đã có ăn uống chưa', 'đã có xe chưa', 'đã có khách sạn chưa'
-    ]):
-        return "Thông thường, giá tour Ruby Wings đã bao gồm các dịch vụ cơ bản như:\n" \
-               "• Ăn uống theo chương trình\n" \
-               "• Xe đưa đón trong suốt hành trình\n" \
-               "• Khách sạn/chỗ ở tiêu chuẩn\n\n" \
-               "Tuy nhiên, để biết chính xác dịch vụ bao gồm trong từng tour cụ thể, " \
-               "vui lòng liên hệ hotline **0332510486** để được tư vấn chi tiết và " \
-               "điều chỉnh theo yêu cầu riêng của bạn! 😊"
-    
-    # 2. Xử lý câu hỏi về giá
     if 'dưới' in message_lower and ('triệu' in message_lower or 'tiền' in message_lower):
         if not tour_indices and TOURS_DB:
             all_tours = list(TOURS_DB.items())[:3]
@@ -3101,7 +3029,6 @@ def _generate_fallback_response(user_message: str, search_results: List, tour_in
             response += "\n💡 *Liên hệ hotline 0332510486 để biết giá chính xác và ưu đãi*"
             return response
     
-    # 3. Xử lý khi không có kết quả tìm kiếm
     if not search_results:
         if tour_indices and TOURS_DB:
             response = "Thông tin về tour bạn quan tâm:\n"
@@ -3121,7 +3048,6 @@ def _generate_fallback_response(user_message: str, search_results: List, tour_in
             return "Xin lỗi, hiện không tìm thấy thông tin liên quan trong dữ liệu. " \
                    "Vui lòng liên hệ hotline 0332510486 để được tư vấn trực tiếp."
     
-    # 4. Xử lý có kết quả tìm kiếm
     top_results = search_results[:3]
     response_parts = ["Tôi tìm thấy một số thông tin liên quan:"]
     
@@ -3133,7 +3059,6 @@ def _generate_fallback_response(user_message: str, search_results: List, tour_in
     response_parts.append("\n💡 *Liên hệ hotline 0332510486 để biết thêm chi tiết*")
     
     return "".join(response_parts)
-
 
 # =========== MAIN CHAT ENDPOINT WITH ALL UPGRADES ===========
 @app.route("/chat", methods=["POST"])
@@ -3158,89 +3083,6 @@ def chat_endpoint():
         session_id = extract_session_id(data, request.remote_addr)
         context = get_session_context(session_id)
         
-        # Kiểm tra nếu là câu hỏi về chính sách chung
-        user_message_lower_check = user_message.lower()
-        is_general_policy_question = any(phrase in user_message_lower_check for phrase in [
-            'giá tour đã bao gồm', 'bao gồm ăn uống', 'bao gồm xe đưa đón', 
-            'bao gồm khách sạn', 'đã bao gồm những gì', 'có bao gồm',
-            'đã có ăn uống chưa', 'đã có xe chưa', 'đã có khách sạn chưa',
-            'tour đã bao gồm', 'đã bao gồm gì trong giá', 'giá đã bao gồm những gì'
-        ])
-        
-        # Nếu là câu hỏi về chính sách chung, ưu tiên xử lý đặc biệt
-        if is_general_policy_question:
-            logger.info("🎯 Phát hiện câu hỏi chính sách chung, xử lý đặc biệt")
-            
-            # Tìm thông tin về dịch vụ bao gồm
-            includes_keywords = ['includes', 'bao gồm', 'ăn uống', 'meal', 'accommodation', 
-                               'khách sạn', 'transport', 'xe', 'đưa đón']
-            
-            # Tìm kiếm tập trung vào thông tin bao gồm
-            includes_results = []
-            for keyword in includes_keywords:
-                keyword_results = query_index(keyword, top_k=3)
-                includes_results.extend(keyword_results)
-            
-            # Loại bỏ trùng lặp
-            unique_includes = []
-            seen_texts = set()
-            for score, passage in includes_results:
-                text = passage.get('text', '')
-                if text and text not in seen_texts:
-                    seen_texts.add(text)
-                    unique_includes.append((score, passage))
-            
-            # Tạo câu trả lời thông minh
-            if unique_includes:
-                # Trích xuất thông tin chung
-                services_included = []
-                for score, passage in unique_includes[:5]:
-                    text = passage.get('text', '')
-                    if 'bao gồm' in text.lower() or 'includes' in text.lower():
-                        services_included.append(text[:150])
-                
-                if services_included:
-                    reply = "Thông thường, giá tour Ruby Wings đã bao gồm:\n\n"
-                    for i, service in enumerate(services_included[:3], 1):
-                        reply += f"• {service}\n"
-                    
-                    reply += "\nTuy nhiên, tuỳ vào từng tour cụ thể và yêu cầu thực tế, " \
-                            "chúng tôi có thể điều chỉnh các dịch vụ bao gồm cho phù hợp.\n\n" \
-                            "💡 *Để biết chính xác dịch vụ bao gồm trong tour bạn quan tâm, " \
-                            "vui lòng liên hệ hotline 0332510486 để được tư vấn chi tiết!*"
-                else:
-                    reply = "Thông thường, các tour của Ruby Wings đã bao gồm đầy đủ dịch vụ " \
-                           "như ăn uống, xe đưa đón và chỗ ở. Tuy nhiên, tuỳ vào từng tour cụ thể " \
-                           "và yêu cầu thực tế, chúng tôi có thể điều chỉnh cho phù hợp.\n\n" \
-                           "💡 *Vui lòng liên hệ hotline 0332510486 để biết chính xác " \
-                           "dịch vụ bao gồm trong tour bạn quan tâm!*"
-            else:
-                reply = "Giá tour Ruby Wings thường đã bao gồm các dịch vụ cơ bản như:\n" \
-                       "• Ăn uống theo chương trình\n" \
-                       "• Xe đưa đón trong suốt hành trình\n" \
-                       "• Khách sạn/chỗ ở tiêu chuẩn\n\n" \
-                       "Tuy nhiên, để biết chính xác dịch vụ bao gồm trong từng tour cụ thể, " \
-                       "vui lòng liên hệ hotline **0332510486** để được tư vấn chi tiết và " \
-                       "điều chỉnh theo yêu cầu riêng của bạn! 😊"
-            
-            # Bỏ qua xử lý thông thường, trả về câu trả lời đặc biệt
-            processing_time = time.time() - start_time
-            
-            chat_response = ChatResponse(
-                reply=reply,
-                sources=[],
-                context={
-                    "session_id": session_id,
-                    "special_handling": "general_policy_question",
-                    "processing_time_ms": int(processing_time * 1000)
-                },
-                tour_indices=[],
-                processing_time_ms=int(processing_time * 1000),
-                from_memory=False
-            )
-            
-            return jsonify(chat_response.to_dict())
-        
         # Check memory cache
         recent_response = None
         if hasattr(context, 'get_recent_response') and hasattr(context, 'check_recent_question'):
@@ -3261,8 +3103,6 @@ def chat_endpoint():
                     from_memory=True
                 )
                 return jsonify(chat_response.to_dict())
-        
-        # ... [phần xử lý bình thường tiếp theo] ...
         
         # Initialize state machine
         if UpgradeFlags.is_enabled("7_STATE_MACHINE"):
@@ -3728,20 +3568,18 @@ def get_gspread_client(force_refresh: bool = False):
 
 @app.route('/api/save-lead', methods=['POST', 'OPTIONS'])
 def save_lead():
-    """Save lead from form submission - FIXED với đầy đủ 9 trường KHÔNG LỖI"""
+    """Save lead from form submission"""
     if request.method == 'OPTIONS':
         return jsonify({'status': 'ok'}), 200
     
     try:
         data = request.get_json() or {}
         
-        # Extract data với đầy đủ trường
+        # Extract data
         phone = data.get('phone', '').strip()
         name = data.get('name', '').strip()
         email = data.get('email', '').strip()
         tour_interest = data.get('tour_interest', '').strip()
-        page_url = data.get('page_url', request.referrer or '')
-        note = data.get('note', '').strip()
         
         if not phone:
             return jsonify({'error': 'Phone number is required'}), 400
@@ -3753,28 +3591,18 @@ def save_lead():
         if not re.match(r'^(0|\+?84)\d{9,10}$', phone_clean):
             return jsonify({'error': 'Invalid phone number format'}), 400
         
-        # Xác định source channel và action type
-        source_channel = 'Website Form'
-        action_type = 'Lead Submission'
-        raw_status = 'New'
-        
-        # Tạo lead data
+        # Create lead data
         lead_data = {
             'timestamp': datetime.now().isoformat(),
             'phone': phone_clean,
             'name': name,
             'email': email,
             'tour_interest': tour_interest,
-            'source': 'Lead Form',
-            'page_url': page_url,
-            'note': note,
-            'source_channel': source_channel,
-            'action_type': action_type,
-            'raw_status': raw_status
+            'source': 'Lead Form'
         }
         
         # Send to Meta CAPI
-        if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
+        if Config.ENABLE_META_CAPI and META_CAPI_AVAILABLE:
             try:
                 result = send_meta_lead(
                     request,
@@ -3785,67 +3613,50 @@ def save_lead():
                     value=200000,
                     currency="VND"
                 )
-                increment_stat('meta_capi_calls')
+                state.stats['meta_capi_calls'] += 1
                 logger.info(f"✅ Form lead sent to Meta CAPI: {phone_clean[:4]}***")
-                if DEBUG and HAS_META_CAPI:
+                if Config.DEBUG_META_CAPI:
                     logger.debug(f"Meta CAPI result: {result}")
             except Exception as e:
-                increment_stat('meta_capi_errors')
+                state.stats['meta_capi_errors'] += 1
                 logger.error(f"Meta CAPI error: {e}")
         
-        # Save to Google Sheets với đầy đủ 9 cột CHÍNH XÁC
-        if ENABLE_GOOGLE_SHEETS:
+        # Save to Google Sheets
+        if Config.ENABLE_GOOGLE_SHEETS:
             try:
                 import gspread
                 from google.oauth2.service_account import Credentials
                 
-                if GOOGLE_SERVICE_ACCOUNT_JSON and GOOGLE_SHEET_ID:
-                    creds_json = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
+                if Config.GOOGLE_SERVICE_ACCOUNT_JSON and Config.GOOGLE_SHEET_ID:
+                    creds_json = json.loads(Config.GOOGLE_SERVICE_ACCOUNT_JSON)
                     creds = Credentials.from_service_account_info(
                         creds_json,
                         scopes=['https://www.googleapis.com/auth/spreadsheets']
                     )
                     
                     gc = gspread.authorize(creds)
-                    sh = gc.open_by_key(GOOGLE_SHEET_ID)
-                    ws = sh.worksheet(GOOGLE_SHEET_NAME)
+                    sh = gc.open_by_key(Config.GOOGLE_SHEET_ID)
+                    ws = sh.worksheet(Config.GOOGLE_SHEET_NAME)
                     
-                    # ===== CHUẨN BỊ DÒNG VỚI 9 CỘT CHÍNH XÁC =====
-                    # Cột A -> I: created_at, source_channel, action_type, page_url, contact_name, phone, service_interest, note, raw_status
                     row = [
-                        lead_data['timestamp'],           # A: created_at (timestamp)
-                        source_channel,                   # B: source_channel
-                        action_type,                      # C: action_type
-                        page_url[:100],                   # D: page_url (giới hạn độ dài)
-                        name[:50],                        # E: contact_name (giới hạn độ dài)
-                        phone_clean,                      # F: phone
-                        tour_interest[:100],              # G: service_interest (giới hạn độ dài)
-                        note[:200],                       # H: note (giới hạn độ dài)
-                        raw_status                        # I: raw_status (status)
+                        lead_data['timestamp'],
+                        phone_clean,
+                        name,
+                        email,
+                        tour_interest,
+                        'Lead Form'
                     ]
                     
-                    # LOG để debug
-                    logger.info(f"📊 Preparing to save lead with {len(row)} columns")
-                    logger.info(f"📋 Row data: {row}")
-                    
-                    # Ghi vào sheet
                     ws.append_row(row)
-                    logger.info("✅ Form lead saved to Google Sheets với 9 cột chính xác")
-                    
-                    # Xác minh dòng cuối cùng
-                    all_records = ws.get_all_values()
-                    last_row = all_records[-1] if all_records else []
-                    logger.info(f"📝 Last row in sheet has {len(last_row)} columns: {last_row}")
-                    
+                    logger.info("✅ Form lead saved to Google Sheets")
             except Exception as e:
-                logger.error(f"❌ Google Sheets error: {e}")
-                logger.error(f"❌ Error details: {traceback.format_exc()}")
+                logger.error(f"Google Sheets error: {e}")
         
         # Fallback storage
-        if ENABLE_FALLBACK_STORAGE:
+        if Config.ENABLE_FALLBACK_STORAGE:
             try:
-                if os.path.exists(FALLBACK_STORAGE_PATH):
-                    with open(FALLBACK_STORAGE_PATH, 'r', encoding='utf-8') as f:
+                if os.path.exists(Config.FALLBACK_STORAGE_PATH):
+                    with open(Config.FALLBACK_STORAGE_PATH, 'r', encoding='utf-8') as f:
                         leads = json.load(f)
                 else:
                     leads = []
@@ -3853,7 +3664,7 @@ def save_lead():
                 leads.append(lead_data)
                 leads = leads[-1000:]
                 
-                with open(FALLBACK_STORAGE_PATH, 'w', encoding='utf-8') as f:
+                with open(Config.FALLBACK_STORAGE_PATH, 'w', encoding='utf-8') as f:
                     json.dump(leads, f, ensure_ascii=False, indent=2)
                 
                 logger.info("✅ Form lead saved to fallback storage")
@@ -3861,21 +3672,21 @@ def save_lead():
                 logger.error(f"Fallback storage error: {e}")
         
         # Update stats
-        increment_stat('leads')
+        state.stats['leads'] += 1
         
         return jsonify({
             'success': True,
             'message': 'Lead đã được lưu! Đội ngũ Ruby Wings sẽ liên hệ sớm nhất. 📞',
             'data': {
                 'phone': phone_clean[:3] + '***' + phone_clean[-2:],
-                'timestamp': lead_data['timestamp'],
-                'columns_saved': 9
+                'timestamp': lead_data['timestamp']
             }
         })
         
     except Exception as e:
         logger.error(f"❌ Save lead error: {e}")
         traceback.print_exc()
+        state.stats['errors'] += 1
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/call-button', methods=['POST', 'OPTIONS'])
@@ -3891,7 +3702,7 @@ def call_button():
         call_type = data.get('call_type', 'regular')
         
         # Send to Meta CAPI
-        if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
+        if Config.ENABLE_META_CAPI_CALL and META_CAPI_AVAILABLE:
             try:
                 result = send_meta_call_button(
                     request,
@@ -3900,12 +3711,12 @@ def call_button():
                     button_location='fixed_bottom_left',
                     button_text='Gọi ngay'
                 )
-                increment_stat('meta_capi_calls')
+                state.stats['meta_capi_calls'] += 1
                 logger.info(f"📞 Call button tracked: {call_type}")
-                if DEBUG and HAS_META_CAPI:
+                if Config.DEBUG_META_CAPI:
                     logger.debug(f"Meta CAPI result: {result}")
             except Exception as e:
-                increment_stat('meta_capi_errors')
+                state.stats['meta_capi_errors'] += 1
                 logger.error(f"Meta CAPI call error: {e}")
         
         return jsonify({
@@ -3917,6 +3728,7 @@ def call_button():
     except Exception as e:
         logger.error(f"Call button error: {e}")
         traceback.print_exc()
+        state.stats['errors'] += 1
         return jsonify({'error': str(e)}), 500
 
 
