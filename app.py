@@ -1,4 +1,3 @@
-
 def safe_validate(reply):
     try:
         if not isinstance(reply, dict):
@@ -216,6 +215,7 @@ FALLBACK_STORAGE_PATH = os.environ.get("FALLBACK_STORAGE_PATH", "leads_fallback.
 META_CAPI_TOKEN = os.environ.get("META_CAPI_TOKEN", "").strip()
 META_PIXEL_ID = os.environ.get("META_PIXEL_ID", "").strip()
 META_CAPI_ENDPOINT = os.environ.get("META_CAPI_ENDPOINT", "https://graph.facebook.com/v17.0/")
+ENABLE_META_CAPI = os.environ.get("ENABLE_META_CAPI", "true").lower() in ("1", "true", "yes")
 ENABLE_META_CAPI_CALL = os.environ.get("ENABLE_META_CAPI_CALL", "true").lower() in ("1", "true", "yes")
 
 # Server
@@ -320,6 +320,14 @@ _cache_lock = threading.Lock()
 _embedding_cache: Dict[str, Tuple[List[float], int]] = {}
 _embedding_cache_lock = threading.Lock()
 MAX_EMBEDDING_CACHE_SIZE = UpgradeFlags.get_all_flags()["EMBEDDING_CACHE_SIZE"]
+
+# Statistics for tracking
+stats = {
+    "requests": 0,
+    "leads": 0,
+    "meta_capi_calls": 0,
+    "meta_capi_errors": 0,
+}
 
 # =========== MEMORY OPTIMIZATION FUNCTIONS ===========
 def optimize_for_memory_profile():
@@ -3532,6 +3540,7 @@ def get_gspread_client(force_refresh: bool = False):
             logger.error(f"❌ Google Sheets client failed: {e}")
             return None
 
+# =========== FIXED SAVE LEAD ENDPOINT ===========
 @app.route('/api/save-lead', methods=['POST', 'OPTIONS'])
 def save_lead():
     """Save lead from form submission"""
@@ -3579,30 +3588,25 @@ def save_lead():
                     value=200000,
                     currency="VND"
                 )
-                state.stats['meta_capi_calls'] += 1
+                stats['meta_capi_calls'] += 1
                 logger.info(f"✅ Form lead sent to Meta CAPI: {phone_clean[:4]}***")
-                if Config.DEBUG_META_CAPI:
-                    logger.debug(f"Meta CAPI result: {result}")
             except Exception as e:
-                state.stats['meta_capi_errors'] += 1
+                stats['meta_capi_errors'] += 1
                 logger.error(f"Meta CAPI error: {e}")
         
         # Save to Google Sheets
-        if Config.ENABLE_GOOGLE_SHEETS:
+        if ENABLE_GOOGLE_SHEETS:
             try:
-                import gspread
-                from google.oauth2.service_account import Credentials
-                
-                if Config.GOOGLE_SERVICE_ACCOUNT_JSON and Config.GOOGLE_SHEET_ID:
-                    creds_json = json.loads(Config.GOOGLE_SERVICE_ACCOUNT_JSON)
+                if GOOGLE_SERVICE_ACCOUNT_JSON and GOOGLE_SHEET_ID:
+                    creds_json = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
                     creds = Credentials.from_service_account_info(
                         creds_json,
                         scopes=['https://www.googleapis.com/auth/spreadsheets']
                     )
                     
                     gc = gspread.authorize(creds)
-                    sh = gc.open_by_key(Config.GOOGLE_SHEET_ID)
-                    ws = sh.worksheet(Config.GOOGLE_SHEET_NAME)
+                    sh = gc.open_by_key(GOOGLE_SHEET_ID)
+                    ws = sh.worksheet(GOOGLE_SHEET_NAME)
                     
                     row = [
                         lead_data['timestamp'],
@@ -3619,10 +3623,10 @@ def save_lead():
                 logger.error(f"Google Sheets error: {e}")
         
         # Fallback storage
-        if Config.ENABLE_FALLBACK_STORAGE:
+        if ENABLE_FALLBACK_STORAGE:
             try:
-                if os.path.exists(Config.FALLBACK_STORAGE_PATH):
-                    with open(Config.FALLBACK_STORAGE_PATH, 'r', encoding='utf-8') as f:
+                if os.path.exists(FALLBACK_STORAGE_PATH):
+                    with open(FALLBACK_STORAGE_PATH, 'r', encoding='utf-8') as f:
                         leads = json.load(f)
                 else:
                     leads = []
@@ -3630,7 +3634,7 @@ def save_lead():
                 leads.append(lead_data)
                 leads = leads[-1000:]
                 
-                with open(Config.FALLBACK_STORAGE_PATH, 'w', encoding='utf-8') as f:
+                with open(FALLBACK_STORAGE_PATH, 'w', encoding='utf-8') as f:
                     json.dump(leads, f, ensure_ascii=False, indent=2)
                 
                 logger.info("✅ Form lead saved to fallback storage")
@@ -3638,7 +3642,7 @@ def save_lead():
                 logger.error(f"Fallback storage error: {e}")
         
         # Update stats
-        state.stats['leads'] += 1
+        stats['leads'] += 1
         
         return jsonify({
             'success': True,
@@ -3654,6 +3658,7 @@ def save_lead():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
+# =========== FIXED CALL BUTTON ENDPOINT ===========
 @app.route('/api/call-button', methods=['POST', 'OPTIONS'])
 def call_button():
     """Track call button click"""
@@ -3667,7 +3672,7 @@ def call_button():
         call_type = data.get('call_type', 'regular')
         
         # Send to Meta CAPI
-        if Config.ENABLE_META_CAPI_CALL and META_CAPI_AVAILABLE:
+        if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             try:
                 result = send_meta_call_button(
                     request,
@@ -3676,12 +3681,10 @@ def call_button():
                     button_location='fixed_bottom_left',
                     button_text='Gọi ngay'
                 )
-                state.stats['meta_capi_calls'] += 1
+                stats['meta_capi_calls'] += 1
                 logger.info(f"📞 Call button tracked: {call_type}")
-                if Config.DEBUG_META_CAPI:
-                    logger.debug(f"Meta CAPI result: {result}")
             except Exception as e:
-                state.stats['meta_capi_errors'] += 1
+                stats['meta_capi_errors'] += 1
                 logger.error(f"Meta CAPI call error: {e}")
         
         return jsonify({
