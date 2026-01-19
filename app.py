@@ -2952,19 +2952,65 @@ def extract_session_id(request_data: Dict, remote_addr: str) -> str:
     return f"session_{session_id}"
 
 def _prepare_llm_prompt(user_message: str, search_results: List, context: Dict) -> str:
-    """Prepare prompt for LLM"""
+    """Prepare prompt for LLM với khả năng phân tích thông minh"""
+    
+    # Phân loại câu hỏi
+    message_lower = user_message.lower()
+    is_general_question = any(keyword in message_lower for keyword in [
+        'có bao gồm', 'đã bao gồm', 'bao gồm gì', 'bao gồm những gì',
+        'có gì', 'như thế nào', 'ra sao', 'thế nào'
+    ])
+    
+    has_specific_tour = context.get('current_tours') and len(context.get('current_tours', [])) > 0
+    
     prompt_parts = [
-        "Bạn là trợ lý AI của Ruby Wings - chuyên tư vấn du lịch trải nghiệm.",
-        "HƯỚNG DẪN QUAN TRỌNG:",
-        "1. LUÔN sử dụng thông tin từ dữ liệu nội bộ được cung cấp bên dưới",
-        "2. Nếu thiếu thông tin chi tiết, tổng hợp từ thông tin chung có sẵn",
-        "3. KHÔNG BAO GIỜ nói 'không có thông tin', 'không biết', 'không rõ'",
-        "4. Luôn giữ thái độ nhiệt tình, hữu ích, chuyên nghiệp",
-        "5. Nếu không tìm thấy thông tin chính xác, đưa ra thông tin tổng quát",
+        "Bạn là trợ lý AI của Ruby Wings - chuyên tư vấn du lịch trải nghiệm với phong cách tư vấn THÔNG MINH và TẬP TRUNG.",
+        "",
+        "🎯 NGUYÊN TẮC TRẢ LỜI THÔNG MINH:",
+    ]
+    
+    if is_general_question and not has_specific_tour:
+        prompt_parts.extend([
+            "• Câu hỏi này là CHUNG CHUNG (không có tour cụ thể)",
+            "• TRẢ LỜI NGẮN GỌN, TỔNG QUÁT (2-3 câu)",
+            "• KHÔNG LIỆT KÊ danh sách tour",
+            "• SAU ĐÓ HỎI LẠI để xác định nhu cầu cụ thể",
+            "",
+            "VÍ DỤ TRẢ LỜI TỐT:",
+            "❌ SAI: 'Tour Hạ Long 2N1Đ giá 3.500.000đ bao gồm..., Tour Phú Quốc...' (quá dài, liệt kê nhiều)",
+            "✅ ĐÚNG: 'Giá tour của Ruby Wings đã bao gồm ăn uống, xe đưa đón và khách sạn. Tuy nhiên, tùy yêu cầu thực tế chúng tôi có thể điều chỉnh phù hợp. Bạn quan tâm đến tour nào để tôi tư vấn chi tiết hơn?'",
+        ])
+    elif has_specific_tour:
+        prompt_parts.extend([
+            "• Có TOUR CỤ THỂ được đề cập",
+            "• Tập trung TƯ VẤN CHI TIẾT về tour đó",
+            "• Đưa thông tin CHÍNH XÁC từ dữ liệu",
+        ])
+    else:
+        prompt_parts.extend([
+            "• Phân tích ngữ cảnh và trả lời PHÙ HỢP",
+            "• Ngắn gọn nếu câu hỏi đơn giản",
+            "• Chi tiết nếu câu hỏi phức tạp",
+        ])
+    
+    prompt_parts.extend([
+        "",
+        "📋 QUY TẮC BẮT BUỘC:",
+        "1. LUÔN sử dụng thông tin từ dữ liệu nội bộ bên dưới",
+        "2. TRÁNH lặp lại thông tin không cần thiết",
+        "3. ĐƯA RA câu trả lời CÓ GIÁ TRỊ, không chỉ copy-paste",
+        "4. Giọng điệu THÂN THIỆN, CHUYÊN NGHIỆP nhưng NGẮN GỌN",
+        "5. KẾT THÚC bằng câu hỏi mở hoặc lời mời liên hệ",
         "6. KHÔNG tự ý bịa thông tin không có trong dữ liệu",
         "",
+        "🎨 PHONG CÁCH TRẢ LỜI:",
+        "• Câu văn TỰ NHIÊN, MƯỢT MÀ (như người thật)",
+        "• TRÁNH liệt kê dạng bullet points trừ khi cần thiết",
+        "• Sử dụng emoji VỪA PHẢI (1-2 emoji/câu trả lời)",
+        "• Độ dài phù hợp: 50-150 từ cho câu hỏi thông thường",
+        "",
         "THÔNG TIN NGỮ CẢNH:",
-    ]
+    ])
     
     if context.get('user_preferences'):
         prefs = []
@@ -2973,44 +3019,56 @@ def _prepare_llm_prompt(user_message: str, search_results: List, context: Dict) 
         if context['user_preferences'].get('interests'):
             prefs.append(f"Quan tâm: {', '.join(context['user_preferences']['interests'])}")
         if prefs:
-            prompt_parts.append(f"- Sở thích người dùng: {'; '.join(prefs)}")
+            prompt_parts.append(f"- Sở thích: {'; '.join(prefs)}")
     
     if context.get('current_tours'):
         tours_info = []
         for tour in context['current_tours']:
             tours_info.append(f"{tour['name']} ({tour.get('duration', '?')})")
         if tours_info:
-            prompt_parts.append(f"- Tour đang thảo luận: {', '.join(tours_info)}")
+            prompt_parts.append(f"- Tour đang bàn: {', '.join(tours_info)}")
     
     if context.get('filters'):
         filters = context['filters']
         filter_strs = []
         if filters.get('price_max'):
-            filter_strs.append(f"giá dưới {filters['price_max']:,} VND")
+            filter_strs.append(f"giá dưới {filters['price_max']:,}đ")
         if filters.get('price_min'):
-            filter_strs.append(f"giá trên {filters['price_min']:,} VND")
+            filter_strs.append(f"giá trên {filters['price_min']:,}đ")
         if filters.get('location'):
             filter_strs.append(f"địa điểm: {filters['location']}")
         if filter_strs:
             prompt_parts.append(f"- Bộ lọc: {', '.join(filter_strs)}")
     
     prompt_parts.append("")
-    prompt_parts.append("DỮ LIỆU NỘI BỘ RUBY WINGS:")
+    prompt_parts.append("📚 DỮ LIỆU NỘI BỘ RUBY WINGS:")
     
     if search_results:
         for i, (score, passage) in enumerate(search_results[:5], 1):
-            text = passage.get('text', '')[:300]
+            text = passage.get('text', '')[:400]
             prompt_parts.append(f"\n[{i}] (Độ liên quan: {score:.2f})")
             prompt_parts.append(f"{text}")
     else:
-        prompt_parts.append("Không tìm thấy dữ liệu liên quan trực tiếp.")
+        prompt_parts.append("(Không tìm thấy dữ liệu liên quan trực tiếp)")
     
     prompt_parts.append("")
-    prompt_parts.append("TRẢ LỜI:")
-    prompt_parts.append("1. Dựa trên dữ liệu trên, trả lời câu hỏi người dùng")
-    prompt_parts.append("2. Nếu có thông tin từ dữ liệu, trích dẫn nó")
-    prompt_parts.append("3. Giữ câu trả lời ngắn gọn, rõ ràng, hữu ích")
-    prompt_parts.append("4. Kết thúc bằng lời mời liên hệ hotline 0332510486 nếu cần thêm thông tin")
+    prompt_parts.append("💬 YÊU CẦU TRẢ LỜI:")
+    
+    if is_general_question and not has_specific_tour:
+        prompt_parts.extend([
+            "1. Trả lời NGẮN GỌN (2-3 câu) cho câu hỏi chung này",
+            "2. Tổng hợp thông tin từ dữ liệu (nếu có)",
+            "3. HỎI LẠI để xác định tour cụ thể khách quan tâm",
+            "4. KHÔNG liệt kê nhiều tour hoặc giá chi tiết",
+        ])
+    else:
+        prompt_parts.extend([
+            "1. Trả lời CHÍNH XÁC dựa trên dữ liệu",
+            "2. Ngắn gọn nhưng đầy đủ thông tin",
+            "3. Dẫn chứng từ dữ liệu nếu cần",
+        ])
+    
+    prompt_parts.append("5. Kết thúc bằng câu hỏi mở hoặc lời mời: 'Bạn cần tư vấn thêm gì không?' hoặc 'Gọi ngay hotline 0332510486 để được hỗ trợ tốt nhất!'")
     
     return "\n".join(prompt_parts)
 
@@ -3413,9 +3471,11 @@ def chat_endpoint():
                     response = client.chat.completions.create(
                         model=CHAT_MODEL,
                         messages=messages,
-                        temperature=0.2,
-                        max_tokens=800,
-                        top_p=0.95
+                        temperature=0.4,              # Tăng lên để tự nhiên hơn
+                        max_tokens=500,               # Giảm xuống để ngắn gọn hơn
+                        top_p=0.85,                   # Giảm để tập trung hơn
+                        frequency_penalty=0.4,        # Tránh lặp lại
+                        presence_penalty=0.3          # Khuyến khích đa dạng
                     )
                     
                     if response.choices and len(response.choices) > 0:
@@ -3568,7 +3628,7 @@ def get_gspread_client(force_refresh: bool = False):
 
 @app.route('/api/save-lead', methods=['POST', 'OPTIONS'])
 def save_lead():
-    """Save lead from form submission"""
+    """Save lead from form submission - ĐẦY ĐỦ 9 TRƯỜNG (A-I)"""
     if request.method == 'OPTIONS':
         return jsonify({'status': 'ok'}), 200
     
@@ -3580,6 +3640,8 @@ def save_lead():
         name = data.get('name', '').strip()
         email = data.get('email', '').strip()
         tour_interest = data.get('tour_interest', '').strip()
+        page_url = data.get('page_url', '').strip()
+        note = data.get('note', '').strip()
         
         if not phone:
             return jsonify({'error': 'Phone number is required'}), 400
@@ -3591,18 +3653,23 @@ def save_lead():
         if not re.match(r'^(0|\+?84)\d{9,10}$', phone_clean):
             return jsonify({'error': 'Invalid phone number format'}), 400
         
+        # Timestamp
+        timestamp = datetime.now().isoformat()
+        
         # Create lead data
         lead_data = {
-            'timestamp': datetime.now().isoformat(),
+            'timestamp': timestamp,
             'phone': phone_clean,
             'name': name,
             'email': email,
             'tour_interest': tour_interest,
+            'page_url': page_url,
+            'note': note,
             'source': 'Lead Form'
         }
         
         # Send to Meta CAPI
-        if Config.ENABLE_META_CAPI and META_CAPI_AVAILABLE:
+        if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             try:
                 result = send_meta_lead(
                     request,
@@ -3613,50 +3680,63 @@ def save_lead():
                     value=200000,
                     currency="VND"
                 )
-                state.stats['meta_capi_calls'] += 1
+                increment_stat('meta_capi_calls')
                 logger.info(f"✅ Form lead sent to Meta CAPI: {phone_clean[:4]}***")
-                if Config.DEBUG_META_CAPI:
+                if DEBUG and HAS_META_CAPI:
                     logger.debug(f"Meta CAPI result: {result}")
             except Exception as e:
-                state.stats['meta_capi_errors'] += 1
+                increment_stat('meta_capi_errors')
                 logger.error(f"Meta CAPI error: {e}")
         
-        # Save to Google Sheets
-        if Config.ENABLE_GOOGLE_SHEETS:
+        # Save to Google Sheets - ĐẦY ĐỦ 9 TRƯỜNG (A-I)
+        if ENABLE_GOOGLE_SHEETS:
             try:
                 import gspread
                 from google.oauth2.service_account import Credentials
                 
-                if Config.GOOGLE_SERVICE_ACCOUNT_JSON and Config.GOOGLE_SHEET_ID:
-                    creds_json = json.loads(Config.GOOGLE_SERVICE_ACCOUNT_JSON)
+                if GOOGLE_SERVICE_ACCOUNT_JSON and GOOGLE_SHEET_ID:
+                    creds_json = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
                     creds = Credentials.from_service_account_info(
                         creds_json,
                         scopes=['https://www.googleapis.com/auth/spreadsheets']
                     )
                     
                     gc = gspread.authorize(creds)
-                    sh = gc.open_by_key(Config.GOOGLE_SHEET_ID)
-                    ws = sh.worksheet(Config.GOOGLE_SHEET_NAME)
+                    sh = gc.open_by_key(GOOGLE_SHEET_ID)
+                    ws = sh.worksheet(GOOGLE_SHEET_NAME)
                     
+                    # ĐÚng 9 TRƯỜNG THEO THỨ TỰ A-I:
+                    # A: created_at (timestamp)
+                    # B: source_channel
+                    # C: action_type
+                    # D: page_url
+                    # E: contact_name
+                    # F: phone
+                    # G: service_interest
+                    # H: note
+                    # I: raw_status
                     row = [
-                        lead_data['timestamp'],
-                        phone_clean,
-                        name,
-                        email,
-                        tour_interest,
-                        'Lead Form'
+                        timestamp,                          # A: created_at
+                        'Website - Lead Form',              # B: source_channel
+                        'Form Submission',                  # C: action_type
+                        page_url or '',                     # D: page_url
+                        name or '',                         # E: contact_name
+                        phone_clean,                        # F: phone
+                        tour_interest or '',                # G: service_interest
+                        note or email or '',                # H: note (dùng email nếu không có note)
+                        'New'                               # I: raw_status
                     ]
                     
                     ws.append_row(row)
-                    logger.info("✅ Form lead saved to Google Sheets")
+                    logger.info("✅ Form lead saved to Google Sheets (9 fields)")
             except Exception as e:
                 logger.error(f"Google Sheets error: {e}")
         
         # Fallback storage
-        if Config.ENABLE_FALLBACK_STORAGE:
+        if ENABLE_FALLBACK_STORAGE:
             try:
-                if os.path.exists(Config.FALLBACK_STORAGE_PATH):
-                    with open(Config.FALLBACK_STORAGE_PATH, 'r', encoding='utf-8') as f:
+                if os.path.exists(FALLBACK_STORAGE_PATH):
+                    with open(FALLBACK_STORAGE_PATH, 'r', encoding='utf-8') as f:
                         leads = json.load(f)
                 else:
                     leads = []
@@ -3664,7 +3744,7 @@ def save_lead():
                 leads.append(lead_data)
                 leads = leads[-1000:]
                 
-                with open(Config.FALLBACK_STORAGE_PATH, 'w', encoding='utf-8') as f:
+                with open(FALLBACK_STORAGE_PATH, 'w', encoding='utf-8') as f:
                     json.dump(leads, f, ensure_ascii=False, indent=2)
                 
                 logger.info("✅ Form lead saved to fallback storage")
@@ -3672,21 +3752,20 @@ def save_lead():
                 logger.error(f"Fallback storage error: {e}")
         
         # Update stats
-        state.stats['leads'] += 1
+        increment_stat('leads')
         
         return jsonify({
             'success': True,
             'message': 'Lead đã được lưu! Đội ngũ Ruby Wings sẽ liên hệ sớm nhất. 📞',
             'data': {
                 'phone': phone_clean[:3] + '***' + phone_clean[-2:],
-                'timestamp': lead_data['timestamp']
+                'timestamp': timestamp
             }
         })
         
     except Exception as e:
         logger.error(f"❌ Save lead error: {e}")
         traceback.print_exc()
-        state.stats['errors'] += 1
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/call-button', methods=['POST', 'OPTIONS'])
@@ -3702,7 +3781,7 @@ def call_button():
         call_type = data.get('call_type', 'regular')
         
         # Send to Meta CAPI
-        if Config.ENABLE_META_CAPI_CALL and META_CAPI_AVAILABLE:
+        if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             try:
                 result = send_meta_call_button(
                     request,
@@ -3711,12 +3790,12 @@ def call_button():
                     button_location='fixed_bottom_left',
                     button_text='Gọi ngay'
                 )
-                state.stats['meta_capi_calls'] += 1
+                increment_stat('meta_capi_calls')
                 logger.info(f"📞 Call button tracked: {call_type}")
-                if Config.DEBUG_META_CAPI:
+                if DEBUG and HAS_META_CAPI:
                     logger.debug(f"Meta CAPI result: {result}")
             except Exception as e:
-                state.stats['meta_capi_errors'] += 1
+                increment_stat('meta_capi_errors')
                 logger.error(f"Meta CAPI call error: {e}")
         
         return jsonify({
@@ -3728,7 +3807,6 @@ def call_button():
     except Exception as e:
         logger.error(f"Call button error: {e}")
         traceback.print_exc()
-        state.stats['errors'] += 1
         return jsonify({'error': str(e)}), 500
 
 
