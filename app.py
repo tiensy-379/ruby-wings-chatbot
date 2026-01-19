@@ -3568,7 +3568,7 @@ def save_lead():
         }
         
         # Send to Meta CAPI
-        if Config.ENABLE_META_CAPI and META_CAPI_AVAILABLE:
+        if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             try:
                 result = send_meta_lead(
                     request,
@@ -3652,7 +3652,6 @@ def save_lead():
     except Exception as e:
         logger.error(f"❌ Save lead error: {e}")
         traceback.print_exc()
-        state.stats['errors'] += 1
         return jsonify({'error': str(e)}), 500
 
 @app.route('/api/call-button', methods=['POST', 'OPTIONS'])
@@ -3694,7 +3693,6 @@ def call_button():
     except Exception as e:
         logger.error(f"Call button error: {e}")
         traceback.print_exc()
-        state.stats['errors'] += 1
         return jsonify({'error': str(e)}), 500
 
 
