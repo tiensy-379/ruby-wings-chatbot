@@ -2952,7 +2952,7 @@ def extract_session_id(request_data: Dict, remote_addr: str) -> str:
     return f"session_{session_id}"
 
 def _prepare_llm_prompt(user_message: str, search_results: List, context: Dict) -> str:
-    """Prepare prompt for LLM với khả năng phân tích thông minh"""
+    """Prepare prompt for LLM với logic NGHIÊM NGẶT về địa lý, giới hạn tour, và context"""
     
     # Phân loại câu hỏi
     message_lower = user_message.lower()
@@ -2962,56 +2962,115 @@ def _prepare_llm_prompt(user_message: str, search_results: List, context: Dict) 
     ])
     
     has_specific_tour = context.get('current_tours') and len(context.get('current_tours', [])) > 0
+    tour_count = len(context.get('current_tours', []))
+    
+    # CRITICAL: Phát hiện ràng buộc địa lý
+    has_location_constraint = False
+    location_constraint = None
+    filters = context.get('filters', {})
+    if filters:
+        if filters.get('location'):
+            has_location_constraint = True
+            location_constraint = filters.get('location')
+        elif filters.get('near_location'):
+            has_location_constraint = True
+            location_constraint = filters.get('near_location')
+    
+    # Detect location keywords in message
+    location_keywords = ['gần', 'quanh', 'khu vực', 'tại', 'ở', 'miền', 'vùng']
+    if any(kw in message_lower for kw in location_keywords):
+        has_location_constraint = True
+    
+    # Phát hiện câu hỏi lặp lại (same intent)
+    is_followup = context.get('last_action') == 'chat_response' and has_specific_tour
     
     prompt_parts = [
-        "Bạn là trợ lý AI của Ruby Wings - chuyên tư vấn du lịch trải nghiệm với phong cách tư vấn THÔNG MINH và TẬP TRUNG.",
+        "Bạn là trợ lý tư vấn du lịch Ruby Wings - TƯ VẤN CHUYÊN NGHIỆP, CHÍNH XÁC, TRUNG THỰC.",
         "",
-        "🎯 NGUYÊN TẮC TRẢ LỜI THÔNG MINH:",
+        "⚠️ QUY TẮC NGHIÊM NGẶT (BẮT BUỘC TUÂN THỦ):",
     ]
     
-    if is_general_question and not has_specific_tour:
+    # RULE 1: Location constraint
+    if has_location_constraint:
         prompt_parts.extend([
-            "• Câu hỏi này là CHUNG CHUNG (không có tour cụ thể)",
-            "• TRẢ LỜI NGẮN GỌN, TỔNG QUÁT (2-3 câu)",
-            "• KHÔNG LIỆT KÊ danh sách tour",
-            "• SAU ĐÓ HỎI LẠI để xác định nhu cầu cụ thể",
             "",
-            "VÍ DỤ TRẢ LỜI TỐT:",
-            "❌ SAI: 'Tour Hạ Long 2N1Đ giá 3.500.000đ bao gồm..., Tour Phú Quốc...' (quá dài, liệt kê nhiều)",
-            "✅ ĐÚNG: 'Giá tour của Ruby Wings đã bao gồm ăn uống, xe đưa đón và khách sạn. Tuy nhiên, tùy yêu cầu thực tế chúng tôi có thể điều chỉnh phù hợp. Bạn quan tâm đến tour nào để tôi tư vấn chi tiết hơn?'",
+            "🚨 RÀNG BUỘC ĐỊA LÝ - NGHIÊM NGẶT:",
+            f"• Người dùng YÊU CẦU tour gần/tại: {location_constraint or 'khu vực cụ thể'}",
+            "• TUYỆT ĐỐI KHÔNG đề xuất tour ngoài khu vực này",
+            "• NẾU dữ liệu không có tour phù hợp:",
+            "  → Phải trung thực: 'Hiện Ruby Wings chưa có tour phù hợp gần [địa điểm]'",
+            "  → Đề xuất phương án: 'Tuy nhiên, chúng tôi có [1-2 tour gần nhất] hoặc bạn có thể...'",
+            "  → Hỏi lại: 'Bạn có muốn xem tour ở khu vực khác không?'",
+            "• KHÔNG bịa tour không có trong dữ liệu",
         ])
-    elif has_specific_tour:
+    
+    # RULE 2: Tour limit
+    prompt_parts.extend([
+        "",
+        "📊 GIỚI HẠN TOUR (BẮT BUỘC):",
+        "• Mỗi câu trả lời: TỐI ĐA 2-3 TOUR",
+        "• MỖI tour phải có LÝ DO chọn rõ ràng:",
+        "  ✓ Phù hợp gia đình / cặp đôi / nhóm bạn",
+        "  ✓ Ngân sách phù hợp",
+        "  ✓ Thời gian phù hợp",
+        "  ✓ Trải nghiệm đặc biệt",
+        "• TUYỆT ĐỐI KHÔNG liệt kê danh sách dài 5+ tour",
+        "• TUYỆT ĐỐI KHÔNG dump bảng giá thô",
+        "• Nếu có >3 tour phù hợp:",
+        "  → Chọn 2-3 tour TIÊU BIỂU NHẤT",
+        "  → Tóm tắt: 'Ngoài ra còn X tour khác...'",
+        "  → Hỏi: 'Bạn muốn tìm hiểu thêm về loại tour nào?'",
+    ])
+    
+    # RULE 3: Context awareness
+    if is_followup:
         prompt_parts.extend([
-            "• Có TOUR CỤ THỂ được đề cập",
-            "• Tập trung TƯ VẤN CHI TIẾT về tour đó",
-            "• Đưa thông tin CHÍNH XÁC từ dữ liệu",
-        ])
-    else:
-        prompt_parts.extend([
-            "• Phân tích ngữ cảnh và trả lời PHÙ HỢP",
-            "• Ngắn gọn nếu câu hỏi đơn giản",
-            "• Chi tiết nếu câu hỏi phức tạp",
+            "",
+            "💭 NGỮ CẢNH HỘI THOẠI:",
+            f"• Đây là câu hỏi TIẾP THEO (đã bàn về {tour_count} tour)",
+            "• PHẢI sử dụng context đã có - KHÔNG reset",
+            "• KHÔNG liệt kê lại toàn bộ tour",
+            "• TƯ VẤN TIẾP theo context cũ",
+            "• Nếu hỏi về nhóm 10 người → Tư vấn dựa trên tour đã nhắc",
+            "• Nếu hỏi thêm về giá → Chỉ nói giá tour đang bàn",
         ])
     
     prompt_parts.extend([
         "",
-        "📋 QUY TẮC BẮT BUỘC:",
-        "1. LUÔN sử dụng thông tin từ dữ liệu nội bộ bên dưới",
-        "2. TRÁNH lặp lại thông tin không cần thiết",
-        "3. ĐƯA RA câu trả lời CÓ GIÁ TRỊ, không chỉ copy-paste",
-        "4. Giọng điệu THÂN THIỆN, CHUYÊN NGHIỆP nhưng NGẮN GỌN",
-        "5. KẾT THÚC bằng câu hỏi mở hoặc lời mời liên hệ",
-        "6. KHÔNG tự ý bịa thông tin không có trong dữ liệu",
-        "",
-        "🎨 PHONG CÁCH TRẢ LỜI:",
-        "• Câu văn TỰ NHIÊN, MƯỢT MÀ (như người thật)",
-        "• TRÁNH liệt kê dạng bullet points trừ khi cần thiết",
-        "• Sử dụng emoji VỪA PHẢI (1-2 emoji/câu trả lời)",
-        "• Độ dài phù hợp: 50-150 từ cho câu hỏi thông thường",
+        "🎯 PHONG CÁCH TRẢ LỜI:",
+    ])
+    
+    if is_general_question and not has_specific_tour:
+        prompt_parts.extend([
+            "• Câu hỏi CHUNG (chưa có tour cụ thể)",
+            "• Trả lời NGẮN GỌN (2-3 câu tổng quát)",
+            "• KHÔNG liệt kê tour",
+            "• HỎI LẠI để xác định nhu cầu",
+            "",
+            "VÍ DỤ ĐÚNG:",
+            "Q: 'Giá tour bao gồm gì?'",
+            "A: 'Giá tour Ruby Wings thường bao gồm ăn uống, xe đưa đón và khách sạn. Tùy từng tour và yêu cầu, chúng tôi có thể điều chỉnh. Bạn quan tâm tour nào để tôi tư vấn chi tiết? 😊'",
+        ])
+    elif has_specific_tour:
+        prompt_parts.extend([
+            "• Có tour CỤ THỂ đang thảo luận",
+            "• Tập trung vào tour đó",
+            "• Chi tiết, chính xác",
+            "• Dựa 100% vào dữ liệu",
+        ])
+    else:
+        prompt_parts.extend([
+            "• Phân tích và tư vấn PHÙ HỢP",
+            "• Tối đa 2-3 tour với lý do",
+            "• Hỏi tiếp để dẫn dắt",
+        ])
+    
+    prompt_parts.extend([
         "",
         "THÔNG TIN NGỮ CẢNH:",
     ])
     
+    # User preferences
     if context.get('user_preferences'):
         prefs = []
         if context['user_preferences'].get('duration_pref'):
@@ -3021,54 +3080,83 @@ def _prepare_llm_prompt(user_message: str, search_results: List, context: Dict) 
         if prefs:
             prompt_parts.append(f"- Sở thích: {'; '.join(prefs)}")
     
+    # Current tours (context)
     if context.get('current_tours'):
         tours_info = []
-        for tour in context['current_tours']:
+        for tour in context['current_tours'][:3]:  # Limit to 3
             tours_info.append(f"{tour['name']} ({tour.get('duration', '?')})")
         if tours_info:
-            prompt_parts.append(f"- Tour đang bàn: {', '.join(tours_info)}")
+            prompt_parts.append(f"- Tour đã bàn: {', '.join(tours_info)}")
+            if len(context['current_tours']) > 3:
+                prompt_parts.append(f"  (và {len(context['current_tours']) - 3} tour khác)")
     
-    if context.get('filters'):
-        filters = context['filters']
+    # Filters (constraints)
+    if filters:
         filter_strs = []
         if filters.get('price_max'):
             filter_strs.append(f"giá dưới {filters['price_max']:,}đ")
         if filters.get('price_min'):
             filter_strs.append(f"giá trên {filters['price_min']:,}đ")
         if filters.get('location'):
-            filter_strs.append(f"địa điểm: {filters['location']}")
+            filter_strs.append(f"VỊ TRÍ BẮT BUỘC: {filters['location']}")
+        if filters.get('near_location'):
+            filter_strs.append(f"GẦN: {filters['near_location']}")
+        if filters.get('duration_min') or filters.get('duration_max'):
+            if filters.get('duration_min') == filters.get('duration_max'):
+                filter_strs.append(f"đúng {filters.get('duration_min')} ngày")
+            else:
+                if filters.get('duration_min'):
+                    filter_strs.append(f"từ {filters.get('duration_min')} ngày")
+                if filters.get('duration_max'):
+                    filter_strs.append(f"đến {filters.get('duration_max')} ngày")
         if filter_strs:
-            prompt_parts.append(f"- Bộ lọc: {', '.join(filter_strs)}")
+            prompt_parts.append(f"- RÀNG BUỘC: {'; '.join(filter_strs)}")
     
     prompt_parts.append("")
-    prompt_parts.append("📚 DỮ LIỆU NỘI BỘ RUBY WINGS:")
+    prompt_parts.append("📚 DỮ LIỆU TỪ HỆ THỐNG:")
     
     if search_results:
-        for i, (score, passage) in enumerate(search_results[:5], 1):
-            text = passage.get('text', '')[:400]
-            prompt_parts.append(f"\n[{i}] (Độ liên quan: {score:.2f})")
-            prompt_parts.append(f"{text}")
+        # Limit search results to prevent overwhelming
+        max_results = 3 if has_location_constraint else 5
+        for i, (score, passage) in enumerate(search_results[:max_results], 1):
+            text = passage.get('text', '')[:300]
+            prompt_parts.append(f"\n[{i}] {text}")
     else:
-        prompt_parts.append("(Không tìm thấy dữ liệu liên quan trực tiếp)")
+        prompt_parts.append("(Không tìm thấy tour phù hợp trong dữ liệu)")
     
     prompt_parts.append("")
     prompt_parts.append("💬 YÊU CẦU TRẢ LỜI:")
     
-    if is_general_question and not has_specific_tour:
+    if has_location_constraint and not search_results:
         prompt_parts.extend([
-            "1. Trả lời NGẮN GỌN (2-3 câu) cho câu hỏi chung này",
-            "2. Tổng hợp thông tin từ dữ liệu (nếu có)",
-            "3. HỎI LẠI để xác định tour cụ thể khách quan tâm",
-            "4. KHÔNG liệt kê nhiều tour hoặc giá chi tiết",
+            "⚠️ KHÔNG CÓ TOUR PHÙ HỢP VỚI VỊ TRÍ:",
+            "1. Nói TRUNG THỰC: 'Hiện Ruby Wings chưa có tour phù hợp gần [địa điểm]'",
+            "2. Đề xuất PHƯƠNG ÁN: tour gần nhất hoặc tour khác",
+            "3. HỎI LẠI: 'Bạn có muốn xem tour ở khu vực nào khác?'",
+        ])
+    elif is_general_question and not has_specific_tour:
+        prompt_parts.extend([
+            "1. Trả lời NGẮN GỌN (2-3 câu tổng quát)",
+            "2. KHÔNG liệt kê tour",
+            "3. HỎI LẠI để xác định tour cụ thể",
+        ])
+    elif is_followup:
+        prompt_parts.extend([
+            "1. Dựa vào CONTEXT đã có (tour đã bàn)",
+            "2. TRẢ LỜI TIẾP câu hỏi mới",
+            "3. KHÔNG reset, KHÔNG liệt kê lại",
+            "4. Tối đa nhắc 1-2 tour từ context",
         ])
     else:
         prompt_parts.extend([
-            "1. Trả lời CHÍNH XÁC dựa trên dữ liệu",
-            "2. Ngắn gọn nhưng đầy đủ thông tin",
-            "3. Dẫn chứng từ dữ liệu nếu cần",
+            "1. Chọn 2-3 tour TIÊU BIỂU với LÝ DO rõ ràng",
+            "2. KHÔNG liệt kê >3 tour",
+            "3. Nếu có nhiều tour: tóm tắt + hỏi tiếp",
         ])
     
-    prompt_parts.append("5. Kết thúc bằng câu hỏi mở hoặc lời mời: 'Bạn cần tư vấn thêm gì không?' hoặc 'Gọi ngay hotline 0332510486 để được hỗ trợ tốt nhất!'")
+    prompt_parts.append("4. Kết thúc: câu hỏi dẫn dắt hoặc 'Gọi 0332510486 để được tư vấn chi tiết!'")
+    prompt_parts.append("")
+    prompt_parts.append("LUÔN TRUNG THỰC - LUÔN TƯ VẤN - LUÔN NGẮN GỌN")
     
     return "\n".join(prompt_parts)
 
@@ -3320,13 +3408,15 @@ def chat_endpoint():
                 else:
                     reply = "Bạn muốn so sánh tour nào với nhau?"
             elif UpgradeFlags.is_enabled("8_SEMANTIC_ANALYSIS"):
+                # GIỚI HẠN: Tối đa 2-3 tour, không dump hàng chục tour
                 profile_matches = SemanticAnalyzer.match_tours_to_profile(
-                    user_profile, TOURS_DB, max_results=3
+                    user_profile, TOURS_DB, max_results=3  # ✅ Giới hạn 3 tour
                 )
                 
                 if profile_matches:
                     recommendations = []
-                    for idx, score, reasons in profile_matches:
+                    # ✅ CHỈ LẤY 2-3 TOUR TIÊU BIỂU
+                    for idx, score, reasons in profile_matches[:3]:  
                         tour = TOURS_DB.get(idx)
                         if tour:
                             recommendations.append({
@@ -3339,18 +3429,23 @@ def chat_endpoint():
                             })
                     
                     if recommendations:
+                        # ✅ Template render sẽ giới hạn hiển thị
                         reply = TemplateSystem.render('recommendation',
                             top_tour=recommendations[0] if recommendations else None,
-                            other_tours=recommendations[1:] if len(recommendations) > 1 else [],
+                            other_tours=recommendations[1:2] if len(recommendations) > 1 else [],  # CHỈ 1-2 tour khác
                             criteria=user_profile.to_summary()
                         )
+                        # ✅ THÊM câu hỏi dẫn dắt nếu có nhiều tour
+                        if len(profile_matches) > 3:
+                            reply += f"\n\n💡 Ngoài ra còn {len(profile_matches) - 3} tour khác phù hợp. Bạn muốn tìm hiểu về loại tour nào cụ thể?"
                     else:
-                        reply = "Hiện chưa tìm thấy tour phù hợp với yêu cầu của bạn."
+                        reply = "Hiện chưa tìm thấy tour phù hợp với yêu cầu của bạn. Bạn có thể chia sẻ thêm về ngân sách hoặc địa điểm bạn muốn đến không?"
                 else:
                     reply = "Xin lỗi, tôi chưa hiểu rõ bạn cần tour như thế nào. " \
                            "Bạn có thể nói cụ thể hơn về sở thích và yêu cầu của mình không?"
             else:
                 if TOURS_DB:
+                    # ✅ GIỚI HẠN: Chỉ 2 tour
                     top_tours = list(TOURS_DB.items())[:2]
                     reply = "Dựa trên thông tin hiện có, tôi đề xuất bạn tham khảo:\n"
                     for idx, tour in top_tours:
@@ -3376,22 +3471,31 @@ def chat_endpoint():
                         unique_tours.append(tour)
                 all_tours = unique_tours
             
-            all_tours = all_tours[:15]
+            # ✅ GIỚI HẠN NGHIÊM NGẶT: Tối đa 5-6 tour, không dump hết
+            total_tours = len(all_tours)
+            all_tours = all_tours[:6]  # Chỉ lấy 6 tour đầu
             
             # UPGRADE 10: TEMPLATE SYSTEM
             if UpgradeFlags.is_enabled("10_TEMPLATE_SYSTEM"):
                 reply = TemplateSystem.render('tour_list', tours=all_tours)
             else:
                 if all_tours:
-                    reply = "✨ **Danh sách tour Ruby Wings:** ✨\n\n"
-                    for i, tour in enumerate(all_tours[:10], 1):
-                        reply += f"{i}. **{tour.name or f'Tour #{i}'}**\n"
+                    # ✅ CHỈ HIỂN THỊ 5-6 TOUR + HỎI LẠI
+                    reply = "✨ **Một số tour nổi bật của Ruby Wings:** ✨\n\n"
+                    for i, tour in enumerate(all_tours[:6], 1):  # Tối đa 6
+                        reply += f"{i}. **{tour.name or f'Tour #{i}'}**"
                         if tour.duration:
-                            reply += f"   ⏱️ {tour.duration}\n"
+                            reply += f" ({tour.duration})"
                         if tour.location:
-                            reply += f"   📍 {tour.location}\n"
+                            reply += f" - {tour.location}"
                         reply += "\n"
-                    reply += "💡 *Hỏi chi tiết về bất kỳ tour nào bằng cách nhập tên tour*"
+                    
+                    # ✅ THÊM thông tin còn nhiều tour + câu hỏi dẫn dắt
+                    if total_tours > 6:
+                        reply += f"\n💡 Ruby Wings còn {total_tours - 6} tour khác. "
+                        reply += "Bạn quan tâm đến khu vực nào hoặc loại tour nào để tôi tư vấn chi tiết hơn?"
+                    else:
+                        reply += "\n💡 Bạn có thể hỏi chi tiết về bất kỳ tour nào nhé!"
                 else:
                     reply = "Hiện chưa có thông tin tour trong hệ thống."
         
@@ -3435,10 +3539,11 @@ def chat_endpoint():
             if UpgradeFlags.is_enabled("2_DEDUPLICATION") and search_results:
                 search_results = DeduplicationEngine.deduplicate_passages(search_results)
             
-            # Prepare context for LLM
+            # Prepare context for LLM - BỔ SUNG last_action
             current_tours = []
             if tour_indices:
-                for idx in tour_indices[:2]:
+                # GIỚI HẠN: Chỉ lấy tối đa 3 tour để tránh dump data
+                for idx in tour_indices[:3]:
                     tour = TOURS_DB.get(idx)
                     if tour:
                         current_tours.append({
@@ -3449,7 +3554,7 @@ def chat_endpoint():
                             'price': tour.price or '',
                         })
             
-            # Prepare prompt
+            # Prepare prompt với đầy đủ context
             prompt = _prepare_llm_prompt(user_message, search_results, {
                 'user_message': user_message,
                 'tour_indices': tour_indices,
@@ -3457,7 +3562,9 @@ def chat_endpoint():
                 'requested_field': requested_field,
                 'user_preferences': getattr(context, 'user_preferences', {}),
                 'current_tours': current_tours,
-                'filters': mandatory_filters.to_dict()
+                'filters': mandatory_filters.to_dict(),
+                'last_action': getattr(context, 'last_action', None),  # ✅ THÊM để detect followup
+                'last_tour_name': getattr(context, 'last_tour_name', None)
             })
             
             # Get LLM response
