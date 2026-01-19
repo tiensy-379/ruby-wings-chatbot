@@ -3532,138 +3532,171 @@ def get_gspread_client(force_refresh: bool = False):
             logger.error(f"❌ Google Sheets client failed: {e}")
             return None
 
-@app.route('/api/save-lead', methods=['POST'])
-def save_lead_to_sheet():
-    """Save lead to Google Sheets using LeadData dataclass"""
+@app.route('/api/save-lead', methods=['POST', 'OPTIONS'])
+def save_lead():
+    """Save lead from form submission"""
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
+    
     try:
-        if not request.is_json:
-            return jsonify({"error": "JSON required", "success": False}), 400
-        
         data = request.get_json() or {}
-        phone = (data.get("phone") or "").strip()
+        
+        # Extract data
+        phone = data.get('phone', '').strip()
+        name = data.get('name', '').strip()
+        email = data.get('email', '').strip()
+        tour_interest = data.get('tour_interest', '').strip()
         
         if not phone:
-            return jsonify({"error": "Phone required", "success": False}), 400
+            return jsonify({'error': 'Phone number is required'}), 400
         
-        # Create LeadData object
-        lead_data = LeadData(
-            timestamp=datetime.utcnow(),
-            source_channel=data.get("source_channel", "Website"),
-            action_type=data.get("action_type", "Click Call"),
-            page_url=data.get("page_url", ""),
-            contact_name=data.get("contact_name", ""),
-            phone=phone,
-            service_interest=data.get("service_interest", ""),
-            note=data.get("note", ""),
-            status="New"
-        )
+        # Clean phone
+        phone_clean = re.sub(r'[^\d+]', '', phone)
         
-        logger.info(f"💾 Processing lead: {phone}")
+        # Validate phone
+        if not re.match(r'^(0|\+?84)\d{9,10}$', phone_clean):
+            return jsonify({'error': 'Invalid phone number format'}), 400
         
-        # Try Google Sheets
-        sheets_success = False
-        if ENABLE_GOOGLE_SHEETS and HAS_GOOGLE_SHEETS:
+        # Create lead data
+        lead_data = {
+            'timestamp': datetime.now().isoformat(),
+            'phone': phone_clean,
+            'name': name,
+            'email': email,
+            'tour_interest': tour_interest,
+            'source': 'Lead Form'
+        }
+        
+        # Send to Meta CAPI
+        if Config.ENABLE_META_CAPI and META_CAPI_AVAILABLE:
             try:
-                gc = get_gspread_client()
-                if gc:
-                    sh = gc.open_by_key(GOOGLE_SHEET_ID)
-                    ws = sh.worksheet(GOOGLE_SHEET_NAME)
+                result = send_meta_lead(
+                    request,
+                    phone=phone_clean,
+                    contact_name=name,
+                    email=email,
+                    content_name=f"Tour: {tour_interest}" if tour_interest else "General Inquiry",
+                    value=200000,
+                    currency="VND"
+                )
+                state.stats['meta_capi_calls'] += 1
+                logger.info(f"✅ Form lead sent to Meta CAPI: {phone_clean[:4]}***")
+                if Config.DEBUG_META_CAPI:
+                    logger.debug(f"Meta CAPI result: {result}")
+            except Exception as e:
+                state.stats['meta_capi_errors'] += 1
+                logger.error(f"Meta CAPI error: {e}")
+        
+        # Save to Google Sheets
+        if Config.ENABLE_GOOGLE_SHEETS:
+            try:
+                import gspread
+                from google.oauth2.service_account import Credentials
+                
+                if Config.GOOGLE_SERVICE_ACCOUNT_JSON and Config.GOOGLE_SHEET_ID:
+                    creds_json = json.loads(Config.GOOGLE_SERVICE_ACCOUNT_JSON)
+                    creds = Credentials.from_service_account_info(
+                        creds_json,
+                        scopes=['https://www.googleapis.com/auth/spreadsheets']
+                    )
                     
-                    ws.append_row(lead_data.to_row())
-                    sheets_success = True
-                    logger.info(f"✅ Lead saved to Google Sheets: {phone}")
+                    gc = gspread.authorize(creds)
+                    sh = gc.open_by_key(Config.GOOGLE_SHEET_ID)
+                    ws = sh.worksheet(Config.GOOGLE_SHEET_NAME)
                     
-                    # Meta CAPI
-                    if HAS_META_CAPI and ENABLE_META_CAPI_CALL:
-                        try:
-                            send_meta_lead(
-                                request=request,
-                                event_name="Lead",
-                                phone=phone,
-                                value=200000,
-                                currency="VND"
-                            )
-                        except Exception as e:
-                            logger.warning(f"Meta CAPI error: {e}")
+                    row = [
+                        lead_data['timestamp'],
+                        phone_clean,
+                        name,
+                        email,
+                        tour_interest,
+                        'Lead Form'
+                    ]
+                    
+                    ws.append_row(row)
+                    logger.info("✅ Form lead saved to Google Sheets")
             except Exception as e:
                 logger.error(f"Google Sheets error: {e}")
         
         # Fallback storage
-        fallback_success = False
-        if ENABLE_FALLBACK_STORAGE:
+        if Config.ENABLE_FALLBACK_STORAGE:
             try:
-                leads = []
-                if os.path.exists(FALLBACK_STORAGE_PATH):
-                    with open(FALLBACK_STORAGE_PATH, 'r', encoding='utf-8') as f:
+                if os.path.exists(Config.FALLBACK_STORAGE_PATH):
+                    with open(Config.FALLBACK_STORAGE_PATH, 'r', encoding='utf-8') as f:
                         leads = json.load(f)
+                else:
+                    leads = []
                 
-                leads.append(lead_data.to_dict())
+                leads.append(lead_data)
+                leads = leads[-1000:]
                 
-                with open(FALLBACK_STORAGE_PATH, 'w', encoding='utf-8') as f:
+                with open(Config.FALLBACK_STORAGE_PATH, 'w', encoding='utf-8') as f:
                     json.dump(leads, f, ensure_ascii=False, indent=2)
                 
-                fallback_success = True
-                logger.info(f"✅ Lead saved to fallback storage: {phone}")
+                logger.info("✅ Form lead saved to fallback storage")
             except Exception as e:
                 logger.error(f"Fallback storage error: {e}")
         
-        if sheets_success:
-            return jsonify({
-                "success": True,
-                "message": "Lead saved successfully",
-                "data": {"phone": phone}
-            })
-        elif fallback_success:
-            return jsonify({
-                "success": True,
-                "message": "Lead saved to backup",
-                "warning": "Google Sheets not available",
-                "data": {"phone": phone}
-            })
-        else:
-            return jsonify({
-                "success": False,
-                "error": "Failed to save lead"
-            }), 500
-    
-    except Exception as e:
-        logger.error(f"Save lead error: {e}")
+        # Update stats
+        state.stats['leads'] += 1
+        
         return jsonify({
-            "success": False,
-            "error": "Internal server error"
-        }), 500
+            'success': True,
+            'message': 'Lead đã được lưu! Đội ngũ Ruby Wings sẽ liên hệ sớm nhất. 📞',
+            'data': {
+                'phone': phone_clean[:3] + '***' + phone_clean[-2:],
+                'timestamp': lead_data['timestamp']
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"❌ Save lead error: {e}")
+        traceback.print_exc()
+        state.stats['errors'] += 1
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/api/track-call', methods=['POST'])
-def track_call():
-    """Track call button clicks"""
+@app.route('/api/call-button', methods=['POST', 'OPTIONS'])
+def call_button():
+    """Track call button click"""
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
+    
     try:
         data = request.get_json() or {}
-        logger.info(f"📞 Call tracked: {data.get('phone')}")
         
-        # Meta CAPI
-        if HAS_META_CAPI and ENABLE_META_CAPI_CALL:
+        page_url = data.get('page_url', '')
+        call_type = data.get('call_type', 'regular')
+        
+        # Send to Meta CAPI
+        if Config.ENABLE_META_CAPI_CALL and META_CAPI_AVAILABLE:
             try:
-                send_meta_call_button(
-                    request=request,
-                    page_url=data.get('page_url'),
-                    phone=data.get('phone'),
-                    call_type=data.get('call_type', 'regular')
+                result = send_meta_call_button(
+                    request,
+                    page_url=page_url,
+                    call_type=call_type,
+                    button_location='fixed_bottom_left',
+                    button_text='Gọi ngay'
                 )
+                state.stats['meta_capi_calls'] += 1
+                logger.info(f"📞 Call button tracked: {call_type}")
+                if Config.DEBUG_META_CAPI:
+                    logger.debug(f"Meta CAPI result: {result}")
             except Exception as e:
-                logger.warning(f"Meta CAPI error: {e}")
+                state.stats['meta_capi_errors'] += 1
+                logger.error(f"Meta CAPI call error: {e}")
         
         return jsonify({
-            "success": True,
-            "message": "Call tracked",
-            "meta_capi_sent": HAS_META_CAPI
+            'success': True,
+            'message': 'Call tracked',
+            'timestamp': datetime.now().isoformat()
         })
-    
+        
     except Exception as e:
-        logger.error(f"Track call error: {e}")
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        }), 500
+        logger.error(f"Call button error: {e}")
+        traceback.print_exc()
+        state.stats['errors'] += 1
+        return jsonify({'error': str(e)}), 500
+
 
 @app.route('/api/health', methods=['GET'])
 def health_check():
