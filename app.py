@@ -3253,485 +3253,458 @@ Câu hỏi của khách: {user_message}"""
 @app.route("/chat", methods=["POST"])
 def chat_endpoint():
     """
-    Main chat endpoint with all 10 upgrades integrated
+    Main chat endpoint với xử lý thông minh, context-aware, OpenAI tích hợp sâu
     """
     start_time = time.time()
     
     try:
         data = request.get_json() or {}
         user_message = (data.get("message") or "").strip()
+        session_id = extract_session_id(data, request.remote_addr)
         
         if not user_message:
             return jsonify({
-                "reply": "Xin chào! Tôi có thể giúp gì cho bạn về các tour của Ruby Wings?",
+                "reply": "👋 Xin chào! Tôi là trợ lý AI của Ruby Wings. Tôi có thể giúp bạn tìm hiểu về các tour trải nghiệm, so sánh tour, hoặc tư vấn tour phù hợp. Bạn muốn biết điều gì? 😊",
                 "sources": [],
                 "context": {},
                 "processing_time": 0
             })
         
-        session_id = extract_session_id(data, request.remote_addr)
+        # ================== CONTEXT MANAGEMENT ==================
         context = get_session_context(session_id)
         
-        # Check memory cache
+        # Kiểm tra câu hỏi lặp lại từ context
         recent_response = None
-        if hasattr(context, 'get_recent_response') and hasattr(context, 'check_recent_question'):
-            recent_response = context.get_recent_response(user_message)
-            if recent_response and context.check_recent_question(user_message):
-                logger.info("💭 Using cached response from recent conversation")
-                processing_time = time.time() - start_time
-                chat_response = ChatResponse(
-                    reply=recent_response,
-                    sources=[],
-                    context={
-                        "session_id": session_id,
-                        "from_memory": True,
-                        "processing_time_ms": int(processing_time * 1000)
-                    },
-                    tour_indices=[],
-                    processing_time_ms=int(processing_time * 1000),
-                    from_memory=True
-                )
-                return jsonify(chat_response.to_dict())
+        if hasattr(context, 'conversation_history') and context.conversation_history:
+            last_exchange = context.conversation_history[-1]
+            if 'user_message' in last_exchange and 'reply' in last_exchange:
+                last_user_msg = last_exchange['user_message'].lower()
+                current_user_msg = user_message.lower()
+                
+                # Kiểm tra similarity đơn giản
+                if SequenceMatcher(None, last_user_msg, current_user_msg).ratio() > 0.8:
+                    logger.info("💭 Detected similar question, using context")
+                    recent_response = last_exchange['reply']
         
-        # Initialize state machine
-        if UpgradeFlags.is_enabled("7_STATE_MACHINE"):
-            if not hasattr(context, 'state_machine') or context.state_machine is None:
-                context.state_machine = ConversationStateMachine(session_id)
+        # ================== CONTEXT TRACKING ==================
+        # Cập nhật lịch sử hội thoại
+        if not hasattr(context, 'conversation_history'):
+            context.conversation_history = []
         
-        state_tour_indices = []
-        if UpgradeFlags.is_enabled("7_STATE_MACHINE") and context.state_machine:
-            state_tour_indices = context.state_machine.extract_reference(user_message)
-            if state_tour_indices:
-                logger.info(f"🔄 State machine injected tours: {state_tour_indices}")
-                context.last_tour_indices = state_tour_indices
+        # Giới hạn lịch sử
+        if len(context.conversation_history) > 20:
+            context.conversation_history = context.conversation_history[-10:]
         
-        # UPGRADE 5: COMPLEX QUERY SPLITTER
-        sub_queries = []
-        if UpgradeFlags.is_enabled("5_QUERY_SPLITTER"):
-            sub_queries = ComplexQueryProcessor.split_query(user_message)
+        # ================== SMART CONTEXT EXTRACTION ==================
+        # Phân tích câu hỏi để xác định context
+        message_lower = user_message.lower()
         
-        # UPGRADE 1: MANDATORY FILTER EXTRACTION
+        # 1. Xác định có phải follow-up không
+        is_followup = False
+        followup_keywords = ['này', 'đó', 'kia', 'ấy', 'nó', 'tour này', 'tour đó']
+        if any(keyword in message_lower for keyword in followup_keywords):
+            is_followup = True
+        
+        # 2. Kiểm tra context hiện tại
+        current_tour_context = None
+        if hasattr(context, 'current_tour') and context.current_tour:
+            current_tour_context = context.current_tour
+        
+        # ================== MANDATORY FILTER EXTRACTION ==================
         mandatory_filters = FilterSet()
         if UpgradeFlags.is_enabled("1_MANDATORY_FILTER"):
             mandatory_filters = MandatoryFilterSystem.extract_filters(user_message)
-            
-            if not mandatory_filters.is_empty() and TOURS_DB:
-                filtered_indices = MandatoryFilterSystem.apply_filters(TOURS_DB, mandatory_filters)
-                if filtered_indices:
-                    if state_tour_indices:
-                        combined = [idx for idx in state_tour_indices if idx in filtered_indices]
-                        context.last_tour_indices = combined if combined else filtered_indices
-                    else:
-                        context.last_tour_indices = filtered_indices
-                    logger.info(f"🔍 Applied mandatory filters")
+            logger.info(f"🎯 Extracted filters: {mandatory_filters}")
         
-        # UPGRADE 6: FUZZY MATCHING
-        fuzzy_matches = []
-        if UpgradeFlags.is_enabled("6_FUZZY_MATCHING"):
-            fuzzy_matches = FuzzyMatcher.find_similar_tours(user_message, TOUR_NAME_TO_INDEX)
-            if fuzzy_matches:
-                fuzzy_indices = [idx for idx, _ in fuzzy_matches]
-                logger.info(f"🔍 Fuzzy matches found: {fuzzy_indices}")
-                
-                if context.last_tour_indices:
-                    context.last_tour_indices = list(set(context.last_tour_indices + fuzzy_indices))
-                else:
-                    context.last_tour_indices = fuzzy_indices
-        
-        # UPGRADE 3: ENHANCED FIELD DETECTION
-        requested_field = None
-        field_confidence = 0.0
-        if UpgradeFlags.is_enabled("3_ENHANCED_FIELDS"):
-            requested_field, field_confidence, _ = EnhancedFieldDetector.detect_field_with_confidence(user_message)
-        
-        # UPGRADE 4: QUESTION CLASSIFICATION
+        # ================== QUESTION CLASSIFICATION ==================
         question_type = QuestionType.INFORMATION
-        question_confidence = 0.0
         question_metadata = {}
         
         if UpgradeFlags.is_enabled("4_QUESTION_PIPELINE"):
             question_type, question_confidence, question_metadata = QuestionPipeline.classify_question(user_message)
+            logger.info(f"🔍 Question classified as: {question_type.value} (confidence: {question_confidence:.2f})")
         
-        # UPGRADE 8: SEMANTIC ANALYSIS
-        user_profile = UserProfile()
-        if UpgradeFlags.is_enabled("8_SEMANTIC_ANALYSIS"):
-            current_profile = getattr(context, 'user_profile', None)
-            user_profile = SemanticAnalyzer.analyze_user_profile(user_message, current_profile)
-            context.user_profile = user_profile
+        # ================== FIELD DETECTION ==================
+        requested_field = None
+        field_confidence = 0.0
         
-        # UPGRADE 7: STATE MACHINE PROCESSING
-        if UpgradeFlags.is_enabled("7_STATE_MACHINE") and context.state_machine:
-            placeholder_response = "Processing your request..."
-            context.state_machine.update(user_message, placeholder_response, tour_indices if 'tour_indices' in locals() else [])
+        if UpgradeFlags.is_enabled("3_ENHANCED_FIELDS"):
+            requested_field, field_confidence, _ = EnhancedFieldDetector.detect_field_with_confidence(user_message)
         
-        # TOUR RESOLUTION
-        tour_indices = context.last_tour_indices or []
+        # ================== TOUR RESOLUTION STRATEGY ==================
+        tour_indices = []
         
-        # Handle comparison questions
-        if question_type == QuestionType.COMPARISON and not tour_indices:
-            comparison_tour_names = []
-            name_patterns = [
-                r'tour\s+([^\s,]+)\s+và\s+tour\s+([^\s,]+)',
-                r'tour\s+([^\s,]+)\s+với\s+tour\s+([^\s,]+)',
-            ]
-            
-            for pattern in name_patterns:
-                matches = re.finditer(pattern, user_message.lower())
-                for match in matches:
-                    for i in range(1, 3):
-                        if match.group(i):
-                            tour_name = match.group(i).strip()
-                            for norm_name, idx in TOUR_NAME_TO_INDEX.items():
-                                if tour_name in norm_name or FuzzyMatcher.normalize_vietnamese(tour_name) in norm_name:
-                                    comparison_tour_names.append(idx)
-                                    break
-            
-            if len(comparison_tour_names) >= 2:
-                tour_indices = comparison_tour_names[:2]
-                context.last_tour_indices = tour_indices
-                logger.info(f"🔍 Extracted tours for comparison: {tour_indices}")
+        # Chiến lược 1: Tìm tour từ context hiện tại
+        if is_followup and current_tour_context:
+            tour_indices = [current_tour_context]
+            logger.info(f"🔄 Using context tour: {tour_indices}")
         
-        # Check cache
-        cache_key = None
-        if UpgradeFlags.get_all_flags().get("ENABLE_CACHING", True):
-            context_hash = hashlib.md5(json.dumps({
-                'tour_indices': tour_indices,
-                'field': requested_field,
-                'question_type': question_type.value,
-                'filters': mandatory_filters.to_dict()
-            }, sort_keys=True).encode()).hexdigest()
-            
-            cache_key = CacheSystem.get_cache_key(user_message, context_hash)
-            cached_response = CacheSystem.get(cache_key)
-            
-            if cached_response:
-                logger.info("💾 Using cached response")
-                return jsonify(cached_response)
+        # Chiến lược 2: Tìm tour bằng fuzzy matching
+        elif UpgradeFlags.is_enabled("6_FUZZY_MATCHING"):
+            fuzzy_matches = FuzzyMatcher.find_similar_tours(user_message, TOUR_NAME_TO_INDEX)
+            if fuzzy_matches:
+                tour_indices = [idx for idx, _ in fuzzy_matches[:2]]  # Chỉ lấy 2 tour đầu
+                logger.info(f"🔍 Fuzzy matches found: {tour_indices}")
         
-        # PROCESS BY QUESTION TYPE
+        # Chiến lược 3: Áp dụng filter để tìm tour
+        if not mandatory_filters.is_empty() and UpgradeFlags.is_enabled("1_MANDATORY_FILTER"):
+            filtered_indices = MandatoryFilterSystem.apply_filters(TOURS_DB, mandatory_filters)
+            if filtered_indices:
+                if tour_indices:
+                    # Kết hợp với kết quả hiện có
+                    combined = [idx for idx in tour_indices if idx in filtered_indices]
+                    tour_indices = combined if combined else filtered_indices[:3]
+                else:
+                    tour_indices = filtered_indices[:3]  # Chỉ lấy 3 tour đầu
+                logger.info(f"🎯 Applied filters, found {len(tour_indices)} tours")
+        
+        # ================== PROCESS BY QUESTION TYPE ==================
         reply = ""
         sources = []
         
-        # GREETING
-        if question_type == QuestionType.GREETING:
-            reply = TemplateSystem.render('greeting')
+        # 🔹 CASE 1: GENERAL QUESTION (không có tour cụ thể)
+        # Ví dụ: "Giá tour bao gồm những gì?", "Tour có phù hợp gia đình không?"
+        general_keywords = ['bao gồm', 'có gì', 'phù hợp', 'thế nào', 'ra sao', 'là gì']
+        is_general_question = any(keyword in message_lower for keyword in general_keywords) and not tour_indices
         
-        # FAREWELL
-        elif question_type == QuestionType.FAREWELL:
-            reply = TemplateSystem.render('farewell')
-        
-        # COMPARISON
-        elif question_type == QuestionType.COMPARISON:
-            if len(tour_indices) >= 2:
-                comparison_result = QuestionPipeline.process_comparison_question(
-                    tour_indices, TOURS_DB, "", question_metadata
-                )
-                reply = comparison_result
-            else:
-                # Use LLM to provide intelligent response even if no specific tours
-                search_results = query_index(user_message, TOP_K)
-                if UpgradeFlags.is_enabled("2_DEDUPLICATION") and search_results:
-                    search_results = DeduplicationEngine.deduplicate_passages(search_results)
-                
-                # Prepare prompt for LLM
-                current_tours = []
-                prompt = _prepare_llm_prompt(user_message, search_results, {
-                    'user_message': user_message,
-                    'tour_indices': tour_indices,
-                    'question_type': question_type.value,
-                    'requested_field': requested_field,
-                    'user_preferences': getattr(context, 'user_preferences', {}),
-                    'current_tours': current_tours,
-                    'filters': mandatory_filters.to_dict(),
-                    'last_action': getattr(context, 'last_action', None),
-                    'last_tour_name': getattr(context, 'last_tour_name', None)
-                })
-                
-                if client and HAS_OPENAI:
-                    try:
-                        messages = [
-                            {"role": "system", "content": prompt},
-                            {"role": "user", "content": user_message}
-                        ]
-                        response = client.chat.completions.create(
-                            model=CHAT_MODEL,
-                            messages=messages,
-                            temperature=0.4,
-                            max_tokens=500,
-                            top_p=0.85,
-                            frequency_penalty=0.4,
-                            presence_penalty=0.3
-                        )
-                        if response.choices and len(response.choices) > 0:
-                            reply = response.choices[0].message.content or ""
-                        else:
-                            reply = "Để so sánh các tour, bạn có thể cung cấp tên 2 tour cụ thể hoặc mô tả tiêu chí bạn quan tâm. Tôi có thể giúp bạn so sánh các tour về giá, thời gian, địa điểm và trải nghiệm."
-                    except Exception as e:
-                        logger.error(f"OpenAI API error: {e}")
-                        reply = "Bạn muốn so sánh tour nào với nhau? Hãy cho tôi biết tên 2 tour cụ thể hoặc tiêu chí bạn quan tâm để tôi hỗ trợ tốt hơn."
-                else:
-                    reply = "Bạn muốn so sánh tour nào với nhau? Hãy cho tôi biết tên 2 tour cụ thể để tôi có thể hỗ trợ bạn."
-        
-        # RECOMMENDATION - FIXED: Use LLM when no specific tours found
-        elif question_type == QuestionType.RECOMMENDATION:
-            # QUAN TRỌNG: Chỉ chuyển sang COMPARISON khi có rõ ràng từ "so sánh" 
-            # KHÔNG chuyển khi có "phù hợp với", "tour nào với", etc.
-            if 'so sánh' in user_message.lower() and 'phù hợp' not in user_message.lower():
-                question_type = QuestionType.COMPARISON
-                if not tour_indices and TOURS_DB:
-                    tour_indices = list(TOURS_DB.keys())[:2]
-                    reply = f"Tôi thấy bạn muốn so sánh. Bạn có thể so sánh:\n1. {TOURS_DB[tour_indices[0]].name or f'Tour #{tour_indices[0]}'}\n2. {TOURS_DB[tour_indices[1]].name or f'Tour #{tour_indices[1]}'}"
-                else:
-                    reply = "Bạn muốn so sánh tour nào với nhau?"
-            elif UpgradeFlags.is_enabled("8_SEMANTIC_ANALYSIS"):
-                profile_matches = SemanticAnalyzer.match_tours_to_profile(
-                    user_profile, TOURS_DB, max_results=3
-                )
-                
-                if profile_matches:
-                    recommendations = []
-                    # ✅ CHỈ LẤY 2-3 TOUR TIÊU BIỂU
-                    for idx, score, reasons in profile_matches[:3]:  
-                        tour = TOURS_DB.get(idx)
-                        if tour:
-                            recommendations.append({
-                                'name': tour.name or f'Tour #{idx}',
-                                'score': score,
-                                'reasons': reasons,
-                                'duration': tour.duration or '',
-                                'location': tour.location or '',
-                                'price': tour.price or '',
-                            })
-                    
-                    if recommendations:
-                        # ✅ Template render sẽ giới hạn hiển thị
-                        reply = TemplateSystem.render('recommendation',
-                            top_tour=recommendations[0] if recommendations else None,
-                            other_tours=recommendations[1:2] if len(recommendations) > 1 else [],  # CHỈ 1-2 tour khác
-                            criteria=user_profile.to_summary()
-                        )
-                        # ✅ THÊM câu hỏi dẫn dắt nếu có nhiều tour
-                        if len(profile_matches) > 3:
-                            reply += f"\n\n💡 Ngoài ra còn {len(profile_matches) - 3} tour khác phù hợp. Bạn muốn tìm hiểu về loại tour nào cụ thể?"
-                    else:
-                        # FALLBACK: Use LLM when no tours match
-                        search_results = query_index(user_message, TOP_K)
-                        if UpgradeFlags.is_enabled("2_DEDUPLICATION") and search_results:
-                            search_results = DeduplicationEngine.deduplicate_passages(search_results)
-                        
-                        prompt = _prepare_llm_prompt(user_message, search_results, {
-                            'user_message': user_message,
-                            'tour_indices': [],
-                            'question_type': question_type.value,
-                            'requested_field': requested_field,
-                            'user_preferences': getattr(context, 'user_preferences', {}),
-                            'current_tours': [],
-                            'filters': mandatory_filters.to_dict(),
-                            'last_action': getattr(context, 'last_action', None),
-                            'last_tour_name': getattr(context, 'last_tour_name', None)
-                        })
-                        
-                        if client and HAS_OPENAI:
-                            try:
-                                messages = [
-                                    {"role": "system", "content": prompt},
-                                    {"role": "user", "content": user_message}
-                                ]
-                                response = client.chat.completions.create(
-                                    model=CHAT_MODEL,
-                                    messages=messages,
-                                    temperature=0.4,
-                                    max_tokens=500,
-                                    top_p=0.85,
-                                    frequency_penalty=0.4,
-                                    presence_penalty=0.3
-                                )
-                                if response.choices and len(response.choices) > 0:
-                                    reply = response.choices[0].message.content or ""
-                                else:
-                                    reply = "Dựa trên yêu cầu của bạn, tôi đề xuất bạn liên hệ trực tiếp với đội ngũ tư vấn của Ruby Wings qua số 0332510486 để được tư vấn tour phù hợp nhất."
-                            except Exception as e:
-                                logger.error(f"OpenAI API error: {e}")
-                                reply = _generate_fallback_response(user_message, search_results, [])
-                        else:
-                            reply = _generate_fallback_response(user_message, search_results, [])
-                else:
-                    # FIXED: Use LLM to provide intelligent response when no tours match
-                    search_results = query_index(user_message, TOP_K)
-                    if UpgradeFlags.is_enabled("2_DEDUPLICATION") and search_results:
-                        search_results = DeduplicationEngine.deduplicate_passages(search_results)
-                    
-                    prompt = _prepare_llm_prompt(user_message, search_results, {
-                        'user_message': user_message,
-                        'tour_indices': [],
-                        'question_type': question_type.value,
-                        'requested_field': requested_field,
-                        'user_preferences': getattr(context, 'user_preferences', {}),
-                        'current_tours': [],
-                        'filters': mandatory_filters.to_dict(),
-                        'last_action': getattr(context, 'last_action', None),
-                        'last_tour_name': getattr(context, 'last_tour_name', None)
-                    })
-                    
-                    if client and HAS_OPENAI:
-                        try:
-                            messages = [
-                                {"role": "system", "content": prompt},
-                                {"role": "user", "content": user_message}
-                            ]
-                            response = client.chat.completions.create(
-                                model=CHAT_MODEL,
-                                messages=messages,
-                                temperature=0.4,
-                                max_tokens=500,
-                                top_p=0.85,
-                                frequency_penalty=0.4,
-                                presence_penalty=0.3
-                            )
-                            if response.choices and len(response.choices) > 0:
-                                reply = response.choices[0].message.content or ""
-                            else:
-                                reply = "Dựa trên yêu cầu của bạn, tôi đề xuất bạn liên hệ trực tiếp với đội ngũ tư vấn của Ruby Wings qua số 0332510486 để được tư vấn tour phù hợp nhất."
-                        except Exception as e:
-                            logger.error(f"OpenAI API error: {e}")
-                            reply = _generate_fallback_response(user_message, search_results, [])
-                    else:
-                        reply = _generate_fallback_response(user_message, search_results, [])
-            else:
-                if TOURS_DB:
-                    # ✅ GIỚI HẠN: Chỉ 2 tour
-                    top_tours = list(TOURS_DB.items())[:2]
-                    reply = "Dựa trên thông tin hiện có, tôi đề xuất bạn tham khảo:\n"
-                    for idx, tour in top_tours:
-                        reply += f"• {tour.name or f'Tour #{idx}'}\n"
-                    reply += "\n💡 Bạn có thể hỏi chi tiết về từng tour cụ thể."
-                else:
-                    reply = "Hiện chưa có thông tin tour để đề xuất."
-        
-        # LISTING
-        elif question_type == QuestionType.LISTING or requested_field == "tour_name":
-            all_tours = []
-            for idx, tour in TOURS_DB.items():
-                all_tours.append(tour)
+        if is_general_question and client and HAS_OPENAI:
+            logger.info("🧠 Processing general question with OpenAI")
             
-            # UPGRADE 2: DEDUPLICATION
+            # Chuẩn bị knowledge context
+            knowledge_context = ""
+            if search_results:
+                for i, (score, passage) in enumerate(search_results[:3], 1):
+                    text = passage.get('text', '')[:200]
+                    if text:
+                        knowledge_context += f"{i}. {text}\n"
+            
+            prompt = f"""Bạn là tư vấn viên Ruby Wings chuyên nghiệp, nhiệt tình.
+
+NGỮ CẢNH HỘI THOẠI:
+- Khách hàng: {user_message}
+- Context trước: {current_tour_context}
+
+THÔNG TIN TỪ HỆ THỐNG (chỉ tham khảo):
+{knowledge_context if knowledge_context else 'Không có thông tin cụ thể'}
+
+YÊU CẦU:
+1. Trả lời câu hỏi chung về tour du lịch một cách tự nhiên, chuyên nghiệp
+2. Sử dụng kiến thức chung về tour du lịch nếu không có thông tin cụ thể
+3. KHÔNG nói "không có dữ liệu", "không biết"
+4. Ngắn gọn 2-4 câu, thân thiện
+5. Kết thúc bằng câu hỏi dẫn dắt hoặc đề nghị liên hệ
+
+Câu trả lời của bạn:"""
+            
+            try:
+                response = client.chat.completions.create(
+                    model=CHAT_MODEL,
+                    messages=[
+                        {"role": "system", "content": prompt},
+                        {"role": "user", "content": user_message}
+                    ],
+                    temperature=0.7,
+                    max_tokens=300
+                )
+                
+                if response.choices:
+                    reply = response.choices[0].message.content or ""
+                    # Đảm bảo có hotline
+                    if "0332510486" not in reply and "hotline" not in reply.lower():
+                        reply += "\n\n📞 Liên hệ 0332510486 để được tư vấn chi tiết!"
+            except Exception as e:
+                logger.error(f"OpenAI general question error: {e}")
+                reply = _generate_fallback_response(user_message, [], None)
+        
+        # 🔹 CASE 2: LISTING TOURS (liệt kê tour)
+        elif question_type == QuestionType.LISTING or requested_field == "tour_name":
+            logger.info("📋 Processing listing request")
+            
+            # Áp dụng filter nếu có
+            all_tours = list(TOURS_DB.values())
+            if not mandatory_filters.is_empty():
+                filtered_indices = MandatoryFilterSystem.apply_filters(TOURS_DB, mandatory_filters)
+                all_tours = [TOURS_DB[idx] for idx in filtered_indices if idx in TOURS_DB]
+            
+            # Deduplication
             if UpgradeFlags.is_enabled("2_DEDUPLICATION") and all_tours:
                 seen_names = set()
                 unique_tours = []
                 for tour in all_tours:
                     name = tour.name
-                    if name not in seen_names:
+                    if name and name not in seen_names:
                         seen_names.add(name)
                         unique_tours.append(tour)
                 all_tours = unique_tours
             
-            # ✅ GIỚI HẠN NGHIÊM NGẶT: Tối đa 5-6 tour, không dump hết
+            # GIỚI HẠN: Chỉ hiển thị 5 tour
             total_tours = len(all_tours)
-            all_tours = all_tours[:6]  # Chỉ lấy 6 tour đầu
+            display_tours = all_tours[:5]
             
-            # UPGRADE 10: TEMPLATE SYSTEM
-            if UpgradeFlags.is_enabled("10_TEMPLATE_SYSTEM"):
-                reply = TemplateSystem.render('tour_list', tours=all_tours)
-            else:
-                if all_tours:
-                    # ✅ CHỈ HIỂN THỊ 5-6 TOUR + HỎI LẠI
-                    reply = "✨ **Một số tour nổi bật của Ruby Wings:** ✨\n\n"
-                    for i, tour in enumerate(all_tours[:6], 1):  # Tối đa 6
-                        reply += f"{i}. **{tour.name or f'Tour #{i}'}**"
-                        if tour.duration:
-                            reply += f" ({tour.duration})"
-                        if tour.location:
-                            reply += f" - {tour.location}"
-                        reply += "\n"
+            # Sử dụng OpenAI để tạo response thông minh
+            if client and HAS_OPENAI and display_tours:
+                try:
+                    tour_summary = "\n".join([
+                        f"{i+1}. {tour.name} ({tour.duration or '?'}) - {tour.location or '?'}"
+                        for i, tour in enumerate(display_tours)
+                    ])
                     
-                    # ✅ THÊM thông tin còn nhiều tour + câu hỏi dẫn dắt
-                    if total_tours > 6:
-                        reply += f"\n💡 Ruby Wings còn {total_tours - 6} tour khác. "
-                        reply += "Bạn quan tâm đến khu vực nào hoặc loại tour nào để tôi tư vấn chi tiết hơn?"
+                    llm_prompt = f"""Bạn là tư vấn viên Ruby Wings. Khách hỏi về danh sách tour.
+
+DANH SÁCH TOUR:
+{tour_summary}
+
+TỔNG SỐ TOUR: {total_tours}
+
+YÊU CẦU:
+1. Giới thiệu ngắn gọn Ruby Wings (1 câu)
+2. Liệt kê {min(5, len(display_tours))} tour trên với emoji phù hợp
+3. Nếu total_tours > 5: Nói "Còn {total_tours - 5} tour khác"
+4. Kết thúc: HỎI LẠI để tư vấn chi tiết (tour nào? loại nào?)
+5. KHÔNG dump chi tiết giá/lịch trình
+
+Trả lời tự nhiên, nhiệt tình, NGẮN GỌN (tối đa 150 từ)."""
+                    
+                    response = client.chat.completions.create(
+                        model=CHAT_MODEL,
+                        messages=[
+                            {"role": "system", "content": llm_prompt},
+                            {"role": "user", "content": user_message}
+                        ],
+                        temperature=0.6,
+                        max_tokens=350
+                    )
+                    
+                    if response.choices:
+                        reply = response.choices[0].message.content or ""
                     else:
-                        reply += "\n💡 Bạn có thể hỏi chi tiết về bất kỳ tour nào nhé!"
+                        # Fallback template
+                        reply = f"✨ **Ruby Wings có {total_tours} tour trải nghiệm đặc sắc**\n\n"
+                        for i, tour in enumerate(display_tours, 1):
+                            reply += f"{i}. **{tour.name}**"
+                            if tour.duration:
+                                reply += f" ({tour.duration})"
+                            if tour.location:
+                                reply += f" - {tour.location}"
+                            reply += "\n"
+                        
+                        if total_tours > 5:
+                            reply += f"\n💡 Còn {total_tours - 5} tour khác. Bạn quan tâm loại tour nào để tôi tư vấn chi tiết?"
+                        else:
+                            reply += "\n💡 Bạn muốn tìm hiểu chi tiết tour nào? 😊"
+                
+                except Exception as e:
+                    logger.error(f"LLM listing error: {e}")
+                    # Fallback đơn giản
+                    reply = f"Ruby Wings có {total_tours} tour. Dưới đây là {min(5, len(display_tours))} tour nổi bật:\n"
+                    for i, tour in enumerate(display_tours, 1):
+                        reply += f"{i}. {tour.name}\n"
+                    reply += "\nBạn muốn xem tour nào chi tiết? 📞 0332510486"
+            else:
+                # No OpenAI
+                if display_tours:
+                    reply = f"✨ Ruby Wings có {total_tours} tour\n\n"
+                    for i, tour in enumerate(display_tours, 1):
+                        reply += f"{i}. {tour.name} ({tour.duration or '?'})\n"
+                    
+                    if total_tours > 5:
+                        reply += f"\n💡 Còn {total_tours - 5} tour khác. Hỏi tôi về tour cụ thể nhé!"
                 else:
-                    reply = "Hiện chưa có thông tin tour trong hệ thống."
+                    reply = "Hiện chưa có tour nào phù hợp với yêu cầu của bạn."
         
-        # FIELD-SPECIFIC QUERY
-        elif requested_field and field_confidence > 0.3:
+        # 🔹 CASE 3: TOUR COMPARISON (so sánh tour)
+        elif question_type == QuestionType.COMPARISON:
+            logger.info("⚖️ Processing comparison request")
+            
+            # Tìm các tour để so sánh
+            if len(tour_indices) >= 2:
+                # Có đủ tour để so sánh
+                comparison_result = QuestionPipeline.process_comparison_question(
+                    tour_indices, TOURS_DB, "", question_metadata
+                )
+                reply = comparison_result
+            elif client and HAS_OPENAI:
+                # Dùng OpenAI để xử lý khi không đủ tour
+                try:
+                    prompt = f"""Bạn là tư vấn viên Ruby Wings. Khách muốn so sánh tour nhưng chưa chỉ rõ tour nào.
+
+YÊU CẦU:
+1. Hỏi lại khách muốn so sánh tour nào cụ thể
+2. Gợi ý 2-3 cặp tour phổ biến để so sánh
+3. Kết thúc bằng lời mời liên hệ tư vấn
+
+Trả lời ngắn gọn, thân thiện."""
+
+                    response = client.chat.completions.create(
+                        model=CHAT_MODEL,
+                        messages=[
+                            {"role": "system", "content": prompt},
+                            {"role": "user", "content": user_message}
+                        ],
+                        temperature=0.6,
+                        max_tokens=250
+                    )
+                    
+                    if response.choices:
+                        reply = response.choices[0].message.content or ""
+                    else:
+                        reply = "Bạn muốn so sánh tour nào với nhau? Hãy cho tôi biết tên 2 tour cụ thể hoặc tôi có thể gợi ý một số cặp tour phổ biến để so sánh."
+                except Exception as e:
+                    logger.error(f"OpenAI comparison error: {e}")
+                    reply = "Để so sánh tour, vui lòng cho biết tên 2 tour cụ thể. Ví dụ: 'So sánh tour Bạch Mã và tour Trường Sơn'"
+            else:
+                reply = "Bạn muốn so sánh tour nào? Vui lòng nêu tên 2 tour cụ thể."
+        
+        # 🔹 CASE 4: TOUR RECOMMENDATION (đề xuất tour)
+        elif question_type == QuestionType.RECOMMENDATION:
+            logger.info("🎯 Processing recommendation request")
+            
+            # Phân tích ngữ cảnh để đề xuất
+            if client and HAS_OPENAI:
+                try:
+                    # Chuẩn bị context tours
+                    tour_context = ""
+                    if tour_indices:
+                        for idx in tour_indices[:3]:
+                            tour = TOURS_DB.get(idx)
+                            if tour:
+                                tour_context += f"- {tour.name}: {tour.summary[:100] if tour.summary else 'Tour trải nghiệm'}\n"
+                    
+                    # Phân tích semantic để hiểu yêu cầu
+                    semantic_prompt = f"""Phân tích yêu cầu của khách để đề xuất tour phù hợp:
+
+YÊU CẦU KHÁCH: {user_message}
+TOUR CÓ SẴN: {tour_context if tour_context else 'Chưa có tour cụ thể'}
+
+PHÂN TÍCH:
+1. Đối tượng khách: gia đình/cặp đôi/nhóm bạn/công ty/đi một mình
+2. Sở thích: thiên nhiên/lịch sử/retreat/khám phá/nghỉ dưỡng
+3. Thời gian: 1 ngày/2N1Đ/3N2Đ/dài hơn
+4. Ngân sách: tiết kiệm/vừa phải/cao cấp
+
+TRẢ LỜI:
+- Nếu có tour phù hợp: đề xuất 1-2 tour với lý do
+- Nếu không có: đề xuất loại tour gần nhất
+- Luôn kết thúc bằng câu hỏi dẫn dắt"""
+
+                    response = client.chat.completions.create(
+                        model=CHAT_MODEL,
+                        messages=[
+                            {"role": "system", "content": semantic_prompt},
+                            {"role": "user", "content": user_message}
+                        ],
+                        temperature=0.6,
+                        max_tokens=400
+                    )
+                    
+                    if response.choices:
+                        reply = response.choices[0].message.content or ""
+                        # Thêm hotline nếu chưa có
+                        if "0332510486" not in reply:
+                            reply += "\n\n📞 Liên hệ 0332510486 để được tư vấn tour phù hợp nhất!"
+                    else:
+                        reply = _generate_fallback_response(user_message, [], tour_indices)
+                
+                except Exception as e:
+                    logger.error(f"OpenAI recommendation error: {e}")
+                    reply = _generate_fallback_response(user_message, [], tour_indices)
+            else:
+                # Fallback đơn giản
+                if tour_indices:
+                    reply = "Dựa trên yêu cầu của bạn, tôi đề xuất:\n"
+                    for idx in tour_indices[:2]:
+                        tour = TOURS_DB.get(idx)
+                        if tour:
+                            reply += f"• **{tour.name}** ({tour.duration or '?'}) - {tour.location or '?'}\n"
+                    reply += "\n💡 Liên hệ 0332510486 để biết chi tiết!"
+                else:
+                    reply = "Để tôi tư vấn tour phù hợp, bạn có thể cho biết:\n• Muốn đi đâu?\n• Bao nhiêu ngày?\n• Nhóm bao nhiêu người?\n• Ngân sách khoảng bao nhiêu?"
+        
+        # 🔹 CASE 5: FIELD-SPECIFIC QUERY (hỏi về trường cụ thể)
+        elif requested_field and field_confidence > 0.5:
+            logger.info(f"📊 Processing field query: {requested_field}")
+            
             if tour_indices:
-                field_info = []
-                for idx in tour_indices:
+                # Có tour cụ thể
+                field_responses = []
+                for idx in tour_indices[:2]:  # Chỉ 2 tour đầu
                     tour = TOURS_DB.get(idx)
                     if tour:
                         field_value = getattr(tour, requested_field, None)
                         if field_value:
                             if isinstance(field_value, list):
-                                field_text = "\n".join([f"• {item}" for item in field_value])
+                                field_text = "\n".join([f"• {item}" for item in field_value[:3]])  # Giới hạn 3 mục
                             else:
-                                field_text = field_value
+                                field_text = str(field_value)
                             
                             tour_name = tour.name or f'Tour #{idx}'
-                            field_info.append(f"**{tour_name}**:\n{field_text}")
+                            field_responses.append(f"**{tour_name}:**\n{field_text}")
                 
-                if field_info:
-                    reply = "\n\n".join(field_info)
-                    field_passages = get_passages_by_field(requested_field, tour_indices=tour_indices)
-                    sources = [m for _, m in field_passages]
+                if field_responses:
+                    reply = "\n\n".join(field_responses)
                 else:
-                    # Use LLM for intelligent response
-                    search_results = query_index(user_message, TOP_K)
-                    if search_results:
-                        reply = _generate_fallback_response(user_message, search_results, tour_indices)
-                    else:
-                        reply = f"Hiện tại thông tin về {requested_field} cho tour này đang được cập nhật. Bạn có thể liên hệ hotline 0332510486 để biết thêm chi tiết."
+                    reply = f"Hiện chưa có thông tin về {requested_field} cho tour này. Vui lòng liên hệ hotline 0332510486 để biết thêm chi tiết."
             else:
-                field_passages = get_passages_by_field(requested_field, limit=5)
-                if field_passages:
-                    field_texts = [m.get('text', '') for _, m in field_passages]
-                    reply = "**Thông tin chung:**\n" + "\n".join([f"• {text}" for text in field_texts[:3]])
-                    sources = [m for _, m in field_passages]
+                # Không có tour cụ thể - dùng OpenAI
+                if client and HAS_OPENAI:
+                    try:
+                        prompt = f"""Bạn là tư vấn viên Ruby Wings. Khách hỏi về {requested_field} của tour.
+
+YÊU CẦU:
+1. Giải thích khái niệm {requested_field} trong tour du lịch
+2. Thông tin chung về {requested_field} tại Ruby Wings
+3. Kết thúc bằng gợi ý hỏi về tour cụ thể
+
+Trả lời ngắn gọn, rõ ràng."""
+
+                        response = client.chat.completions.create(
+                            model=CHAT_MODEL,
+                            messages=[
+                                {"role": "system", "content": prompt},
+                                {"role": "user", "content": user_message}
+                            ],
+                            temperature=0.5,
+                            max_tokens=300
+                        )
+                        
+                        if response.choices:
+                            reply = response.choices[0].message.content or ""
+                        else:
+                            reply = f"Thông tin về {requested_field} sẽ tùy thuộc vào từng tour cụ thể. Bạn quan tâm tour nào để tôi cung cấp thông tin chi tiết?"
+                    except Exception as e:
+                        logger.error(f"OpenAI field query error: {e}")
+                        reply = f"Thông tin về {requested_field} đang được cập nhật. Vui lòng liên hệ hotline 0332510486 để biết thêm."
                 else:
-                    # Use LLM for intelligent response
-                    search_results = query_index(user_message, TOP_K)
-                    if search_results:
-                        reply = _generate_fallback_response(user_message, search_results, [])
-                    else:
-                        reply = f"Hiện tại thông tin về {requested_field} đang được cập nhật. Bạn có thể liên hệ hotline 0332510486 để biết thêm chi tiết."
+                    reply = f"Bạn muốn biết về {requested_field} của tour nào? Hãy cho tôi biết tên tour cụ thể."
         
-        # DEFAULT: SEMANTIC SEARCH + LLM
+        # 🔹 CASE 6: DEFAULT - SEMANTIC SEARCH + OPENAI (xử lý mọi thứ khác)
         else:
+            logger.info("🤖 Processing with semantic search + OpenAI")
+            
+            # Semantic search
             search_results = query_index(user_message, TOP_K)
             
-            # UPGRADE 2: DEDUPLICATION
+            # Deduplication
             if UpgradeFlags.is_enabled("2_DEDUPLICATION") and search_results:
                 search_results = DeduplicationEngine.deduplicate_passages(search_results)
             
-            # Prepare context for LLM - BỔ SUNG last_action
-            current_tours = []
-            if tour_indices:
-                # GIỚI HẠN: Chỉ lấy tối đa 3 tour để tránh dump data
-                for idx in tour_indices[:3]:
-                    tour = TOURS_DB.get(idx)
-                    if tour:
-                        current_tours.append({
-                            'index': idx,
-                            'name': tour.name or f'Tour #{idx}',
-                            'duration': tour.duration or '',
-                            'location': tour.location or '',
-                            'price': tour.price or '',
-                        })
-            
-            # Prepare prompt với đầy đủ context
-            prompt = _prepare_llm_prompt(user_message, search_results, {
+            # Chuẩn bị context thông minh cho LLM
+            context_info = {
                 'user_message': user_message,
                 'tour_indices': tour_indices,
+                'is_followup': is_followup,
+                'current_tour_context': current_tour_context,
                 'question_type': question_type.value,
                 'requested_field': requested_field,
-                'user_preferences': getattr(context, 'user_preferences', {}),
-                'current_tours': current_tours,
                 'filters': mandatory_filters.to_dict(),
-                'last_action': getattr(context, 'last_action', None),  # ✅ THÊM để detect followup
-                'last_tour_name': getattr(context, 'last_tour_name', None)
-            })
+                'last_tour_name': getattr(context, 'last_tour_name', None),
+                'user_preferences': getattr(context, 'user_preferences', {})
+            }
             
-            # Get LLM response - ALWAYS use LLM for intelligent response
+            # Tạo prompt thông minh
+            prompt = _prepare_llm_prompt(user_message, search_results, context_info)
+            
+            # Gọi OpenAI
             if client and HAS_OPENAI:
                 try:
                     messages = [
@@ -3742,47 +3715,82 @@ def chat_endpoint():
                     response = client.chat.completions.create(
                         model=CHAT_MODEL,
                         messages=messages,
-                        temperature=0.4,              # Tăng lên để tự nhiên hơn
-                        max_tokens=500,               # Giảm xuống để ngắn gọn hơn
-                        top_p=0.85,                   # Giảm để tập trung hơn
-                        frequency_penalty=0.4,        # Tránh lặp lại
-                        presence_penalty=0.3          # Khuyến khích đa dạng
+                        temperature=0.6,
+                        max_tokens=600,
+                        top_p=0.9,
+                        frequency_penalty=0.3,
+                        presence_penalty=0.2
                     )
                     
-                    if response.choices and len(response.choices) > 0:
+                    if response.choices:
                         reply = response.choices[0].message.content or ""
                     else:
                         reply = _generate_fallback_response(user_message, search_results, tour_indices)
                 
                 except Exception as e:
-                    logger.error(f"OpenAI API error: {e}")
+                    logger.error(f"OpenAI main processing error: {e}")
                     reply = _generate_fallback_response(user_message, search_results, tour_indices)
             else:
                 reply = _generate_fallback_response(user_message, search_results, tour_indices)
             
             sources = [m for _, m in search_results]
         
-        # UPGRADE 9: AUTO-VALIDATION
+        # ================== CONTEXT UPDATE ==================
+        # Cập nhật context cho lần sau
+        if tour_indices and len(tour_indices) > 0:
+            context.current_tour = tour_indices[0]
+            tour = TOURS_DB.get(tour_indices[0])
+            if tour:
+                context.last_tour_name = tour.name
+        
+        # Cập nhật lịch sử hội thoại
+        context.conversation_history.append({
+            'timestamp': datetime.utcnow().isoformat(),
+            'user_message': user_message,
+            'reply': reply,
+            'tour_indices': tour_indices
+        })
+        
+        # Cập nhật user preferences nếu có thông tin
+        if not hasattr(context, 'user_preferences'):
+            context.user_preferences = {}
+        
+        # Tự động extract preferences từ message
+        preferences_keywords = {
+            'gia đình': 'family',
+            'trẻ em': 'family',
+            'người lớn tuổi': 'senior',
+            'cặp đôi': 'couple',
+            'nhóm bạn': 'friends',
+            'công ty': 'corporate',
+            'thiền': 'meditation',
+            'khí công': 'qigong',
+            'retreat': 'retreat',
+            'lịch sử': 'history',
+            'thiên nhiên': 'nature'
+        }
+        
+        for keyword, pref in preferences_keywords.items():
+            if keyword in message_lower:
+                context.user_preferences[pref] = True
+        
+        # ================== RESPONSE FORMATTING ==================
+        # Đảm bảo reply có độ dài hợp lý
+        if len(reply) > 1500:
+            reply = reply[:1500] + "...\n\n💡 Để biết thêm chi tiết, vui lòng liên hệ hotline 0332510486"
+        
+        # Thêm hotline nếu chưa có
+        if "0332510486" not in reply and "hotline" not in reply.lower():
+            reply += "\n\n📞 Liên hệ 0332510486 để được tư vấn chi tiết!"
+        
+        # ================== VALIDATION ==================
         if UpgradeFlags.is_enabled("9_AUTO_VALIDATION"):
-            reply = (lambda _v: _v if _v is not None else reply)(safe_validate(reply))
+            try:
+                reply = AutoValidator.validate_response(reply)
+            except Exception as e:
+                logger.error(f"Validation error: {e}")
         
-        # Update context
-        context.last_action = "chat_response"
-        context.timestamp = datetime.utcnow()
-        
-        if tour_indices and tour_indices[0] in TOURS_DB:
-            tour = TOURS_DB[tour_indices[0]]
-            context.last_tour_name = tour.name
-        
-        # Update state machine
-        if UpgradeFlags.is_enabled("7_STATE_MACHINE") and context.state_machine:
-            context.state_machine.update(user_message, reply, tour_indices)
-        
-        # Add to memory
-        if hasattr(context, 'add_to_history'):
-            context.add_to_history(user_message, reply)
-        
-        # Prepare response
+        # ================== FINAL RESPONSE ==================
         processing_time = time.time() - start_time
         
         chat_response = ChatResponse(
@@ -3790,45 +3798,59 @@ def chat_endpoint():
             sources=sources,
             context={
                 "session_id": session_id,
+                "current_tour": getattr(context, 'current_tour', None),
                 "last_tour_name": getattr(context, 'last_tour_name', None),
                 "user_preferences": getattr(context, 'user_preferences', {}),
                 "question_type": question_type.value,
-                "requested_field": requested_field,
                 "processing_time_ms": int(processing_time * 1000),
-                "from_memory": False
+                "is_followup": is_followup,
+                "filters_applied": not mandatory_filters.is_empty()
             },
             tour_indices=tour_indices,
             processing_time_ms=int(processing_time * 1000),
-            from_memory=False
+            from_memory=recent_response is not None
         )
         
-        response_data = chat_response.to_dict()
+        # Cache response nếu cần
+        if UpgradeFlags.get_all_flags().get("ENABLE_CACHING", True):
+            context_hash = hashlib.md5(json.dumps({
+                'tour_indices': tour_indices,
+                'question_type': question_type.value,
+                'filters': mandatory_filters.to_dict()
+            }, sort_keys=True).encode()).hexdigest()
+            
+            cache_key = CacheSystem.get_cache_key(user_message, context_hash)
+            CacheSystem.set(cache_key, chat_response.to_dict())
         
-        # Cache the response
-        if cache_key and UpgradeFlags.get_all_flags().get("ENABLE_CACHING", True):
-            CacheSystem.set(cache_key, response_data)
-        
-        logger.info(f"⏱️ Processing time: {processing_time:.2f}s | "
-                   f"Question: {question_type.value} | "
+        logger.info(f"✅ Processed in {processing_time:.2f}s | "
+                   f"Type: {question_type.value} | "
                    f"Tours: {len(tour_indices)} | "
-                   f"Reply length: {len(reply)}")
+                   f"Reply: {len(reply)} chars")
         
-        return jsonify(response_data)
+        return jsonify(chat_response.to_dict())
     
     except Exception as e:
         logger.error(f"❌ Chat endpoint error: {e}\n{traceback.format_exc()}")
         
         processing_time = time.time() - start_time
         
-        return jsonify({
-            "reply": "Xin lỗi, có lỗi xảy ra khi xử lý yêu cầu của bạn. "
-                    "Vui lòng thử lại sau hoặc liên hệ hotline 0332510486.",
-            "sources": [],
-            "context": {
+        # Fallback response thông minh
+        error_response = ChatResponse(
+            reply="Xin lỗi, có chút trục trặc kỹ thuật. Tuy nhiên, đội ngũ Ruby Wings luôn sẵn sàng hỗ trợ bạn!\n\n"
+                  "📞 **Hotline tư vấn:** 0332510486\n"
+                  "⏰ **Thời gian làm việc:** 8:00 - 22:00 hàng ngày\n\n"
+                  "Bạn vui lòng thử lại câu hỏi hoặc liên hệ trực tiếp với chúng tôi nhé! 😊",
+            sources=[],
+            context={
                 "error": str(e),
                 "processing_time_ms": int(processing_time * 1000)
-            }
-        }), 500
+            },
+            tour_indices=[],
+            processing_time_ms=int(processing_time * 1000),
+            from_memory=False
+        )
+        
+        return jsonify(error_response.to_dict()), 500
 
 # =========== OTHER ENDPOINTS ===========
 @app.route("/")
