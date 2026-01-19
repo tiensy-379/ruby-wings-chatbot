@@ -215,7 +215,6 @@ FALLBACK_STORAGE_PATH = os.environ.get("FALLBACK_STORAGE_PATH", "leads_fallback.
 META_CAPI_TOKEN = os.environ.get("META_CAPI_TOKEN", "").strip()
 META_PIXEL_ID = os.environ.get("META_PIXEL_ID", "").strip()
 META_CAPI_ENDPOINT = os.environ.get("META_CAPI_ENDPOINT", "https://graph.facebook.com/v17.0/")
-ENABLE_META_CAPI = os.environ.get("ENABLE_META_CAPI", "true").lower() in ("1", "true", "yes")
 ENABLE_META_CAPI_CALL = os.environ.get("ENABLE_META_CAPI_CALL", "true").lower() in ("1", "true", "yes")
 
 # Server
@@ -225,6 +224,30 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "ruby-wings-secret-key-2024")
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "https://www.rubywings.vn,http://localhost:3000").split(",")
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "10000"))
+
+# =========== STATS TRACKING (FIX LỖI STATE) ===========
+# Thêm global stats tracking system
+STATS_LOCK = threading.Lock()
+GLOBAL_STATS = {
+    'meta_capi_calls': 0,
+    'meta_capi_errors': 0,
+    'leads': 0,
+    'errors': 0,
+    'total_requests': 0
+}
+
+def increment_stat(stat_name: str, amount: int = 1):
+    """Thread-safe stat increment"""
+    with STATS_LOCK:
+        if stat_name in GLOBAL_STATS:
+            GLOBAL_STATS[stat_name] += amount
+        else:
+            GLOBAL_STATS[stat_name] = amount
+
+def get_stats() -> dict:
+    """Get current stats"""
+    with STATS_LOCK:
+        return GLOBAL_STATS.copy()
 
 # =========== UPGRADE FEATURE FLAGS ===========
 class UpgradeFlags:
@@ -320,14 +343,6 @@ _cache_lock = threading.Lock()
 _embedding_cache: Dict[str, Tuple[List[float], int]] = {}
 _embedding_cache_lock = threading.Lock()
 MAX_EMBEDDING_CACHE_SIZE = UpgradeFlags.get_all_flags()["EMBEDDING_CACHE_SIZE"]
-
-# Statistics for tracking
-stats = {
-    "requests": 0,
-    "leads": 0,
-    "meta_capi_calls": 0,
-    "meta_capi_errors": 0,
-}
 
 # =========== MEMORY OPTIMIZATION FUNCTIONS ===========
 def optimize_for_memory_profile():
@@ -1046,12 +1061,13 @@ class QuestionPipeline:
         type_scores = defaultdict(float)
         metadata = {}
         
-        # LISTING detection
+        # LISTING detection - CHỈ khi yêu cầu rõ ràng liệt kê DANH SÁCH
         listing_patterns = [
-            (r'liệt kê.*tour|danh sách.*tour|các tour', 0.95),
-            (r'có những.*nào|kể tên.*nào|nêu tên.*nào', 0.9),
-            (r'tất cả.*tour|mọi.*tour|mấy.*tour', 0.8),
-            (r'bên bạn.*có.*tour|hiện có.*tour', 0.85),
+            (r'liệt kê.*tất cả.*tour|danh sách.*tất cả.*tour|tất cả.*tour', 0.95),
+            (r'liệt kê.*tour|danh sách.*tour|list.*tour', 0.9),
+            (r'kể tên.*tour|nêu tên.*tour', 0.9),
+            (r'có những.*tour nào|có mấy.*tour|mấy.*tour', 0.7),
+            (r'bên bạn.*có.*tour|hiện có.*tour', 0.75),
         ]
         
         for pattern, weight in listing_patterns:
@@ -1078,10 +1094,18 @@ class QuestionPipeline:
         
         # RECOMMENDATION detection
         recommendation_patterns = [
-            (r'phù hợp.*với|nên đi.*nào|gợi ý.*tour', 0.9),
-            (r'tour nào.*tốt|hành trình nào.*hay', 0.85),
-            (r'đề xuất.*tour|tư vấn.*tour|chọn.*nào', 0.8),
-            (r'cho.*tôi|dành cho.*tôi|hợp với.*tôi', 0.7),
+            (r'phù hợp.*với|nên đi.*nào|gợi ý.*tour', 0.95),
+            (r'tour nào.*phù hợp|phù hợp.*tour nào', 0.95),
+            (r'tour.*tốt.*nhất|hành trình.*hay nhất|tour.*lý tưởng', 0.9),
+            (r'đề xuất.*tour|tư vấn.*tour|chọn.*tour nào', 0.9),
+            (r'tour nào.*cho.*gia đình|tour.*gia đình|gia đình.*tour', 0.9),
+            (r'tour nào.*cho|dành cho.*tour|tour.*dành cho', 0.85),
+            (r'nên.*tour nào|nên chọn.*tour|tour.*nên', 0.85),
+            (r'tour.*nhẹ nhàng|tour.*dễ|tour.*phù hợp.*người', 0.85),
+            (r'tour.*trẻ em|tour.*con nít|tour.*bé', 0.85),
+            (r'tour.*người lớn tuổi|tour.*cao tuổi|tour.*nghỉ dưỡng', 0.85),
+            (r'chi phí.*vừa phải|giá.*phù hợp|giá.*hợp lý', 0.8),
+            (r'cho.*tôi|dành cho.*tôi|hợp với.*tôi', 0.75),
             (r'nếu.*thì.*nên.*tour|nên chọn.*tour', 0.8),
         ]
         
@@ -3228,7 +3252,9 @@ def chat_endpoint():
         
         # RECOMMENDATION
         elif question_type == QuestionType.RECOMMENDATION:
-            if 'so sánh' in user_message.lower() or 'với' in user_message.lower():
+            # QUAN TRỌNG: Chỉ chuyển sang COMPARISON khi có rõ ràng từ "so sánh" 
+            # KHÔNG chuyển khi có "phù hợp với", "tour nào với", etc.
+            if 'so sánh' in user_message.lower() and 'phù hợp' not in user_message.lower():
                 question_type = QuestionType.COMPARISON
                 if not tour_indices and TOURS_DB:
                     tour_indices = list(TOURS_DB.keys())[:2]
@@ -3540,7 +3566,6 @@ def get_gspread_client(force_refresh: bool = False):
             logger.error(f"❌ Google Sheets client failed: {e}")
             return None
 
-# =========== FIXED SAVE LEAD ENDPOINT ===========
 @app.route('/api/save-lead', methods=['POST', 'OPTIONS'])
 def save_lead():
     """Save lead from form submission"""
@@ -3588,15 +3613,20 @@ def save_lead():
                     value=200000,
                     currency="VND"
                 )
-                stats['meta_capi_calls'] += 1
+                increment_stat('meta_capi_calls')
                 logger.info(f"✅ Form lead sent to Meta CAPI: {phone_clean[:4]}***")
+                if DEBUG and HAS_META_CAPI:
+                    logger.debug(f"Meta CAPI result: {result}")
             except Exception as e:
-                stats['meta_capi_errors'] += 1
+                increment_stat('meta_capi_errors')
                 logger.error(f"Meta CAPI error: {e}")
         
         # Save to Google Sheets
         if ENABLE_GOOGLE_SHEETS:
             try:
+                import gspread
+                from google.oauth2.service_account import Credentials
+                
                 if GOOGLE_SERVICE_ACCOUNT_JSON and GOOGLE_SHEET_ID:
                     creds_json = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
                     creds = Credentials.from_service_account_info(
@@ -3642,7 +3672,7 @@ def save_lead():
                 logger.error(f"Fallback storage error: {e}")
         
         # Update stats
-        stats['leads'] += 1
+        increment_stat('leads')
         
         return jsonify({
             'success': True,
@@ -3658,7 +3688,6 @@ def save_lead():
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
-# =========== FIXED CALL BUTTON ENDPOINT ===========
 @app.route('/api/call-button', methods=['POST', 'OPTIONS'])
 def call_button():
     """Track call button click"""
@@ -3681,10 +3710,12 @@ def call_button():
                     button_location='fixed_bottom_left',
                     button_text='Gọi ngay'
                 )
-                stats['meta_capi_calls'] += 1
+                increment_stat('meta_capi_calls')
                 logger.info(f"📞 Call button tracked: {call_type}")
+                if DEBUG and HAS_META_CAPI:
+                    logger.debug(f"Meta CAPI result: {result}")
             except Exception as e:
-                stats['meta_capi_errors'] += 1
+                increment_stat('meta_capi_errors')
                 logger.error(f"Meta CAPI call error: {e}")
         
         return jsonify({
