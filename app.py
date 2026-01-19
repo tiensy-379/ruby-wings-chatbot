@@ -3144,10 +3144,23 @@ def chat_endpoint():
     start_time = time.time()
     
     try:
-        # ... [code hiện tại không thay đổi] ...
+        data = request.get_json() or {}
+        user_message = (data.get("message") or "").strip()
+        
+        if not user_message:
+            return jsonify({
+                "reply": "Xin chào! Tôi có thể giúp gì cho bạn về các tour của Ruby Wings?",
+                "sources": [],
+                "context": {},
+                "processing_time": 0
+            })
+        
+        session_id = extract_session_id(data, request.remote_addr)
+        context = get_session_context(session_id)
         
         # Kiểm tra nếu là câu hỏi về chính sách chung
-        is_general_policy_question = any(phrase in user_message.lower() for phrase in [
+        user_message_lower_check = user_message.lower()
+        is_general_policy_question = any(phrase in user_message_lower_check for phrase in [
             'giá tour đã bao gồm', 'bao gồm ăn uống', 'bao gồm xe đưa đón', 
             'bao gồm khách sạn', 'đã bao gồm những gì', 'có bao gồm',
             'đã có ăn uống chưa', 'đã có xe chưa', 'đã có khách sạn chưa',
@@ -3227,6 +3240,27 @@ def chat_endpoint():
             )
             
             return jsonify(chat_response.to_dict())
+        
+        # Check memory cache
+        recent_response = None
+        if hasattr(context, 'get_recent_response') and hasattr(context, 'check_recent_question'):
+            recent_response = context.get_recent_response(user_message)
+            if recent_response and context.check_recent_question(user_message):
+                logger.info("💭 Using cached response from recent conversation")
+                processing_time = time.time() - start_time
+                chat_response = ChatResponse(
+                    reply=recent_response,
+                    sources=[],
+                    context={
+                        "session_id": session_id,
+                        "from_memory": True,
+                        "processing_time_ms": int(processing_time * 1000)
+                    },
+                    tour_indices=[],
+                    processing_time_ms=int(processing_time * 1000),
+                    from_memory=True
+                )
+                return jsonify(chat_response.to_dict())
         
         # ... [phần xử lý bình thường tiếp theo] ...
         
@@ -3694,7 +3728,7 @@ def get_gspread_client(force_refresh: bool = False):
 
 @app.route('/api/save-lead', methods=['POST', 'OPTIONS'])
 def save_lead():
-    """Save lead from form submission - FIXED với đầy đủ 9 trường"""
+    """Save lead from form submission - FIXED với đầy đủ 9 trường KHÔNG LỖI"""
     if request.method == 'OPTIONS':
         return jsonify({'status': 'ok'}), 200
     
@@ -3720,10 +3754,11 @@ def save_lead():
             return jsonify({'error': 'Invalid phone number format'}), 400
         
         # Xác định source channel và action type
-        source_channel = 'Website'
-        action_type = 'Form Submit'
+        source_channel = 'Website Form'
+        action_type = 'Lead Submission'
+        raw_status = 'New'
         
-        # Tạo lead data đầy đủ
+        # Tạo lead data
         lead_data = {
             'timestamp': datetime.now().isoformat(),
             'phone': phone_clean,
@@ -3735,7 +3770,7 @@ def save_lead():
             'note': note,
             'source_channel': source_channel,
             'action_type': action_type,
-            'status': 'New'
+            'raw_status': raw_status
         }
         
         # Send to Meta CAPI
@@ -3758,7 +3793,7 @@ def save_lead():
                 increment_stat('meta_capi_errors')
                 logger.error(f"Meta CAPI error: {e}")
         
-        # Save to Google Sheets với đầy đủ 9 cột
+        # Save to Google Sheets với đầy đủ 9 cột CHÍNH XÁC
         if ENABLE_GOOGLE_SHEETS:
             try:
                 import gspread
@@ -3775,26 +3810,36 @@ def save_lead():
                     sh = gc.open_by_key(GOOGLE_SHEET_ID)
                     ws = sh.worksheet(GOOGLE_SHEET_NAME)
                     
-                    # Chuẩn bị dòng với 9 cột đầy đủ
-                    # A: created_at (timestamp), B: source_channel, C: action_type, 
-                    # D: page_url, E: contact_name, F: phone, 
-                    # G: service_interest, H: note, I: raw_status (status)
+                    # ===== CHUẨN BỊ DÒNG VỚI 9 CỘT CHÍNH XÁC =====
+                    # Cột A -> I: created_at, source_channel, action_type, page_url, contact_name, phone, service_interest, note, raw_status
                     row = [
                         lead_data['timestamp'],           # A: created_at (timestamp)
                         source_channel,                   # B: source_channel
                         action_type,                      # C: action_type
-                        page_url,                         # D: page_url
-                        name,                             # E: contact_name
+                        page_url[:100],                   # D: page_url (giới hạn độ dài)
+                        name[:50],                        # E: contact_name (giới hạn độ dài)
                         phone_clean,                      # F: phone
-                        tour_interest,                    # G: service_interest
-                        note,                             # H: note
-                        'New'                             # I: raw_status (status)
+                        tour_interest[:100],              # G: service_interest (giới hạn độ dài)
+                        note[:200],                       # H: note (giới hạn độ dài)
+                        raw_status                        # I: raw_status (status)
                     ]
                     
+                    # LOG để debug
+                    logger.info(f"📊 Preparing to save lead with {len(row)} columns")
+                    logger.info(f"📋 Row data: {row}")
+                    
+                    # Ghi vào sheet
                     ws.append_row(row)
-                    logger.info("✅ Form lead saved to Google Sheets với đầy đủ 9 trường")
+                    logger.info("✅ Form lead saved to Google Sheets với 9 cột chính xác")
+                    
+                    # Xác minh dòng cuối cùng
+                    all_records = ws.get_all_values()
+                    last_row = all_records[-1] if all_records else []
+                    logger.info(f"📝 Last row in sheet has {len(last_row)} columns: {last_row}")
+                    
             except Exception as e:
-                logger.error(f"Google Sheets error: {e}")
+                logger.error(f"❌ Google Sheets error: {e}")
+                logger.error(f"❌ Error details: {traceback.format_exc()}")
         
         # Fallback storage
         if ENABLE_FALLBACK_STORAGE:
@@ -3824,7 +3869,7 @@ def save_lead():
             'data': {
                 'phone': phone_clean[:3] + '***' + phone_clean[-2:],
                 'timestamp': lead_data['timestamp'],
-                'fields_saved': 9
+                'columns_saved': 9
             }
         })
         
