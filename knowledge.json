@@ -824,6 +824,35 @@
   "event_support": "Nội dung văn hoá – không áp dụng sự kiện tour"
 },
 {
+  "tour_name": "Đại ngàn Trường Sơn – Sắc xuân miền biên viễn (2 ngày 1 đêm)",
+  "summary": "Hành trình 2 ngày khám phá lịch sử và văn hóa biên giới: từ Thành cổ Quảng Trị đến đại ngàn Trường Sơn và miền biên viễn Lao Bảo, kết nối ký ức hào hùng với nhịp sống hồi sinh, kết hợp trải nghiệm giao lưu văn hóa Vân Kiều - Pa Kô và chợ phiên biên giới.",
+  "location": "Đà Nẵng - Huế - Quảng Trị - Khe Sanh - Lao Bảo",
+  "duration": "2 ngày 1 đêm",
+  "price": "1.920.000 - 2.530.000 VNĐ/người (tùy theo số lượng khách từ 12-41 người)",
+  "includes": [
+    "Tham gia Chợ phiên Biên giới Lao Bảo kết hợp chương trình 'Xuân Biên phòng – Ấm lòng dân bản'",
+    "Trải nghiệm giao lưu bản sắc Vân Kiều – Pa Kô bên lửa trại tại Khe Sanh với múa cồng chiêng, hát dân ca, làm bánh truyền thống",
+    "Viếng các địa chỉ đỏ: Thành Cổ Quảng Trị, Nhà tù Lao Bảo, SB Tà Cơn – Bảo tàng Khe Sanh",
+    "Hoạt động thiền chữa lành dưới góc độ khoa học tại Khe Sanh",
+    "Check-in Cột mốc Biên giới Lao Bảo, tìm hiểu về chủ quyền lãnh thổ quốc gia",
+    "Ngày 1: Đà Nẵng – Huế – Thành Cổ Quảng Trị – Khe Sanh (Ăn: trưa, tối), tham quan - lễ viếng - giao lưu văn hóa đêm lửa trại",
+    "Ngày 2: Khe Sanh – Lao Bảo – Huế – Đà Nẵng (Ăn: sáng, trưa, tối), chợ phiên biên giới - tham quan di tích - tổng kết hành trình"
+  ],
+  "notes": "Lưu ý về trang phục: chuẩn bị trang phục gọn gàng, kín đáo (quần dài, áo có tay) khi tham quan di tích lịch sử, giày thể thao để di chuyển; tâm thế cởi mở, sẵn sàng chia sẻ cảm xúc; tuân thủ quy tắc ứng xử tại di tích và khi giao lưu với cộng đồng; không bàn luận các vấn đề chính trị, tôn giáo, vùng miền; giữ gìn sự trang nghiêm tại nơi linh thiêng; an toàn di chuyển theo hướng dẫn của trưởng đoàn.",
+  "style": "Trải nghiệm – Giáo dục lịch sử – Kết nối cộng đồng - Hành trình xanh: Kết nối quá khứ lịch sử với hiện tại, giao lưu văn hóa biên giới, lan tỏa ý thức bảo vệ môi trường và phát triển bền vững.",
+  "transport": [
+    "Xe 16 chỗ (12-14 khách)",
+    "Xe 29 chỗ (15-29 khách)",
+    "Xe 35 chỗ (30-36 khách)",
+    "Xe 45 chỗ (37-41 khách)"
+  ],
+  "accommodation": [
+    "1 đêm tại homestay Khe Sanh/Hướng Hóa (hoặc khách sạn tiêu chuẩn 3*)"
+  ],
+  "meals": "Ăn theo chương trình với thực đơn đa dạng, hương vị địa phương tiêu chuẩn 150.000 VNĐ/suất; nước uống đóng chai phục vụ trên xe.",
+  "event_support": "Hỗ trợ đoàn trong suốt hành trình: theo sát lịch trình – điều phối giờ giấc – hỗ trợ chụp ảnh kỷ niệm – tập hợp hình ảnh thành slideshow/clip kỷ niệm; kiểm soát an toàn điểm đến; nhắc nhở sức khỏe – trang phục – di chuyển; hỗ trợ xử lý tình huống phát sinh; đồng hành kết nối tập thể; bảo đảm y tế với nhân sự phụ trách và thuốc cần thiết; tối ưu trải nghiệm khách hàng theo chuẩn Ruby Wings."
+},
+{
   "tour_name": "Giới thiệu Ruby Wings – Lịch sử, Triết lý, Tầm nhìn & Hệ sinh thái (Nội dung văn hoá – không phải tour)",
   "summary": "Khối thông tin tổng hợp về Ruby Wings, bao gồm nguồn gốc hình thành, triết lý nhân văn, hệ sinh thái phát triển và câu chuyện của Giám đốc Lương Tiến Sỹ – người sáng lập, người hồi sinh từ biến cố bệnh tật năm 2015 và mang tinh thần thiền – khí công trở thành cốt lõi của tổ chức. Đây là nội dung văn hoá thương hiệu, không phải chương trình tour.",
   "location": "148 Trương Gia Mô, Vỹ Dạ, TP. Huế",
@@ -866,3 +895,4 @@
     "office_hours": "08:00 - 20:00 mỗi ngày"
   }
 }
+
