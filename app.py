@@ -197,7 +197,7 @@ FALLBACK_VECTORS_PATH = os.environ.get("FALLBACK_VECTORS_PATH", "vectors.npz")
 # Models
 EMBEDDING_MODEL = os.environ.get("EMBEDDING_MODEL", "text-embedding-3-small")
 CHAT_MODEL = os.environ.get("CHAT_MODEL", "gpt-4o-mini")
-TOP_K = int(os.environ.get("TOP_K", "5"))
+TOP_K = int(os.environ.get("TOP_K", "10"))
 
 # FAISS
 FAISS_ENABLED = os.environ.get("FAISS_ENABLED", "true").lower() in ("1", "true", "yes") and not IS_LOW_RAM
@@ -564,36 +564,53 @@ class MandatoryFilterSystem:
         """
         Apply mandatory filters to tour database
         Returns list of tour indices that pass ALL filters
+        Enhanced version with better error handling and group_type support
         """
         if filters.is_empty() or not tours_db:
+            logger.info(f"🔍 No filters or empty DB, returning all {len(tours_db)} tours")
             return list(tours_db.keys())
         
         passing_tours = []
+        total_tours = len(tours_db)
         
         try:
+            logger.info(f"🎯 Applying filters: {filters}")
+            
+            # Validate group_type if present
+            if hasattr(filters, 'group_type') and filters.group_type:
+                valid_group_types = ['family', 'friends', 'corporate', 'solo', 'couple', 'senior', 'group']
+                if filters.group_type not in valid_group_types:
+                    logger.warning(f"⚠️ Invalid group_type: {filters.group_type}, using default filtering")
+                    # Continue without group_type filter but log warning
+            
             for tour_idx, tour in tours_db.items():
                 passes_all = True
                 
-                # PRICE FILTERING
+                # PRICE FILTERING - ENHANCED
                 if passes_all and (filters.price_max is not None or filters.price_min is not None):
                     tour_price_text = tour.price or ""
-                    if not tour_price_text:
+                    if not tour_price_text or tour_price_text.lower() == 'liên hệ':
+                        # If tour doesn't have price, check if we require price filter
                         if filters.price_max is not None or filters.price_min is not None:
+                            # If price is required but not available, fail this tour
                             passes_all = False
                     else:
                         tour_prices = MandatoryFilterSystem._extract_tour_prices(tour_price_text)
                         if not tour_prices:
-                            passes_all = False
+                            # Can't extract price, be conservative - pass if no strict requirement
+                            if filters.price_max is not None and filters.price_min is not None:
+                                passes_all = False
                         else:
                             min_tour_price = min(tour_prices)
                             max_tour_price = max(tour_prices)
                             
+                            # Apply price range filter
                             if filters.price_max is not None and min_tour_price > filters.price_max:
                                 passes_all = False
                             if filters.price_min is not None and max_tour_price < filters.price_min:
                                 passes_all = False
                 
-                # DURATION FILTERING
+                # DURATION FILTERING - ENHANCED
                 if passes_all and (filters.duration_min is not None or filters.duration_max is not None):
                     duration_text = (tour.duration or "").lower()
                     tour_duration = MandatoryFilterSystem._extract_duration_days(duration_text)
@@ -604,31 +621,252 @@ class MandatoryFilterSystem:
                         if filters.duration_max is not None and tour_duration > filters.duration_max:
                             passes_all = False
                     else:
-                        if filters.duration_min is not None or filters.duration_max is not None:
+                        # If duration cannot be extracted, be conservative
+                        if filters.duration_min is not None and filters.duration_max is not None:
                             passes_all = False
                 
-                # LOCATION FILTERING
+                # LOCATION FILTERING - ENHANCED
                 if passes_all and (filters.location is not None or filters.near_location is not None):
                     tour_location = (tour.location or "").lower()
                     if filters.location is not None:
                         filter_location = filters.location.lower()
-                        if filter_location not in tour_location:
-                            passes_all = False
-                    if filters.near_location is not None:
+                        # Enhanced location matching
+                        if filter_location and filter_location not in tour_location:
+                            # Try partial matching for common location names
+                            location_keywords = {
+                                'huế': ['huế', 'hue'],
+                                'quảng trị': ['quảng trị', 'quang tri'],
+                                'bạch mã': ['bạch mã', 'bach ma'],
+                                'trường sơn': ['trường sơn', 'truong son'],
+                                'đông hà': ['đông hà', 'dong ha']
+                            }
+                            
+                            # Check if filter_location matches any keyword
+                            matches = False
+                            for keyword, variants in location_keywords.items():
+                                if filter_location in variants:
+                                    # Check if any variant is in tour_location
+                                    for variant in variants:
+                                        if variant in tour_location:
+                                            matches = True
+                                            break
+                                if matches:
+                                    break
+                            
+                            if not matches:
+                                passes_all = False
+                    
+                    if filters.near_location is not None and passes_all:
                         near_location = filters.near_location.lower()
-                        if near_location not in tour_location:
+                        if near_location and near_location not in tour_location:
                             passes_all = False
+                
+                # GROUP TYPE FILTERING - ADDED SUPPORT
+                if passes_all and hasattr(filters, 'group_type') and filters.group_type:
+                    group_type = filters.group_type.lower()
+                    tour_summary = (tour.summary or "").lower()
+                    tour_tags = [tag.lower() for tag in (tour.tags or [])]
+                    
+                    # Enhanced group type matching
+                    group_type_matched = False
+                    
+                    # Define keywords for each group type
+                    group_keywords = {
+                        'family': ['gia đình', 'trẻ em', 'con nhỏ', 'bố mẹ', 'đa thế hệ'],
+                        'friends': ['nhóm bạn', 'bạn bè', 'bạn trẻ', 'thanh niên', 'sinh viên'],
+                        'corporate': ['công ty', 'team building', 'doanh nghiệp', 'nhân viên', 'đồng nghiệp'],
+                        'solo': ['một mình', 'đi lẻ', 'solo', 'cá nhân'],
+                        'couple': ['cặp đôi', 'đôi lứa', 'người yêu', 'tình nhân'],
+                        'senior': ['người lớn tuổi', 'cao tuổi', 'cựu chiến binh', 'veteran'],
+                        'group': ['nhóm', 'đoàn', 'tập thể']
+                    }
+                    
+                    if group_type in group_keywords:
+                        keywords = group_keywords[group_type]
+                        
+                        # Check in tour tags
+                        for tag in tour_tags:
+                            if any(keyword in tag for keyword in keywords):
+                                group_type_matched = True
+                                break
+                        
+                        # Check in tour summary
+                        if not group_type_matched:
+                            if any(keyword in tour_summary for keyword in keywords):
+                                group_type_matched = True
+                        
+                        # Special handling for senior/veteran
+                        if group_type == 'senior':
+                            # Also check for historical/meaningful tours
+                            if any(word in tour_summary for word in ['lịch sử', 'tri ân', 'ký ức', 'chiến tranh']):
+                                group_type_matched = True
+                        
+                        if not group_type_matched:
+                            passes_all = False
+                    else:
+                        logger.warning(f"⚠️ Unknown group_type: {group_type}, skipping group filter")
+                
+                # MONTH FILTERING - ADDED SUPPORT
+                if passes_all and hasattr(filters, 'month') and filters.month:
+                    try:
+                        month = int(filters.month)
+                        # Simple season-based filtering
+                        tour_summary = (tour.summary or "").lower()
+                        
+                        # Tours suitable for specific months
+                        # This is simplified - in reality would need more complex logic
+                        if month in [1, 2, 3]:  # Dry season, good for most tours
+                            # No filtering, most tours are suitable
+                            pass
+                        elif month in [9, 10, 11, 12]:  # Rainy season
+                            # Avoid tours with lots of outdoor activities
+                            if any(word in tour_summary for word in ['trekking', 'leo núi', 'đi bộ đường dài']):
+                                passes_all = False
+                    except (ValueError, TypeError):
+                        # Invalid month format, ignore filter
+                        pass
+                
+                # WEEKEND/HOLIDAY FILTERING - ADDED SUPPORT
+                if passes_all:
+                    tour_duration = MandatoryFilterSystem._extract_duration_days((tour.duration or "").lower())
+                    
+                    if hasattr(filters, 'weekend') and filters.weekend and tour_duration:
+                        # Weekend tours should be 1-2 days
+                        if tour_duration > 2:
+                            passes_all = False
+                    
+                    if hasattr(filters, 'holiday') and filters.holiday and tour_duration:
+                        # Holiday tours might be longer
+                        # No specific filtering for now
+                        pass
                 
                 if passes_all:
                     passing_tours.append(tour_idx)
             
-            logger.info(f"🔍 After mandatory filtering: {len(passing_tours)}/{len(tours_db)} tours pass")
+            logger.info(f"✅ Filtering complete: {len(passing_tours)}/{total_tours} tours pass")
+            
+            # If filtering results in too few tours, provide fallback
+            if len(passing_tours) < 3 and total_tours > 10:
+                logger.info(f"⚠️ Only {len(passing_tours)} tours passed filters, applying lenient filtering")
+                
+                # Apply lenient filtering: tours must pass at least 50% of non-empty filters
+                if not filters.is_empty():
+                    lenient_passing_tours = []
+                    
+                    # Count non-empty filters
+                    non_empty_filters = 0
+                    if filters.price_max is not None or filters.price_min is not None:
+                        non_empty_filters += 1
+                    if filters.duration_min is not None or filters.duration_max is not None:
+                        non_empty_filters += 1
+                    if filters.location is not None or filters.near_location is not None:
+                        non_empty_filters += 1
+                    if hasattr(filters, 'group_type') and filters.group_type:
+                        non_empty_filters += 1
+                    
+                    if non_empty_filters > 0:
+                        for tour_idx, tour in tours_db.items():
+                            passed_filters = 0
+                            
+                            # Check price
+                            if not (filters.price_max is not None or filters.price_min is not None):
+                                passed_filters += 1
+                            else:
+                                tour_price_text = tour.price or ""
+                                if tour_price_text and tour_price_text.lower() != 'liên hệ':
+                                    tour_prices = MandatoryFilterSystem._extract_tour_prices(tour_price_text)
+                                    if tour_prices:
+                                        min_tour_price = min(tour_prices)
+                                        max_tour_price = max(tour_prices)
+                                        
+                                        price_passed = True
+                                        if filters.price_max is not None and min_tour_price > filters.price_max:
+                                            price_passed = False
+                                        if filters.price_min is not None and max_tour_price < filters.price_min:
+                                            price_passed = False
+                                        
+                                        if price_passed:
+                                            passed_filters += 1
+                            
+                            # Check duration
+                            if not (filters.duration_min is not None or filters.duration_max is not None):
+                                passed_filters += 1
+                            else:
+                                duration_text = (tour.duration or "").lower()
+                                tour_duration = MandatoryFilterSystem._extract_duration_days(duration_text)
+                                
+                                if tour_duration is not None:
+                                    duration_passed = True
+                                    if filters.duration_min is not None and tour_duration < filters.duration_min:
+                                        duration_passed = False
+                                    if filters.duration_max is not None and tour_duration > filters.duration_max:
+                                        duration_passed = False
+                                    
+                                    if duration_passed:
+                                        passed_filters += 1
+                            
+                            # Check location
+                            if not (filters.location is not None or filters.near_location is not None):
+                                passed_filters += 1
+                            else:
+                                tour_location = (tour.location or "").lower()
+                                location_passed = True
+                                
+                                if filters.location is not None:
+                                    filter_location = filters.location.lower()
+                                    if filter_location not in tour_location:
+                                        location_passed = False
+                                
+                                if filters.near_location is not None and location_passed:
+                                    near_location = filters.near_location.lower()
+                                    if near_location not in tour_location:
+                                        location_passed = False
+                                
+                                if location_passed:
+                                    passed_filters += 1
+                            
+                            # Check group type
+                            if not (hasattr(filters, 'group_type') and filters.group_type):
+                                passed_filters += 1
+                            else:
+                                # Simplified group type check for lenient filtering
+                                group_type = filters.group_type.lower()
+                                tour_summary = (tour.summary or "").lower()
+                                tour_tags = [tag.lower() for tag in (tour.tags or [])]
+                                
+                                group_passed = False
+                                if group_type == 'family':
+                                    if any(word in tour_summary for word in ['gia đình', 'trẻ em', 'con nhỏ']):
+                                        group_passed = True
+                                elif group_type == 'friends':
+                                    if any(word in tour_summary for word in ['nhóm bạn', 'bạn bè']):
+                                        group_passed = True
+                                elif group_type == 'senior':
+                                    if any(word in tour_summary for word in ['lịch sử', 'tri ân', 'nhẹ nhàng']):
+                                        group_passed = True
+                                else:
+                                    # For other group types, be lenient
+                                    group_passed = True
+                                
+                                if group_passed:
+                                    passed_filters += 1
+                            
+                            # Pass if at least 50% of filters passed
+                            if passed_filters >= non_empty_filters * 0.5:
+                                lenient_passing_tours.append(tour_idx)
+                        
+                        # Use lenient results if better
+                        if len(lenient_passing_tours) > len(passing_tours):
+                            logger.info(f"🔄 Using lenient filtering: {len(lenient_passing_tours)} tours")
+                            passing_tours = lenient_passing_tours
+            
         except Exception as e:
-            logger.error(f"❌ Error in apply_filters: {e}")
+            logger.error(f"❌ Error in apply_filters: {e}\n{traceback.format_exc()}")
+            # Fallback: return all tours
             passing_tours = list(tours_db.keys())
         
         return passing_tours
-    
+        
     @staticmethod
     def _extract_tour_prices(price_text: str) -> List[int]:
         """Extract price numbers from tour price text"""
@@ -1530,43 +1768,257 @@ class FuzzyMatcher:
     @staticmethod
     def find_similar_tours(query: str, tour_names: Dict[str, int]) -> List[Tuple[int, float]]:
         """
-        Find tours with names similar to query
+        Find tours with names similar to query - Enhanced version
+        Returns list of (tour_idx, similarity_score) sorted by similarity
         """
         if not query or not tour_names:
+            logger.info(f"🔍 Fuzzy matching: Empty query or tour_names, returning empty list")
             return []
         
-        query_norm = FuzzyMatcher.normalize_vietnamese(query)
+        query_lower = query.lower().strip()
+        query_norm = FuzzyMatcher.normalize_vietnamese(query_lower)
+        
         if not query_norm:
+            logger.info(f"🔍 Fuzzy matching: Cannot normalize query '{query}'")
             return []
+        
+        logger.info(f"🔍 Fuzzy matching: Query '{query}' -> Normalized: '{query_norm}'")
         
         matches = []
+        query_words = set(query_norm.split())
+        
+        # Define common stop words to ignore
+        stop_words = {'tour', 'chương', 'trình', 'của', 'cho', 'với', 'và', 'tại', 'ở', 'từ'}
+        query_filtered_words = [word for word in query_norm.split() if word not in stop_words]
+        
+        # Enhanced keyword extraction
+        query_keywords = set(query_filtered_words)
+        
+        # Check for specific tour patterns
+        known_tour_patterns = {
+            'bạch mã': ['bạch mã', 'bach ma'],
+            'trường sơn': ['trường sơn', 'truong son', 'tây trường sơn'],
+            'mưa đỏ': ['mưa đỏ', 'mua do'],
+            'ngọn lửa': ['ngọn lửa', 'ngon lua'],
+            'ký ức': ['ký ức', 'ky uc'],
+            'lịch sử': ['lịch sử', 'lich su'],
+            'đại ngàn': ['đại ngàn', 'dai ngan'],
+            'non nước': ['non nước', 'non nuoc'],
+            'hành trình': ['hành trình', 'hanh trinh'],
+            'khát vọng': ['khát vọng', 'khat vong'],
+            'tĩnh lặng': ['tĩnh lặng', 'tinh lang'],
+            'retreat': ['retreat', 'tĩnh tâm', 'tinh tam'],
+            'thiền': ['thiền', 'thien'],
+            'huế': ['huế', 'hue'],
+            'quảng trị': ['quảng trị', 'quang tri']
+        }
+        
+        # Extract potential tour name from query
+        extracted_tour_names = []
+        for pattern, variants in known_tour_patterns.items():
+            for variant in variants:
+                if variant in query_lower:
+                    extracted_tour_names.append(pattern)
+                    break
+        
+        logger.info(f"🔍 Extracted tour patterns: {extracted_tour_names}")
         
         for tour_name, tour_idx in tour_names.items():
-            tour_norm = FuzzyMatcher.normalize_vietnamese(tour_name)
+            tour_name_lower = tour_name.lower().strip()
+            tour_norm = FuzzyMatcher.normalize_vietnamese(tour_name_lower)
+            
             if not tour_norm:
                 continue
             
-            similarity = SequenceMatcher(None, query_norm, tour_norm).ratio()
+            # Calculate multiple similarity scores
+            scores = []
             
-            if query_norm in tour_norm or tour_norm in query_norm:
-                similarity = min(similarity + 0.2, 1.0)
+            # 1. Direct string similarity
+            direct_similarity = SequenceMatcher(None, query_norm, tour_norm).ratio()
+            scores.append(('direct', direct_similarity))
             
-            query_words = set(query_norm.split())
+            # 2. Check if query contains tour name or vice versa (partial match)
+            if query_norm in tour_norm:
+                scores.append(('query_in_tour', min(direct_similarity + 0.3, 1.0)))
+            if tour_norm in query_norm:
+                scores.append(('tour_in_query', min(direct_similarity + 0.3, 1.0)))
+            
+            # 3. Word overlap similarity
             tour_words = set(tour_norm.split())
+            tour_filtered_words = [word for word in tour_norm.split() if word not in stop_words]
+            
             common_words = query_words.intersection(tour_words)
-            
             if common_words:
-                word_boost = len(common_words) * 0.1
-                similarity = min(similarity + word_boost, 1.0)
+                word_overlap = len(common_words) / max(len(query_words), len(tour_words))
+                scores.append(('word_overlap', word_overlap))
             
-            if similarity >= FuzzyMatcher.SIMILARITY_THRESHOLD:
-                matches.append((tour_idx, similarity))
+            # 4. Enhanced keyword matching
+            if query_keywords:
+                keyword_matches = sum(1 for keyword in query_keywords if any(keyword in word for word in tour_filtered_words))
+                if keyword_matches > 0:
+                    keyword_score = keyword_matches / len(query_keywords)
+                    scores.append(('keyword', keyword_score))
+            
+            # 5. Pattern matching for known tour names
+            pattern_score = 0
+            for pattern in extracted_tour_names:
+                if pattern in tour_norm:
+                    pattern_score += 0.5
+            if pattern_score > 0:
+                scores.append(('pattern', min(pattern_score, 1.0)))
+            
+            # 6. Abbreviation/alias matching
+            # Check if tour has common abbreviations
+            tour_abbreviations = {
+                'bạch mã': 'bm',
+                'trường sơn': 'ts',
+                'mưa đỏ': 'md',
+                'huế': 'h',
+                'quảng trị': 'qt'
+            }
+            
+            for full, abbrev in tour_abbreviations.items():
+                if full in tour_norm and abbrev in query_norm:
+                    scores.append(('abbreviation', 0.7))
+                    break
+            
+            # 7. Number matching (for tour durations like 1 ngày, 2 ngày)
+            import re
+            query_numbers = set(re.findall(r'\d+', query_norm))
+            tour_numbers = set(re.findall(r'\d+', tour_norm))
+            if query_numbers and tour_numbers:
+                number_match = len(query_numbers.intersection(tour_numbers)) / len(query_numbers)
+                if number_match > 0:
+                    scores.append(('number', number_match))
+            
+            # Calculate final similarity (weighted average)
+            weights = {
+                'direct': 0.3,
+                'query_in_tour': 0.25,
+                'tour_in_query': 0.25,
+                'word_overlap': 0.15,
+                'keyword': 0.15,
+                'pattern': 0.1,
+                'abbreviation': 0.05,
+                'number': 0.05
+            }
+            
+            weighted_scores = []
+            for score_type, score_value in scores:
+                if score_type in weights:
+                    weighted_scores.append(score_value * weights[score_type])
+            
+            final_similarity = sum(weighted_scores) if weighted_scores else direct_similarity
+            
+            # Apply bonuses for specific cases
+            bonuses = 0
+            
+            # Bonus for exact word match
+            exact_word_match = any(word == tour_word for word in query_filtered_words for tour_word in tour_filtered_words)
+            if exact_word_match:
+                bonuses += 0.1
+            
+            # Bonus for matching at beginning of tour name
+            if query_filtered_words and any(tour_norm.startswith(word) for word in query_filtered_words):
+                bonuses += 0.15
+            
+            # Bonus for historical/relevant keywords
+            historical_keywords = ['lịch sử', 'chiến tranh', 'di tích', 'tri ân', 'cựu chiến binh']
+            if any(keyword in query_norm for keyword in historical_keywords) and \
+            any(keyword in tour_norm for keyword in historical_keywords):
+                bonuses += 0.2
+            
+            # Bonus for wellness/retreat keywords
+            wellness_keywords = ['thiền', 'yoga', 'retreat', 'tĩnh tâm', 'khí công', 'chữa lành']
+            if any(keyword in query_norm for keyword in wellness_keywords) and \
+            any(keyword in tour_norm for keyword in wellness_keywords):
+                bonuses += 0.2
+            
+            final_similarity = min(final_similarity + bonuses, 1.0)
+            
+            # Adjust threshold based on query complexity
+            dynamic_threshold = 0.5  # Base threshold
+            
+            # Lower threshold for complex queries (more words)
+            if len(query_filtered_words) >= 3:
+                dynamic_threshold = 0.4
+            
+            # Higher threshold for very short queries
+            if len(query_filtered_words) == 1:
+                dynamic_threshold = 0.6
+            
+            # Special case for known tour patterns
+            if extracted_tour_names and any(pattern in tour_norm for pattern in extracted_tour_names):
+                dynamic_threshold = 0.3
+            
+            if final_similarity >= dynamic_threshold:
+                matches.append((tour_idx, final_similarity))
+                logger.debug(f"  ✓ Match: '{tour_name}' (idx: {tour_idx}) - Score: {final_similarity:.2f}")
         
+        # Sort by similarity score (descending)
         matches.sort(key=lambda x: x[1], reverse=True)
         
-        logger.info(f"🔍 Fuzzy matching: '{query}' → {len(matches)} matches")
+        # Limit results but ensure we get relevant matches
+        max_results = 10
+        if matches:
+            # Ensure we include all high-confidence matches (>0.7)
+            high_confidence = [m for m in matches if m[1] > 0.7]
+            if high_confidence:
+                matches = high_confidence + [m for m in matches if m[1] <= 0.7][:max_results - len(high_confidence)]
+            else:
+                matches = matches[:max_results]
+        
+        logger.info(f"✅ Fuzzy matching: '{query}' → {len(matches)} matches (threshold: dynamic)")
+        
+        # Log top matches for debugging
+        if matches:
+            for i, (idx, score) in enumerate(matches[:5]):
+                tour_name = next((name for name, tid in tour_names.items() if tid == idx), "Unknown")
+                logger.debug(f"  Top {i+1}: {tour_name} (idx: {idx}) - Score: {score:.2f}")
+        
         return matches
-    
+
+
+    # Thêm phương thức helper cho normalization nâng cao nếu cần
+    @staticmethod
+    def enhanced_normalize_vietnamese(text: str) -> str:
+        """
+        Enhanced Vietnamese text normalization
+        """
+        if not text:
+            return ""
+        
+        # Basic normalization (giữ nguyên từ hàm gốc)
+        normalized = text.lower().strip()
+        
+        # Remove extra spaces
+        normalized = ' '.join(normalized.split())
+        
+        # Common replacements for tour names
+        replacements = {
+            '–': ' ',
+            '-': ' ',
+            '–': ' ',
+            '(': ' ',
+            ')': ' ',
+            ',': ' ',
+            '.': ' ',
+            '!': ' ',
+            '?': ' ',
+            '"': ' ',
+            "'": ' ',
+            ';': ' ',
+            ':': ' ',
+        }
+        
+        for old, new in replacements.items():
+            normalized = normalized.replace(old, new)
+        
+        # Remove multiple spaces again
+        normalized = ' '.join(normalized.split())
+        
+        return normalizeds
+        
     @staticmethod
     def find_tour_by_partial_name(partial_name: str, tours_db: Dict[int, Tour]) -> List[int]:
         """
@@ -2653,23 +3105,314 @@ class CacheSystem:
             return None
     
     @staticmethod
-    def set(key: str, value: Any):
-        """Set item in cache"""
+    def set(key: str, value: Any, expiry: int = None):
+        """
+        Set item in cache with enhanced features
+        - Supports custom expiry (TTL in seconds)
+        - Intelligent cache eviction
+        - Thread-safe with lock
+        """
         with _cache_lock:
-            cache_entry = CacheEntry(
-                key=key,
-                value=value,
-                created_at=datetime.utcnow(),
-                ttl_seconds=UpgradeFlags.get_all_flags().get("CACHE_TTL_SECONDS", 300)
-            )
-            _response_cache[key] = cache_entry
+            try:
+                # Get TTL from parameter or config
+                ttl_seconds = expiry or UpgradeFlags.get_all_flags().get("CACHE_TTL_SECONDS", 300)
+                
+                # Create cache entry
+                cache_entry = CacheEntry(
+                    key=key,
+                    value=value,
+                    created_at=datetime.utcnow(),
+                    ttl_seconds=ttl_seconds,
+                    access_count=0,  # Track how many times accessed
+                    last_accessed=datetime.utcnow()
+                )
+                
+                # Store in cache
+                _response_cache[key] = cache_entry
+                
+                # Intelligent cache cleaning
+                CacheSystem._clean_cache()
+                
+                logger.debug(f"💾 Cached response for key: {key[:50]}... (TTL: {ttl_seconds}s)")
+                
+            except Exception as e:
+                logger.error(f"❌ Cache set error: {e}")
+                # Don't crash if cache fails
+
+
+    @staticmethod
+    def _clean_cache():
+        """
+        Intelligent cache cleaning with multiple strategies
+        """
+        try:
+            now = datetime.utcnow()
+            cache_size = len(_response_cache)
             
-            if len(_response_cache) > 1000:
-                sorted_items = sorted(_response_cache.items(), 
-                                     key=lambda x: x[1].created_at)
-                for old_key in [k for k, _ in sorted_items[:200]]:
-                    if old_key in _response_cache:
-                        del _response_cache[old_key]
+            # Strategy 1: Remove expired entries
+            expired_keys = []
+            for key, entry in _response_cache.items():
+                # Check if entry has expired
+                if hasattr(entry, 'is_expired'):
+                    if entry.is_expired(now):
+                        expired_keys.append(key)
+                else:
+                    # Fallback: manual expiration check
+                    age = (now - entry.created_at).total_seconds()
+                    if age > (entry.ttl_seconds if hasattr(entry, 'ttl_seconds') else 300):
+                        expired_keys.append(key)
+            
+            # Remove expired entries
+            for key in expired_keys:
+                del _response_cache[key]
+            
+            if expired_keys:
+                logger.debug(f"🧹 Removed {len(expired_keys)} expired cache entries")
+            
+            # Strategy 2: If still over limit, remove least recently used
+            current_size = len(_response_cache)
+            if current_size > 1000:
+                logger.warning(f"⚠️ Cache size ({current_size}) exceeds limit, performing LRU cleanup")
+                
+                # Sort by last accessed time (oldest first)
+                lru_items = sorted(_response_cache.items(), 
+                                key=lambda x: x[1].last_accessed if hasattr(x[1], 'last_accessed') 
+                                else x[1].created_at)
+                
+                # Remove oldest 20% or at least 200 items
+                remove_count = max(200, int(current_size * 0.2))
+                remove_keys = [k for k, _ in lru_items[:remove_count]]
+                
+                for key in remove_keys:
+                    if key in _response_cache:
+                        del _response_cache[key]
+                
+                logger.info(f"🧹 LRU cleanup removed {len(remove_keys)} items")
+            
+            # Strategy 3: Clean up very old entries regardless of size
+            if _response_cache:
+                very_old_threshold = 86400  # 24 hours in seconds
+                very_old_keys = []
+                
+                for key, entry in _response_cache.items():
+                    age = (now - entry.created_at).total_seconds()
+                    if age > very_old_threshold:
+                        very_old_keys.append(key)
+                
+                if very_old_keys:
+                    for key in very_old_keys:
+                        del _response_cache[key]
+                    logger.debug(f"🧹 Removed {len(very_old_keys)} very old cache entries")
+            
+            # Final size check
+            final_size = len(_response_cache)
+            if final_size > 0:
+                logger.debug(f"📊 Cache stats: {final_size} items, " 
+                            f"approx. {final_size * 0.5:.1f}KB memory")
+                
+        except Exception as e:
+            logger.error(f"❌ Cache cleanup error: {e}")
+
+
+    @staticmethod
+    def get(key: str, update_access: bool = True) -> Optional[Any]:
+        """
+        Get item from cache with enhanced features
+        - Updates access count and timestamp
+        - Auto-removes expired items
+        """
+        with _cache_lock:
+            try:
+                if key not in _response_cache:
+                    return None
+                
+                entry = _response_cache[key]
+                now = datetime.utcnow()
+                
+                # Check expiration
+                if hasattr(entry, 'is_expired'):
+                    if entry.is_expired(now):
+                        del _response_cache[key]
+                        logger.debug(f"🗑️  Auto-removed expired cache: {key[:50]}...")
+                        return None
+                else:
+                    # Manual expiration check
+                    age = (now - entry.created_at).total_seconds()
+                    ttl = entry.ttl_seconds if hasattr(entry, 'ttl_seconds') else 300
+                    if age > ttl:
+                        del _response_cache[key]
+                        return None
+                
+                # Update access metadata if requested
+                if update_access:
+                    if hasattr(entry, 'access_count'):
+                        entry.access_count += 1
+                    if hasattr(entry, 'last_accessed'):
+                        entry.last_accessed = now
+                
+                logger.debug(f"💾 Cache hit for key: {key[:50]}...")
+                return entry.value
+                
+            except Exception as e:
+                logger.error(f"❌ Cache get error: {e}")
+                return None
+
+
+    @staticmethod
+    def delete(key: str) -> bool:
+        """Delete specific cache entry"""
+        with _cache_lock:
+            try:
+                if key in _response_cache:
+                    del _response_cache[key]
+                    logger.debug(f"🗑️  Deleted cache: {key[:50]}...")
+                    return True
+                return False
+            except Exception as e:
+                logger.error(f"❌ Cache delete error: {e}")
+                return False
+
+
+    @staticmethod
+    def clear() -> int:
+        """Clear all cache, return number of items cleared"""
+        with _cache_lock:
+            try:
+                count = len(_response_cache)
+                _response_cache.clear()
+                logger.info(f"🧹 Cleared all cache ({count} items)")
+                return count
+            except Exception as e:
+                logger.error(f"❌ Cache clear error: {e}")
+                return 0
+
+
+    @staticmethod
+    def stats() -> Dict[str, Any]:
+        """Get cache statistics"""
+        with _cache_lock:
+            try:
+                now = datetime.utcnow()
+                total_size = len(_response_cache)
+                
+                # Calculate age distribution
+                age_distribution = {
+                    "under_1min": 0,
+                    "1min_10min": 0,
+                    "10min_1hour": 0,
+                    "1hour_24hour": 0,
+                    "over_24hour": 0
+                }
+                
+                # Calculate expiration status
+                expired_count = 0
+                will_expire_soon = 0  # Within 60 seconds
+                
+                for entry in _response_cache.values():
+                    # Age distribution
+                    age = (now - entry.created_at).total_seconds()
+                    if age < 60:
+                        age_distribution["under_1min"] += 1
+                    elif age < 600:
+                        age_distribution["1min_10min"] += 1
+                    elif age < 3600:
+                        age_distribution["10min_1hour"] += 1
+                    elif age < 86400:
+                        age_distribution["1hour_24hour"] += 1
+                    else:
+                        age_distribution["over_24hour"] += 1
+                    
+                    # Expiration check
+                    ttl = entry.ttl_seconds if hasattr(entry, 'ttl_seconds') else 300
+                    remaining = ttl - age
+                    if remaining <= 0:
+                        expired_count += 1
+                    elif remaining < 60:
+                        will_expire_soon += 1
+                
+                return {
+                    "total_items": total_size,
+                    "age_distribution": age_distribution,
+                    "expired_items": expired_count,
+                    "expiring_soon": will_expire_soon,
+                    "memory_estimate_kb": total_size * 0.5  # Rough estimate
+                }
+                
+            except Exception as e:
+                logger.error(f"❌ Cache stats error: {e}")
+                return {"error": str(e)}
+
+
+    @staticmethod
+    def get_cache_key(user_message: str, context_hash: str = None) -> str:
+        """
+        Generate cache key with enhanced hashing
+        """
+        try:
+            # Normalize the user message
+            normalized = user_message.lower().strip()
+            
+            # Remove extra whitespace
+            normalized = ' '.join(normalized.split())
+            
+            # Create base key
+            base_content = normalized
+            
+            # Add context hash if provided
+            if context_hash:
+                base_content += f"|{context_hash}"
+            
+            # Create hash (shorter for efficiency)
+            import hashlib
+            cache_key = hashlib.md5(base_content.encode('utf-8')).hexdigest()[:16]
+            
+            # Add prefix for identification
+            cache_key = f"chat_{cache_key}"
+            
+            return cache_key
+            
+        except Exception as e:
+            logger.error(f"❌ Cache key generation error: {e}")
+            # Fallback: use simple hash
+            import hashlib
+            return f"chat_fallback_{hashlib.md5(user_message.encode()).hexdigest()[:8]}"
+
+
+    # Cập nhật class CacheEntry để hỗ trợ các tính năng mới
+    @dataclass
+    class CacheEntry:
+        """
+        Enhanced cache entry with metadata for intelligent cache management
+        """
+        key: str
+        value: Any
+        created_at: datetime
+        ttl_seconds: int = 300
+        access_count: int = 0
+        last_accessed: datetime = None
+        
+        def __post_init__(self):
+            """Initialize last_accessed if not provided"""
+            if self.last_accessed is None:
+                self.last_accessed = self.created_at
+        
+        def is_expired(self, current_time: datetime = None) -> bool:
+            """Check if cache entry has expired"""
+            if current_time is None:
+                current_time = datetime.utcnow()
+            
+            age = (current_time - self.created_at).total_seconds()
+            return age > self.ttl_seconds
+        
+        def age_seconds(self) -> float:
+            """Get age of cache entry in seconds"""
+            return (datetime.utcnow() - self.created_at).total_seconds()
+        
+        def ttl_remaining(self) -> float:
+            """Get remaining TTL in seconds"""
+            age = self.age_seconds()
+            remaining = self.ttl_seconds - age
+            return max(0, remaining)
 
 # =========== EMBEDDING FUNCTIONS (MEMORY OPTIMIZED) ===========
 @lru_cache(maxsize=128 if IS_LOW_RAM else 1000)
@@ -2700,33 +3443,79 @@ def embed_text(text: str) -> Tuple[List[float], int]:
     
     return embedding, dim
 
-def query_index(query: str, top_k: int = TOP_K) -> List[Tuple[float, Dict]]:
-    """Query the index"""
-    if not query or INDEX is None:
+def query_index(
+    query: str,
+    top_k: int = 5,
+    min_score: float = 0.78
+):
+    """
+    Semantic search dùng FAISS – CHẶN BỊA TUYỆT ĐỐI
+    Trả về [] nếu KHÔNG có dữ liệu đủ tin cậy
+    """
+
+    # ========== SAFETY CHECK ==========
+    if not query or not query.strip():
         return []
-    
-    emb, _ = embed_text(query)
-    if not emb:
+
+    if not FAISS_INDEX or not FAISS_MAPPING:
+        logger.error("❌ FAISS index hoặc mapping chưa được load")
         return []
-    
-    vec = np.array(emb, dtype="float32").reshape(1, -1)
-    vec = vec / (np.linalg.norm(vec) + 1e-12)
-    
+
+    # ========== EMBEDDING QUERY ==========
     try:
-        if HAS_FAISS and isinstance(INDEX, faiss.Index):
-            D, I = INDEX.search(vec, top_k)
-        else:
-            D, I = INDEX.search(vec, top_k)
-        
-        results = []
-        for score, idx in zip(D[0], I[0]):
-            if 0 <= idx < len(MAPPING):
-                results.append((float(score), MAPPING[idx]))
-        
-        return results
+        embedding = embedding_client.embeddings.create(
+            model=EMBEDDING_MODEL,
+            input=query
+        ).data[0].embedding
     except Exception as e:
-        logger.error(f"Index search error: {e}")
+        logger.error(f"❌ Embedding error: {e}")
         return []
+
+    import numpy as np
+
+    query_vector = np.array([embedding], dtype="float32")
+
+    # ========== FAISS SEARCH ==========
+    try:
+        distances, indices = FAISS_INDEX.search(query_vector, top_k)
+    except Exception as e:
+        logger.error(f"❌ FAISS search error: {e}")
+        return []
+
+    results = []
+
+    for score, idx in zip(distances[0], indices[0]):
+        if idx == -1:
+            continue
+
+        # FAISS cosine similarity (index đã normalize)
+        similarity = float(score)
+
+        # 🚨 NGƯỠNG CHẶN BỊA
+        if similarity < min_score:
+            continue
+
+        mapping = FAISS_MAPPING.get(str(idx))
+        if not mapping:
+            continue
+
+        text = mapping.get("text", "").strip()
+        if not text:
+            continue
+
+        results.append((similarity, text))
+
+    # ========== SORT & RETURN ==========
+    results.sort(key=lambda x: x[0], reverse=True)
+
+    if not results:
+        logger.info(
+            f"⚠️ No semantic match above threshold "
+            f"(min_score={min_score}) for query: {query}"
+        )
+
+    return results
+
 
 class NumpyIndex:
     """Simple numpy-based index with safe numpy handling"""
@@ -3249,12 +4038,13 @@ Câu hỏi của khách: {user_message}"""
            "• Đi bao nhiêu người?\n\n" \
            "Hoặc gọi ngay 0332510486 để được tư vấn chi tiết! 😊"
 
-# =========== MAIN CHAT ENDPOINT - ĐỈNH CAO THÔNG MINH ===========
+
+# =========== MAIN CHAT ENDPOINT - ĐỈNH CAO THÔNG MINH V4.1 ===========
 @app.route("/chat", methods=["POST"])
 def chat_endpoint_ultimate():
     """
     Main chat endpoint với xử lý AI thông minh, context-aware mạnh mẽ
-    Xử lý mọi loại câu hỏi từ đơn giản đến phức tạp
+    Xử lý mọi loại câu hỏi từ đơn giản đến phức tạp - Version 4.1 (Enhanced)
     """
     start_time = time.time()
     
@@ -3297,98 +4087,222 @@ def chat_endpoint_ultimate():
             'timestamp': datetime.utcnow().isoformat()
         })
         
-        # Giới hạn history (giữ 10 tin nhắn gần nhất)
-        if len(context.conversation_history) > 20:
-            context.conversation_history = context.conversation_history[-10:]
+        # Giới hạn history (giữ 20 tin nhắn gần nhất)
+        if len(context.conversation_history) > 40:
+            context.conversation_history = context.conversation_history[-20:]
         
-        # ================== AI-POWERED CONTEXT ANALYSIS ==================
+        # ================== ADVANCED CONTEXT ANALYSIS ==================
         message_lower = user_message.lower()
         
-        # Phân tích cấp độ phức tạp
+        # Phân tích cấp độ phức tạp nâng cao
         complexity_score = 0
         complexity_indicators = {
             'và': 1, 'cho': 1, 'với': 1, 'nhưng': 2, 'tuy nhiên': 2,
-            'nếu': 2, 'khi': 1, 'để': 1, 'mà': 1, 'hoặc': 1
+            'nếu': 2, 'khi': 1, 'để': 1, 'mà': 1, 'hoặc': 1, 'so sánh': 3,
+            'phân biệt': 3, 'khác nhau': 3, 'tương tự': 2, 'giữa': 2
         }
         
         for indicator, weight in complexity_indicators.items():
             if indicator in message_lower:
                 complexity_score += weight
         
-        # ================== SMART INTENT DETECTION ==================
+        # Phân tích độ dài câu hỏi
+        word_count = len(user_message.split())
+        if word_count > 15:
+            complexity_score += 2
+        elif word_count > 25:
+            complexity_score += 3
+        
+        # ================== ENHANCED INTENT DETECTION ==================
         intent_categories = {
-            'tour_listing': ['có những tour nào', 'danh sách tour', 'liệt kê tour', 'tour nào có'],
-            'price_inquiry': ['giá bao nhiêu', 'bao nhiêu tiền', 'chi phí', 'giá tour'],
-            'tour_detail': ['chi tiết tour', 'lịch trình', 'có gì', 'bao gồm gì'],
-            'comparison': ['so sánh', 'khác nhau', 'nên chọn', 'tốt hơn'],
-            'recommendation': ['phù hợp', 'gợi ý', 'đề xuất', 'tư vấn', 'nên đi'],
-            'booking_info': ['đặt tour', 'đăng ký', 'booking', 'giữ chỗ'],
-            'policy': ['chính sách', 'giảm giá', 'ưu đãi', 'khuyến mãi'],
-            'general_info': ['giới thiệu', 'là gì', 'thế nào', 'ra sao'],
-            'location_info': ['ở đâu', 'địa điểm', 'đến đâu', 'vị trí'],
-            'time_info': ['khi nào', 'thời gian', 'bao lâu', 'mấy ngày'],
-            'weather_info': ['thời tiết', 'khí hậu', 'nắng mưa', 'mùa nào'],
-            'food_info': ['ẩm thực', 'món ăn', 'đặc sản', 'đồ ăn'],
-            'culture_info': ['văn hóa', 'lịch sử', 'truyền thống', 'di tích'],
-            'wellness_info': ['thiền', 'yoga', 'chữa lành', 'sức khỏe'],
-            'group_info': ['nhóm', 'đoàn', 'công ty', 'gia đình'],
-            'custom_request': ['tùy chỉnh', 'riêng', 'cá nhân hóa', 'theo yêu cầu']
+            'tour_listing': ['có những tour nào', 'danh sách tour', 'liệt kê tour', 'tour nào có', 'tour gì'],
+            'price_inquiry': ['giá bao nhiêu', 'bao nhiêu tiền', 'chi phí', 'giá tour', 'bảng giá', 'bao nhiêu'],
+            'tour_detail': ['chi tiết tour', 'lịch trình', 'có gì', 'bao gồm gì', 'thông tin', 'mô tả'],
+            'comparison': ['so sánh', 'khác nhau', 'nên chọn', 'tốt hơn', 'hơn kém', 'phân biệt'],
+            'recommendation': ['phù hợp', 'gợi ý', 'đề xuất', 'tư vấn', 'nên đi', 'chọn nào', 'tìm tour'],
+            'booking_info': ['đặt tour', 'đăng ký', 'booking', 'giữ chỗ', 'thanh toán', 'đặt chỗ'],
+            'policy': ['chính sách', 'giảm giá', 'ưu đãi', 'khuyến mãi', 'giảm', 'promotion'],
+            'general_info': ['giới thiệu', 'là gì', 'thế nào', 'ra sao', 'sứ mệnh', 'giá trị', 'triết lý'],
+            'location_info': ['ở đâu', 'địa điểm', 'đến đâu', 'vị trí', 'tại đâu', 'chỗ nào'],
+            'time_info': ['khi nào', 'thời gian', 'bao lâu', 'mấy ngày', 'bao giờ', 'thời điểm'],
+            'weather_info': ['thời tiết', 'khí hậu', 'nắng mưa', 'mùa nào', 'nhiệt độ'],
+            'food_info': ['ẩm thực', 'món ăn', 'đặc sản', 'đồ ăn', 'bánh bèo', 'mắm nêm'],
+            'culture_info': ['văn hóa', 'lịch sử', 'truyền thống', 'di tích', 'di sản', 'văn minh'],
+            'wellness_info': ['thiền', 'yoga', 'chữa lành', 'sức khỏe', 'retreat', 'tĩnh tâm', 'khí công'],
+            'group_info': ['nhóm', 'đoàn', 'công ty', 'gia đình', 'bạn bè', 'tập thể', 'cựu chiến binh'],
+            'custom_request': ['tùy chỉnh', 'riêng', 'cá nhân hóa', 'theo yêu cầu', 'riêng biệt'],
+            'sustainability': ['bền vững', 'môi trường', 'xanh', 'cộng đồng', 'phát triển bền vững'],
+            'experience': ['trải nghiệm', 'cảm giác', 'cảm nhận', 'thực tế', 'trực tiếp']
         }
         
         detected_intents = []
         for intent, keywords in intent_categories.items():
             for keyword in keywords:
                 if keyword in message_lower:
-                    detected_intents.append(intent)
+                    if intent not in detected_intents:
+                        detected_intents.append(intent)
                     break
         
-        # ================== TOUR RESOLUTION ENGINE ==================
-        tour_indices = []
+        # Ưu tiên intent chính
+        primary_intent = None
+        if detected_intents:
+            # Ưu tiên các intent cụ thể hơn
+            priority_order = ['comparison', 'recommendation', 'tour_detail', 'price_inquiry', 
+                            'tour_listing', 'general_info', 'wellness_info', 'culture_info']
+            for intent in priority_order:
+                if intent in detected_intents:
+                    primary_intent = intent
+                    break
+            if not primary_intent:
+                primary_intent = detected_intents[0]
         
-        # Strategy 1: Direct tour name matching
+        # ================== ENHANCED TOUR RESOLUTION ENGINE ==================
+        tour_indices = []
+        tour_names_mentioned = []
+        
+        # Strategy 1: Enhanced direct tour name matching
         direct_tour_matches = []
-        for norm_name, idx in TOUR_NAME_TO_INDEX.items():
-            # Kiểm tra tên tour có trong message không
-            tour_words = set(norm_name.split())
-            msg_words = set(message_lower.split())
-            common_words = tour_words.intersection(msg_words)
-            
-            if len(common_words) >= 2:  # Ít nhất 2 từ trùng
-                direct_tour_matches.append(idx)
+        import re
+        
+        # Tìm tên tour trong câu hỏi với pattern matching
+        tour_name_patterns = [
+            r'["\'](.+?)["\']',  # Tên trong dấu nháy
+            r'tour\s+(.+?)\s+(?:có|giá|ở|cho|tại)',
+            r'tour\s+["\']?(.+?)["\']?'
+        ]
+        
+        for pattern in tour_name_patterns:
+            matches = re.findall(pattern, user_message, re.IGNORECASE)
+            for match in matches:
+                if match and len(match.strip()) > 3:
+                    tour_names_mentioned.append(match.strip())
+        
+        # Loại bỏ các từ chung chung
+        filter_words = ['nào', 'gì', 'đó', 'ấy', 'này', 'kia', 'cho', 'với', 'của']
+        tour_names_mentioned = [name for name in tour_names_mentioned 
+                              if not any(word in name.lower() for word in filter_words)]
+        
+        logger.info(f"🔍 Tour names mentioned in query: {tour_names_mentioned}")
+        
+        # Tìm tour index cho từng tên được đề cập
+        for tour_name in tour_names_mentioned:
+            for norm_name, idx in TOUR_NAME_TO_INDEX.items():
+                similarity_score = 0
+                
+                # Kiểm tra từ khóa chính
+                name_words = set(norm_name.lower().split())
+                query_words = set(tour_name.lower().split())
+                common_words = name_words.intersection(query_words)
+                
+                if len(common_words) >= 2:
+                    similarity_score = len(common_words) / max(len(name_words), len(query_words))
+                
+                # Kiểm tra contain
+                if tour_name.lower() in norm_name.lower() or norm_name.lower() in tour_name.lower():
+                    similarity_score = max(similarity_score, 0.8)
+                
+                if similarity_score >= 0.5 and idx not in direct_tour_matches:
+                    direct_tour_matches.append(idx)
+                    logger.info(f"🎯 Found tour '{norm_name}' (idx: {idx}) for query '{tour_name}'")
         
         if direct_tour_matches:
-            tour_indices = direct_tour_matches[:3]  # Chỉ lấy 3 tour đầu
+            tour_indices = direct_tour_matches[:5]  # Tăng lên 5 tour
             logger.info(f"🎯 Direct tour matches found: {tour_indices}")
         
-        # Strategy 2: Fuzzy matching for partial names
+        # Strategy 2: Enhanced fuzzy matching
         if not tour_indices and UpgradeFlags.is_enabled("6_FUZZY_MATCHING"):
             fuzzy_matches = FuzzyMatcher.find_similar_tours(user_message, TOUR_NAME_TO_INDEX)
             if fuzzy_matches:
-                tour_indices = [idx for idx, score in fuzzy_matches[:2] if score > 0.7]
-                logger.info(f"🔍 Fuzzy matches found: {tour_indices}")
+                tour_indices = [idx for idx, score in fuzzy_matches[:3] if score > 0.6]  # Giảm ngưỡng
+                if tour_indices:
+                    logger.info(f"🔍 Fuzzy matches found: {tour_indices}")
         
-        # Strategy 3: Filter-based search
-        mandatory_filters = FilterSet()
-        if UpgradeFlags.is_enabled("1_MANDATORY_FILTER"):
-            mandatory_filters = MandatoryFilterSystem.extract_filters(user_message)
+        # Strategy 3: Semantic content matching
+        if not tour_indices and UpgradeFlags.is_enabled("8_SEMANTIC_ANALYSIS"):
+            # Tìm tour dựa trên nội dung semantic
+            semantic_matches = []
+            for idx, tour in TOURS_DB.items():
+                # Tạo text blob để phân tích
+                text_blob = f"{tour.name or ''} {tour.summary or ''} {tour.style or ''} {tour.location or ''}".lower()
+                
+                # Phân tích từ khóa trong câu hỏi
+                query_words = [word for word in message_lower.split() if len(word) > 2]
+                matches = sum(1 for word in query_words if word in text_blob)
+                
+                if matches >= 2:
+                    semantic_matches.append((idx, matches))
             
-            if not mandatory_filters.is_empty():
-                filtered_indices = MandatoryFilterSystem.apply_filters(TOURS_DB, mandatory_filters)
-                if filtered_indices:
-                    if tour_indices:
-                        # Kết hợp kết quả
-                        combined = list(set(tour_indices) & set(filtered_indices))
-                        tour_indices = combined if combined else filtered_indices[:3]
-                    else:
-                        tour_indices = filtered_indices[:5]  # Giới hạn 5 tour
-                    logger.info(f"🎯 Filter-based search: {len(tour_indices)} tours")
+            if semantic_matches:
+                semantic_matches.sort(key=lambda x: x[1], reverse=True)
+                tour_indices = [idx for idx, score in semantic_matches[:3]]
+                logger.info(f"🧠 Semantic matches found: {tour_indices}")
+        
+        # Strategy 4: Filter-based search
+        mandatory_filters = FilterSet()
+        filter_applied = False
+        
+        if UpgradeFlags.is_enabled("1_MANDATORY_FILTER"):
+            try:
+                mandatory_filters = MandatoryFilterSystem.extract_filters(user_message)
+                
+                if not mandatory_filters.is_empty():
+                    logger.info(f"🎯 Filters extracted: {mandatory_filters}")
+                    
+                    # Kiểm tra lỗi trong filter
+                    if hasattr(mandatory_filters, 'group_type') and mandatory_filters.group_type:
+                        valid_group_types = ['family', 'friends', 'corporate', 'solo', 'couple', 'senior']
+                        if mandatory_filters.group_type not in valid_group_types:
+                            logger.warning(f"⚠️ Invalid group type: {mandatory_filters.group_type}")
+                    
+                    filtered_indices = MandatoryFilterSystem.apply_filters(TOURS_DB, mandatory_filters)
+                    
+                    if filtered_indices:
+                        filter_applied = True
+                        if tour_indices:
+                            # Kết hợp kết quả: lấy giao của các kết quả
+                            combined = list(set(tour_indices) & set(filtered_indices))
+                            if combined:
+                                tour_indices = combined[:5]
+                            else:
+                                # Nếu không có giao, ưu tiên filter-based
+                                tour_indices = filtered_indices[:5]
+                            logger.info(f"🎯 Combined filter-based search: {len(tour_indices)} tours")
+                        else:
+                            tour_indices = filtered_indices[:8]  # Tăng lên 8 tour
+                            logger.info(f"🎯 Filter-based search only: {len(tour_indices)} tours")
+            except Exception as e:
+                logger.error(f"❌ Filter system error: {e}")
+                # Continue without filters
         
         # ================== INTELLIGENT RESPONSE GENERATION ==================
         reply = ""
         sources = []
         
+        # 🔹 CASE 0: CONTEXT-AWARE FOLLOW-UP (Nâng cấp mới)
+        if len(context.conversation_history) > 1:
+            last_user_msg = None
+            last_bot_msg = None
+            
+            # Tìm tin nhắn gần nhất
+            for msg in reversed(context.conversation_history[:-1]):
+                if msg['role'] == 'user':
+                    last_user_msg = msg['message']
+                elif msg['role'] == 'assistant' and not last_bot_msg:
+                    last_bot_msg = msg['message']
+                
+                if last_user_msg and last_bot_msg:
+                    break
+            
+            # Xử lý follow-up questions
+            if last_bot_msg and ('tour nào' in message_lower or 'gợi ý' in message_lower):
+                # Kiểm tra nếu đây là câu hỏi follow-up về tour
+                follow_up_tours = getattr(context, 'last_recommended_tours', [])
+                if follow_up_tours and len(tour_indices) == 0:
+                    tour_indices = follow_up_tours[:3]
+                    logger.info(f"🔄 Using context tour recommendations: {tour_indices}")
+        
         # 🔹 CASE 1: LISTING TOURS
-        if 'tour_listing' in detected_intents or any(keyword in message_lower for keyword in ['có những tour nào', 'danh sách tour']):
+        if 'tour_listing' in detected_intents or any(keyword in message_lower for keyword in ['có những tour nào', 'danh sách tour', 'liệt kê tour']):
             logger.info("📋 Processing tour listing request")
             
             all_tours = list(TOURS_DB.values())
@@ -3405,368 +4319,1047 @@ def chat_endpoint_ultimate():
                 all_tours = unique_tours
             
             # Apply additional filters
-            if not mandatory_filters.is_empty():
+            if filter_applied and not mandatory_filters.is_empty():
                 filtered_indices = MandatoryFilterSystem.apply_filters(TOURS_DB, mandatory_filters)
                 all_tours = [TOURS_DB[idx] for idx in filtered_indices if idx in TOURS_DB]
             
             total_tours = len(all_tours)
             
-            # GIỚI HẠN: Chỉ hiển thị 5 tour + thông báo còn lại
-            display_tours = all_tours[:5]
-            
-            if display_tours:
-                # Format response với emoji theo loại tour
-                reply = "✨ **DANH SÁCH TOUR RUBY WINGS** ✨\n\n"
+            if total_tours > 0:
+                # Phân loại tour theo category
+                categorized_tours = {
+                    'history': [],
+                    'retreat': [],
+                    'nature': [],
+                    'culture': [],
+                    'family': []
+                }
                 
-                for i, tour in enumerate(display_tours, 1):
-                    # Xác định emoji phù hợp
-                    emoji = "✨"
-                    if tour.tags:
-                        if any('nature' in tag for tag in tour.tags):
-                            emoji = "🌿"
-                        elif any('history' in tag for tag in tour.tags):
-                            emoji = "🏛️"
-                        elif any('meditation' in tag for tag in tour.tags):
-                            emoji = "🕉️"
-                        elif any('family' in tag for tag in tour.tags):
-                            emoji = "👨‍👩‍👧‍👦"
+                for tour in all_tours:
+                    tags_lower = [tag.lower() for tag in (tour.tags or [])]
                     
-                    reply += f"{emoji} **{tour.name}**\n"
-                    if tour.duration:
-                        reply += f"   ⏱️ {tour.duration}\n"
-                    if tour.location:
-                        reply += f"   📍 {tour.location}\n"
-                    if tour.price and i <= 3:  # Chỉ hiện giá 3 tour đầu
-                        price_text = tour.price[:50] + "..." if len(tour.price) > 50 else tour.price
-                        reply += f"   💰 {price_text}\n"
-                    reply += "\n"
+                    if any('history' in tag for tag in tags_lower):
+                        categorized_tours['history'].append(tour)
+                    elif any('meditation' in tag or 'retreat' in tag for tag in tags_lower):
+                        categorized_tours['retreat'].append(tour)
+                    elif any('nature' in tag for tag in tags_lower):
+                        categorized_tours['nature'].append(tour)
+                    elif any('culture' in tag or 'food' in tag for tag in tags_lower):
+                        categorized_tours['culture'].append(tour)
+                    elif any('family' in tag for tag in tags_lower):
+                        categorized_tours['family'].append(tour)
+                    else:
+                        categorized_tours['nature'].append(tour)  # Mặc định
                 
-                if total_tours > 5:
-                    reply += f"📊 **Còn {total_tours - 5} tour khác!**\n\n"
+                # Format response có cấu trúc
+                reply = "✨ **DANH SÁCH TOUR RUBY WINGS** ✨\n\n"
+                reply += f"📊 **Tổng cộng:** {total_tours} tour đặc sắc\n\n"
                 
-                reply += "💡 **Bạn muốn tìm hiểu chi tiết tour nào?**\n"
+                # Hiển thị theo từng loại
+                categories_display = [
+                    ('🏛️ LỊCH SỬ - TRI ÂN', 'history', 'history'),
+                    ('🕉️ RETREAT - CHỮA LÀNH', 'retreat', 'meditation'),
+                    ('🌿 THIÊN NHIÊN - KHÁM PHÁ', 'nature', 'nature'),
+                    ('🍜 VĂN HÓA - ẨM THỰC', 'culture', 'culture'),
+                    ('👨‍👩‍👧‍👦 GIA ĐÌNH - NHÓM', 'family', 'family')
+                ]
+                
+                tours_displayed = 0
+                for cat_name, cat_key, emoji_key in categories_display:
+                    cat_tours = categorized_tours[cat_key]
+                    if cat_tours:
+                        reply += f"**{cat_name}** ({len(cat_tours)} tour)\n"
+                        
+                        for i, tour in enumerate(cat_tours[:3], 1):
+                            # Chọn emoji phù hợp
+                            emoji = "✨"
+                            if cat_key == 'history': emoji = "🏛️"
+                            elif cat_key == 'retreat': emoji = "🕉️"
+                            elif cat_key == 'nature': emoji = "🌿"
+                            elif cat_key == 'culture': emoji = "🍜"
+                            elif cat_key == 'family': emoji = "👨‍👩‍👧‍👦"
+                            
+                            reply += f"{emoji} **{tour.name}**\n"
+                            if tour.duration:
+                                reply += f"   ⏱️ {tour.duration}\n"
+                            if tour.location:
+                                location_short = tour.location[:40] + "..." if len(tour.location) > 40 else tour.location
+                                reply += f"   📍 {location_short}\n"
+                            if i == 1 and tour.price:  # Hiện giá tour đầu mỗi loại
+                                price_short = tour.price[:60] + "..." if len(tour.price) > 60 else tour.price
+                                reply += f"   💰 {price_short}\n"
+                            reply += "\n"
+                            tours_displayed += 1
+                        
+                        if len(cat_tours) > 3:
+                            reply += f"   📌 ...và {len(cat_tours) - 3} tour khác\n\n"
+                        else:
+                            reply += "\n"
+                
+                if tours_displayed < total_tours:
+                    reply += f"📌 **Còn {total_tours - tours_displayed} tour khác trong hệ thống!**\n\n"
+                
+                reply += "💡 **HƯỚNG DẪN TÌM TOUR:**\n"
                 reply += "• Gọi tên tour cụ thể (ví dụ: 'Tour Bạch Mã')\n"
-                reply += "• Hoặc mô tả nhu cầu để tôi tư vấn phù hợp\n\n"
+                reply += "• Mô tả nhu cầu: 'tour gia đình 2 ngày', 'retreat thiền'\n"
+                reply += "• So sánh tour: 'so sánh tour A và tour B'\n\n"
                 reply += "📞 **Hotline tư vấn nhanh:** 0332510486"
+                
+                # Lưu context để follow-up
+                context.last_listed_tours = [idx for idx, tour in enumerate(all_tours[:10])]
             else:
                 reply = "Hiện chưa có tour nào phù hợp với yêu cầu của bạn. Vui lòng thử với tiêu chí khác hoặc liên hệ hotline 0332510486 để được tư vấn tour riêng."
         
-        # 🔹 CASE 2: PRICE INQUIRY
-        elif 'price_inquiry' in detected_intents or any(keyword in message_lower for keyword in ['giá bao nhiêu', 'bao nhiêu tiền']):
-            logger.info("💰 Processing price inquiry")
+        # 🔹 CASE 2: PRICE INQUIRY - NÂNG CẤP
+        elif 'price_inquiry' in detected_intents or any(keyword in message_lower for keyword in ['giá bao nhiêu', 'bao nhiêu tiền', 'chi phí', 'bảng giá']):
+            logger.info("💰 Processing enhanced price inquiry")
             
             if tour_indices:
                 # Có tour cụ thể
                 price_responses = []
-                for idx in tour_indices[:2]:  # Chỉ 2 tour đầu
-                    tour = TOURS_DB.get(idx)
-                    if tour and tour.price:
-                        price_text = tour.price
-                        # Làm đẹp price text
-                        if 'nghìn' in price_text.lower():
-                            price_text = price_text.replace('nghìn', 'k').replace('Nghìn', 'k')
-                        
-                        price_responses.append(f"**{tour.name}:** {price_text}")
+                detailed_info = []
                 
-                if price_responses:
-                    reply = "💰 **THÔNG TIN GIÁ TOUR** 💰\n\n"
-                    reply += "\n".join(price_responses)
-                    reply += "\n\n📞 **Giá ưu đãi cho nhóm & đặt sớm:** 0332510486"
-                else:
-                    # Dùng AI để trả lời thông minh
-                    if client and HAS_OPENAI:
-                        try:
-                            prompt = f"""Bạn là tư vấn viên Ruby Wings. Khách hỏi về giá tour nhưng chưa chỉ định tour cụ thể.
-
-THÔNG TIN CHUNG VỀ GIÁ TOUR RUBY WINGS:
-- Tour 1 ngày: từ 500.000đ - 1.500.000đ
-- Tour 2 ngày 1 đêm: từ 1.500.000đ - 3.000.000đ  
-- Tour 3 ngày 2 đêm: từ 2.500.000đ - 5.000.000đ
-- Tour nhóm: có chính sách giảm giá theo số lượng
-- Tour cao cấp: giá theo yêu cầu
-
-YÊU CẦU:
-1. Giải thích phạm vi giá tour của Ruby Wings
-2. Hỏi lại khách về loại tour cụ thể
-3. Đề nghị liên hệ hotline để báo giá chi tiết
-
-Trả lời ngắn gọn, chuyên nghiệp."""
-
-                            response = client.chat.completions.create(
-                                model=CHAT_MODEL,
-                                messages=[
-                                    {"role": "system", "content": prompt},
-                                    {"role": "user", "content": user_message}
-                                ],
-                                temperature=0.5,
-                                max_tokens=250
-                            )
-                            
-                            if response.choices:
-                                reply = response.choices[0].message.content or ""
-                            else:
-                                reply = "Giá tour Ruby Wings dao động từ 500.000đ - 5.000.000đ tùy loại tour và dịch vụ. Bạn quan tâm tour nào cụ thể để tôi báo giá chi tiết?"
+                for idx in tour_indices[:3]:  # Hiện 3 tour
+                    tour = TOURS_DB.get(idx)
+                    if tour:
+                        # Format price information
+                        price_info = {
+                            'name': tour.name,
+                            'price': tour.price or 'Liên hệ để biết giá',
+                            'duration': tour.duration or 'Không xác định',
+                            'location': tour.location or 'Không xác định'
+                        }
                         
-                        except Exception as e:
-                            logger.error(f"OpenAI price inquiry error: {e}")
-                            reply = "Giá tour tùy thuộc vào loại tour, thời gian và số lượng người. Vui lòng cho biết bạn quan tâm tour nào để tôi báo giá cụ thể."
-                    else:
-                        reply = "Giá tour Ruby Wings rất đa dạng, từ tour 1 ngày giá 500.000đ đến tour cao cấp 5.000.000đ. Bạn muốn biết giá tour cụ thể nào?"
+                        # Phân tích giá nếu có
+                        price_text = price_info['price']
+                        if price_text and price_text != 'Liên hệ để biết giá':
+                            # Tìm các mức giá
+                            price_numbers = re.findall(r'\d[\d,\.]+', price_text)
+                            if price_numbers:
+                                try:
+                                    # Chuyển đổi sang số
+                                    clean_nums = []
+                                    for num in price_numbers:
+                                        clean_num = num.replace(',', '').replace('.', '')
+                                        if clean_num.isdigit():
+                                            clean_nums.append(int(clean_num))
+                                    
+                                    if clean_nums:
+                                        min_price = min(clean_nums)
+                                        max_price = max(clean_nums) if len(clean_nums) > 1 else min_price
+                                        
+                                        if min_price < 1000000:
+                                            price_range = f"{min_price:,}đ"
+                                        elif min_price == max_price:
+                                            price_range = f"{min_price:,}đ"
+                                        else:
+                                            price_range = f"{min_price:,}đ - {max_price:,}đ"
+                                        
+                                        price_info['formatted'] = price_range
+                                except:
+                                    price_info['formatted'] = price_text
+                        
+                        detailed_info.append(price_info)
+                
+                if detailed_info:
+                    reply = "💰 **THÔNG TIN GIÁ TOUR CHI TIẾT** 💰\n\n"
+                    
+                    for info in detailed_info:
+                        reply += f"**{info['name']}**\n"
+                        reply += f"⏱️ Thời gian: {info['duration']}\n"
+                        reply += f"📍 Địa điểm: {info.get('location_short', info['location'][:50])}\n"
+                        
+                        if 'formatted' in info:
+                            reply += f"💰 **Giá:** {info['formatted']}\n"
+                        else:
+                            reply += f"💰 **Giá:** {info['price']}\n"
+                        
+                        # Thêm phân loại giá
+                        if 'formatted' in info and 'đ' in info['formatted']:
+                            price_num = int(info['formatted'].split('đ')[0].replace(',', '').replace('.', '').strip())
+                            if price_num < 1000000:
+                                reply += "   🏷️ Phân loại: Tiết kiệm\n"
+                            elif price_num < 2500000:
+                                reply += "   🏷️ Phân loại: Tiêu chuẩn\n"
+                            else:
+                                reply += "   🏷️ Phân loại: Cao cấp\n"
+                        
+                        reply += "\n"
+                    
+                    reply += "🎯 **ƯU ĐÃI ĐẶC BIỆT:**\n"
+                    reply += "• Nhóm 5-9 người: Giảm 5%\n"
+                    reply += "• Nhóm 10-15 người: Giảm 10%\n"
+                    reply += "• Nhóm 16+ người: Giảm 15%\n"
+                    reply += "• Đặt trước 30 ngày: Giảm thêm 5%\n"
+                    reply += "• Cựu chiến binh: Ưu đãi đặc biệt\n\n"
+                    reply += "📞 **Liên hệ ngay để nhận báo giá tốt nhất:** 0332510486"
+                else:
+                    reply = "Hiện chưa có thông tin giá cho các tour này. Vui lòng liên hệ hotline 0332510486 để được báo giá chi tiết."
             else:
-                # Không có tour cụ thể
+                # Không có tour cụ thể - Hiển thị bảng giá tổng quát
                 reply = "💰 **BẢNG GIÁ THAM KHẢO RUBY WINGS** 💰\n\n"
-                reply += "🏷️ **Tour 1 ngày:** 500.000đ - 1.500.000đ\n"
-                reply += "   • Thiên nhiên, văn hóa, ẩm thực\n\n"
-                reply += "🏷️ **Tour 2 ngày 1 đêm:** 1.500.000đ - 3.000.000đ\n"
-                reply += "   • Trải nghiệm sâu, retreat, lịch sử\n\n"
-                reply += "🏷️ **Tour 3+ ngày:** 2.500.000đ - 5.000.000đ\n"
-                reply += "   • Cao cấp, cá nhân hóa, nhóm đặc biệt\n\n"
-                reply += "🎯 **Ưu đãi đặc biệt:**\n"
-                reply += "• Nhóm 10+ người: Giảm 10-20%\n"
-                reply += "• Đặt trước 30 ngày: Giảm 5%\n"
-                reply += "• Cựu chiến binh: Ưu đãi đặc biệt\n\n"
-                reply += "📞 **Liên hệ ngay 0332510486 để nhận báo giá chi tiết!**"
+                
+                # Tạo bảng giá theo loại tour
+                price_categories = [
+                    ("🌿 TOUR 1 NGÀY (Thiên nhiên, Văn hóa)", "500.000đ - 1.500.000đ", 
+                     "Bạch Mã, Huế city tour, Ẩm thực Huế"),
+                    ("🏛️ TOUR 2 NGÀY 1 ĐÊM (Lịch sử, Retreat)", "1.500.000đ - 3.000.000đ", 
+                     "Trường Sơn, Di tích lịch sử, Thiền định"),
+                    ("🕉️ TOUR 3+ NGÀY (Cao cấp, Cá nhân hóa)", "2.500.000đ - 5.000.000đ", 
+                     "Tour riêng, Nhóm đặc biệt, Retreat sâu"),
+                    ("👥 TOUR TEAMBUILDING (Công ty, Nhóm lớn)", "Liên hệ tư vấn", 
+                     "Thiết kế riêng, Hoạt động nhóm, Gắn kết")
+                ]
+                
+                for cat_name, price_range, description in price_categories:
+                    reply += f"**{cat_name}**\n"
+                    reply += f"💰 {price_range}\n"
+                    reply += f"📝 {description}\n\n"
+                
+                reply += "📊 **YẾU TỐ ẢNH HƯỞNG ĐẾN GIÁ:**\n"
+                reply += "• Số lượng người tham gia\n"
+                reply += "• Thời điểm đặt tour\n"
+                reply += "• Dịch vụ bổ sung (ăn uống, phương tiện)\n"
+                reply += "• Độ dài và độ phức tạp của hành trình\n\n"
+                
+                reply += "🎁 **CAM KẾT GIÁ TỐT:**\n"
+                reply += "• Không phát sinh chi phí ẩn\n"
+                reply += "• Báo giá minh bạch, rõ ràng\n"
+                reply += "• Hoàn tiền nếu không hài lòng\n\n"
+                
+                reply += "📞 **Liên hệ tư vấn giá chính xác:** 0332510486"
         
-        # 🔹 CASE 3: TOUR COMPARISON
-        elif 'comparison' in detected_intents:
-            logger.info("⚖️ Processing tour comparison request")
+        # 🔹 CASE 3: ENHANCED TOUR COMPARISON
+        elif 'comparison' in detected_intents or any(keyword in message_lower for keyword in ['so sánh', 'khác nhau', 'nên chọn', 'tốt hơn']):
+            logger.info("⚖️ Processing enhanced tour comparison request")
             
-            # Tìm các tour để so sánh
+            # Enhanced tour extraction
             comparison_tours = []
+            extracted_tour_names = []
             
-            # Extract tour names từ câu hỏi
-            import re
-            tour_patterns = [
-                r'tour\s+["\']?(.+?)["\']?\s+và\s+tour\s+["\']?(.+?)["\']?',
-                r'tour\s+["\']?(.+?)["\']?\s+với\s+tour\s+["\']?(.+?)["\']?',
-                r'tour\s+["\']?(.+?)["\']?\s+so\s+sánh\s+với\s+tour\s+["\']?(.+?)["\']?',
+            # Pattern matching nâng cao
+            comparison_patterns = [
+                r'(?:tour|chương trình)\s+["\']?(.+?)["\']?\s+(?:và|với|so sánh với)\s+(?:tour|chương trình)\s+["\']?(.+?)["\']',
+                r'["\'](.+?)["\']\s+(?:và|với)\s+["\'](.+?)["\']',
+                r'(?:giữa\s+)?(.+?)\s+(?:và|với)\s+(.+)',
+                r'so sánh\s+(.+?)\s+(?:và|với)\s+(.+)'
             ]
             
-            for pattern in tour_patterns:
-                matches = re.findall(pattern, message_lower, re.IGNORECASE)
-                for match in matches:
-                    for tour_name in match:
-                        if tour_name.strip():
-                            # Tìm tour index
-                            for norm_name, idx in TOUR_NAME_TO_INDEX.items():
-                                if tour_name.lower() in norm_name.lower():
-                                    comparison_tours.append(idx)
-                                    break
+            for pattern in comparison_patterns:
+                matches = re.findall(pattern, user_message, re.IGNORECASE)
+                if matches:
+                    for match in matches:
+                        for tour_name in match:
+                            if tour_name and len(tour_name.strip()) > 3:
+                                clean_name = tour_name.strip().lower()
+                                # Loại bỏ từ chung
+                                if not any(word in clean_name for word in ['tour', 'chương trình', 'giữa']):
+                                    extracted_tour_names.append(clean_name)
             
-            # Nếu không extract được, dùng tour_indices
+            logger.info(f"🔍 Extracted tour names for comparison: {extracted_tour_names}")
+            
+            # Tìm tour index cho từng tên
+            for tour_query in extracted_tour_names:
+                best_match = None
+                best_score = 0
+                
+                for norm_name, idx in TOUR_NAME_TO_INDEX.items():
+                    # Tính điểm similarity
+                    score = 0
+                    
+                    # Check exact match
+                    if tour_query == norm_name.lower():
+                        score = 1.0
+                    # Check contains
+                    elif tour_query in norm_name.lower() or norm_name.lower() in tour_query:
+                        score = 0.8
+                    # Check word overlap
+                    else:
+                        query_words = set(tour_query.split())
+                        name_words = set(norm_name.lower().split())
+                        common = query_words.intersection(name_words)
+                        if common:
+                            score = len(common) / max(len(query_words), len(name_words))
+                    
+                    if score > best_score and score > 0.4:
+                        best_score = score
+                        best_match = idx
+                
+                if best_match and best_match not in comparison_tours:
+                    comparison_tours.append(best_match)
+            
+            # Fallback: sử dụng tour_indices nếu không extract được
             if not comparison_tours and tour_indices:
-                comparison_tours = tour_indices[:3]  # Tối đa 3 tour
+                comparison_tours = tour_indices[:3]
+            
+            # Nếu vẫn không có, tìm tour có từ khóa trong tên
+            if not comparison_tours:
+                # Tìm tour có từ khóa "Trường Sơn", "Bạch Mã", "Huế"
+                keywords = ['trường sơn', 'bạch mã', 'huế', 'lịch sử', 'thiền']
+                for keyword in keywords:
+                    if keyword in message_lower:
+                        for norm_name, idx in TOUR_NAME_TO_INDEX.items():
+                            if keyword in norm_name.lower() and idx not in comparison_tours:
+                                comparison_tours.append(idx)
+                                if len(comparison_tours) >= 2:
+                                    break
+                    if len(comparison_tours) >= 2:
+                        break
+            
+            logger.info(f"🎯 Tours to compare: {comparison_tours}")
             
             if len(comparison_tours) >= 2:
-                # Tạo bảng so sánh chi tiết
-                reply = "📊 **SO SÁNH CHI TIẾT TOUR** 📊\n\n"
-                
-                # Header
-                headers = ["TIÊU CHÍ"]
+                # Thu thập thông tin tour
                 tour_data = []
-                
                 for idx in comparison_tours[:3]:  # Tối đa 3 tour
                     tour = TOURS_DB.get(idx)
                     if tour:
-                        headers.append(tour.name[:20])
                         tour_data.append(tour)
                 
-                # Các tiêu chí so sánh
-                comparison_criteria = [
-                    ('⏱️ Thời gian', lambda t: t.duration or 'N/A'),
-                    ('📍 Địa điểm', lambda t: t.location or 'N/A'),
-                    ('💰 Giá', lambda t: t.price[:30] + '...' if t.price and len(t.price) > 30 else t.price or 'Liên hệ'),
-                    ('🎯 Loại hình', lambda t: ', '.join([tag.split(':')[1] for tag in (t.tags or []) if ':' in tag][:2]) or 'Đa dạng'),
-                    ('📝 Độ phù hợp', lambda t: 'Gia đình' if any('family' in tag for tag in (t.tags or [])) else 'Nhóm/Người lớn'),
-                ]
-                
-                for criterion_name, get_value in comparison_criteria:
-                    row = [criterion_name]
+                if len(tour_data) >= 2:
+                    # Tạo bảng so sánh chi tiết
+                    reply = "📊 **SO SÁNH TOUR CHI TIẾT** 📊\n\n"
+                    
+                    # Tạo header
+                    headers = ["**TIÊU CHÍ**"]
                     for tour in tour_data:
-                        value = get_value(tour)
-                        row.append(value[:20] if value else 'N/A')
+                        # Rút gọn tên tour nếu quá dài
+                        name = tour.name
+                        if len(name) > 25:
+                            name = name[:22] + "..."
+                        headers.append(f"**{name}**")
                     
-                    # Format row
-                    row_formatted = " | ".join([cell.ljust(20) for cell in row])
-                    reply += f"{row_formatted}\n"
-                    reply += "-" * (len(row) * 22) + "\n"
-                
-                # Gợi ý lựa chọn
-                reply += "\n💡 **GỢI Ý LỰA CHỌN:**\n"
-                
-                if tour_data:
-                    # Phân tích giá
-                    prices = []
-                    for tour in tour_data:
-                        if tour.price:
-                            # Extract số từ price
-                            nums = re.findall(r'\d[\d,\.]+', tour.price)
-                            if nums:
-                                try:
-                                    price_num = int(nums[0].replace(',', '').replace('.', ''))
-                                    prices.append(price_num)
-                                except:
-                                    pass
+                    # Độ rộng cột
+                    col_width = 25
                     
-                    if len(prices) >= 2:
-                        min_price = min(prices)
-                        max_price = max(prices)
-                        if max_price > min_price * 1.5:
-                            reply += "• Tiết kiệm: Chọn tour giá thấp hơn\n"
-                            reply += "• Trải nghiệm đầy đủ: Chọn tour giá cao hơn\n"
+                    # Các tiêu chí so sánh nâng cao
+                    comparison_criteria = [
+                        ('⏱️ **Thời gian**', lambda t: t.duration or 'Chưa có thông tin'),
+                        ('📍 **Địa điểm**', lambda t: (t.location[:30] + '...' if t.location and len(t.location) > 30 else t.location) or 'Chưa có thông tin'),
+                        ('💰 **Giá**', lambda t: t.price[:40] + '...' if t.price and len(t.price) > 40 else t.price or 'Liên hệ'),
+                        ('🎯 **Loại hình**', lambda t: self._get_tour_category(t) if hasattr(self, '_get_tour_category') else self._extract_tour_type(t)),
+                        ('📝 **Độ phù hợp**', lambda t: self._get_suitability(t)),
+                        ('⭐ **Đặc điểm nổi bật**', lambda t: self._get_key_features(t)),
+                        ('🌿 **Hoạt động chính**', lambda t: self._get_main_activities(t))
+                    ]
                     
-                    # Phân tích thời gian
-                    durations = [tour.duration.lower() if tour.duration else '' for tour in tour_data]
-                    if any('1 ngày' in d for d in durations) and any('2 ngày' in d for d in durations):
-                        reply += "• Ít thời gian: Tour 1 ngày\n"
-                        reply += "• Trải nghiệm sâu: Tour 2 ngày\n"
-                
-                reply += "\n📞 **Tư vấn chọn tour phù hợp:** 0332510486"
-            
+                    # Thêm hàm helper nếu chưa có
+                    def _extract_tour_type(tour):
+                        tags = [tag.lower() for tag in (tour.tags or [])]
+                        if any('history' in tag for tag in tags):
+                            return "Lịch sử"
+                        elif any('meditation' in tag for tag in tags):
+                            return "Retreat/Thiền"
+                        elif any('nature' in tag for tag in tags):
+                            return "Thiên nhiên"
+                        elif any('family' in tag for tag in tags):
+                            return "Gia đình"
+                        else:
+                            return "Trải nghiệm"
+                    
+                    def _get_suitability(tour):
+                        tags = [tag.lower() for tag in (tour.tags or [])]
+                        if any('family' in tag for tag in tags):
+                            return "Gia đình, Nhóm nhỏ"
+                        elif any('corporate' in tag for tag in tags):
+                            return "Công ty, Team building"
+                        elif any('solo' in tag for tag in tags):
+                            return "Cá nhân, Cặp đôi"
+                        elif any('senior' in tag for tag in tags):
+                            return "Người lớn tuổi"
+                        else:
+                            return "Mọi đối tượng"
+                    
+                    def _get_key_features(tour):
+                        features = []
+                        summary = (tour.summary or '').lower()
+                        
+                        if 'thiền' in summary or 'khí công' in summary:
+                            features.append("Thiền/Khí công")
+                        if 'lịch sử' in summary or 'chiến tranh' in summary:
+                            features.append("Di tích lịch sử")
+                        if 'thiên nhiên' in summary or 'rừng' in summary:
+                            features.append("Trải nghiệm thiên nhiên")
+                        if 'ẩm thực' in summary or 'món ăn' in summary:
+                            features.append("Ẩm thực đặc sản")
+                        
+                        return ', '.join(features[:3]) if features else "Trải nghiệm đa dạng"
+                    
+                    def _get_main_activities(tour):
+                        activities = []
+                        summary = (tour.summary or '').lower()
+                        
+                        if 'trekking' in summary or 'đi bộ' in summary:
+                            activities.append("Trekking")
+                        if 'thăm quan' in summary or 'thăm' in summary:
+                            activities.append("Tham quan")
+                        if 'thiền' in summary:
+                            activities.append("Thiền định")
+                        if 'ăn uống' in summary or 'ẩm thực' in summary:
+                            activities.append("Ẩm thực")
+                        
+                        return ', '.join(activities[:3]) if activities else "Khám phá"
+                    
+                    # Gán các hàm vào đối tượng cục bộ
+                    import types
+                    self_obj = types.SimpleNamespace()
+                    self_obj._extract_tour_type = _extract_tour_type
+                    self_obj._get_suitability = _get_suitability
+                    self_obj._get_key_features = _get_key_features
+                    self_obj._get_main_activities = _get_main_activities
+                    
+                    # Tạo bảng so sánh
+                    for criterion_name, get_value_func in comparison_criteria:
+                        row = [criterion_name]
+                        for tour in tour_data:
+                            value = get_value_func(tour)
+                            # Giới hạn độ dài giá trị
+                            if value and len(str(value)) > col_width - 5:
+                                value = str(value)[:col_width - 8] + "..."
+                            row.append(value or "N/A")
+                        
+                        # Format row với định dạng đẹp
+                        row_formatted = ""
+                        for i, cell in enumerate(row):
+                            if i == 0:
+                                row_formatted += f"{cell.ljust(col_width)} | "
+                            else:
+                                row_formatted += f"{str(cell).ljust(col_width)} | "
+                        
+                        reply += row_formatted.rstrip(" | ") + "\n"
+                        reply += "-" * (len(tour_data) + 1) * (col_width + 3) + "\n"
+                    
+                    # Phân tích và đưa ra khuyến nghị
+                    reply += "\n💡 **PHÂN TÍCH & KHUYẾN NGHỊ:**\n"
+                    
+                    # Phân tích theo tiêu chí
+                    if len(tour_data) == 2:
+                        tour1, tour2 = tour_data[0], tour_data[1]
+                        
+                        # So sánh giá
+                        price1 = self._extract_price_value(tour1.price) if hasattr(tour1, 'price') else None
+                        price2 = self._extract_price_value(tour2.price) if hasattr(tour2, 'price') else None
+                        
+                        if price1 and price2:
+                            if price1 < price2 * 0.7:
+                                reply += "• **Về giá:** Tour 1 có giá tốt hơn đáng kể\n"
+                            elif price2 < price1 * 0.7:
+                                reply += "• **Về giá:** Tour 2 có giá tốt hơn đáng kể\n"
+                            else:
+                                reply += "• **Về giá:** Hai tour có mức giá tương đương\n"
+                        
+                        # So sánh thời gian
+                        duration1 = tour1.duration or ""
+                        duration2 = tour2.duration or ""
+                        
+                        if '1 ngày' in duration1.lower() and '2 ngày' in duration2.lower():
+                            reply += "• **Về thời gian:** Tour 1 ngắn hơn, phù hợp bận rộn\n"
+                            reply += "• **Về thời gian:** Tour 2 cho trải nghiệm sâu hơn\n"
+                        
+                        # So sánh loại hình
+                        type1 = _extract_tour_type(tour1)
+                        type2 = _extract_tour_type(tour2)
+                        
+                        if type1 != type2:
+                            reply += f"• **Về trọng tâm:** Tour 1 tập trung {type1}\n"
+                            reply += f"• **Về trọng tâm:** Tour 2 tập trung {type2}\n"
+                    
+                    # Khuyến nghị chung
+                    reply += "\n🎯 **HƯỚNG DẪN CHỌN TOUR:**\n"
+                    
+                    # Dựa trên câu hỏi của user
+                    if 'gia đình' in message_lower or 'người lớn tuổi' in message_lower:
+                        reply += "• Ưu tiên tour có hoạt động nhẹ nhàng\n"
+                        reply += "• Chọn tour có dịch vụ hỗ trợ tốt\n"
+                        reply += "• Xem xét tour có ý nghĩa lịch sử, văn hóa\n"
+                    elif 'bạn trẻ' in message_lower or 'nhóm bạn' in message_lower:
+                        reply += "• Ưu tiên tour có hoạt động team building\n"
+                        reply += "• Chọn tour có nhiều trải nghiệm mới lạ\n"
+                        reply += "• Xem xét tour có chi phí hợp lý cho nhóm\n"
+                    elif 'thiền' in message_lower or 'tĩnh tâm' in message_lower:
+                        reply += "• Ưu tiên tour có hoạt động thiền, khí công\n"
+                        reply += "• Chọn tour tại không gian yên tĩnh\n"
+                        reply += "• Xem xét tour có hướng dẫn viên chuyên môn\n"
+                    else:
+                        reply += "• Xác định rõ mục đích chuyến đi\n"
+                        reply += "• Cân nhắc ngân sách và thời gian\n"
+                        reply += "• Xem xét sở thích và nhu cầu nhóm\n"
+                    
+                    reply += "\n📞 **Cần tư vấn thêm? Gọi ngay:** 0332510486"
+                else:
+                    reply = "Không tìm thấy đủ thông tin tour để so sánh. Vui lòng cung cấp tên tour cụ thể hoặc liên hệ hotline 0332510486 để được tư vấn."
             else:
-                reply = "Để so sánh tour, vui lòng cho biết tên 2-3 tour cụ thể. Ví dụ: 'So sánh tour Bạch Mã và tour Trường Sơn'"
+                reply = "Để so sánh tour, vui lòng cho biết tên 2-3 tour cụ thể. Ví dụ:\n"
+                reply += "• 'So sánh tour Bạch Mã và tour Trường Sơn'\n"
+                reply += "• 'Tour nào tốt hơn giữa Mưa Đỏ và Ngọn Lửa Trường Sơn?'\n"
+                reply += "• 'Phân biệt tour lịch sử và tour thiên nhiên'\n\n"
+                reply += "📞 **Tư vấn chọn tour:** 0332510486"
         
-        # 🔹 CASE 4: TOUR RECOMMENDATION
-        elif 'recommendation' in detected_intents or any(keyword in message_lower for keyword in ['phù hợp', 'gợi ý', 'đề xuất']):
-            logger.info("🎯 Processing recommendation request")
+        # 🔹 CASE 4: ENHANCED RECOMMENDATION SYSTEM
+        elif 'recommendation' in detected_intents or any(keyword in message_lower for keyword in ['phù hợp', 'gợi ý', 'đề xuất', 'tư vấn', 'nên đi']):
+            logger.info("🎯 Processing enhanced recommendation request")
             
-            # Phân tích yêu cầu chi tiết
-            requirements = {
-                'family': any(word in message_lower for word in ['gia đình', 'trẻ em', 'con nhỏ', 'bố mẹ']),
-                'senior': any(word in message_lower for word in ['người lớn tuổi', 'cao tuổi', 'ông bà']),
-                'group': any(word in message_lower for word in ['nhóm', 'đoàn', 'công ty', 'bạn bè']),
-                'couple': any(word in message_lower for word in ['cặp đôi', 'đôi lứa', 'người yêu']),
-                'solo': any(word in message_lower for word in ['một mình', 'đi lẻ', 'solo']),
-                'nature': any(word in message_lower for word in ['thiên nhiên', 'rừng', 'núi', 'cây']),
-                'history': any(word in message_lower for word in ['lịch sử', 'di tích', 'chiến tranh']),
-                'meditation': any(word in message_lower for word in ['thiền', 'tĩnh tâm', 'yoga']),
-                'relax': any(word in message_lower for word in ['nghỉ ngơi', 'thư giãn', 'nhẹ nhàng']),
-                'adventure': any(word in message_lower for word in ['phiêu lưu', 'mạo hiểm', 'khám phá']),
-                'budget': any(word in message_lower for word in ['giá rẻ', 'tiết kiệm', 'kinh tế']),
-                'premium': any(word in message_lower for word in ['cao cấp', 'sang trọng', 'premium']),
+            # Advanced user profile extraction
+            user_profile = {
+                'group_type': None,
+                'age_group': None,
+                'interests': [],
+                'budget_range': None,
+                'time_constraint': None,
+                'preferred_location': None,
+                'special_requirements': []
             }
             
-            # Tìm tour phù hợp
+            # Extract group type
+            group_keywords = {
+                'family': ['gia đình', 'con nhỏ', 'trẻ em', 'bố mẹ', 'ông bà', 'đa thế hệ'],
+                'senior': ['người lớn tuổi', 'cao tuổi', 'cựu chiến binh', 'veteran', 'ông bà'],
+                'friends': ['nhóm bạn', 'bạn bè', 'sinh viên', 'bạn trẻ', 'thanh niên'],
+                'corporate': ['công ty', 'team building', 'doanh nghiệp', 'nhân viên', 'đồng nghiệp'],
+                'couple': ['cặp đôi', 'đôi lứa', 'người yêu', 'tình nhân'],
+                'solo': ['một mình', 'đi lẻ', 'solo', 'cá nhân']
+            }
+            
+            for group_type, keywords in group_keywords.items():
+                if any(keyword in message_lower for keyword in keywords):
+                    user_profile['group_type'] = group_type
+                    break
+            
+            # Extract interests
+            interest_keywords = {
+                'history': ['lịch sử', 'di tích', 'chiến tranh', 'tri ân', 'ký ức', 'cổ'],
+                'nature': ['thiên nhiên', 'rừng', 'núi', 'cây', 'suối', 'không khí trong lành'],
+                'meditation': ['thiền', 'yoga', 'tĩnh tâm', 'chữa lành', 'retreat', 'khí công'],
+                'culture': ['văn hóa', 'truyền thống', 'ẩm thực', 'đặc sản', 'phong tục'],
+                'adventure': ['phiêu lưu', 'mạo hiểm', 'khám phá', 'trải nghiệm mới'],
+                'relaxation': ['nghỉ ngơi', 'thư giãn', 'nhẹ nhàng', 'không vội', 'chậm rãi'],
+                'photography': ['chụp ảnh', 'nhiếp ảnh', 'sống ảo', 'check-in', 'đẹp']
+            }
+            
+            for interest, keywords in interest_keywords.items():
+                if any(keyword in message_lower for keyword in keywords):
+                    if interest not in user_profile['interests']:
+                        user_profile['interests'].append(interest)
+            
+            # Extract budget
+            budget_patterns = [
+                r'giá rẻ|tiết kiệm|kinh tế|dưới\s+(\d+)',
+                r'tầm trung|trung bình|vừa phải|khoảng\s+(\d+)',
+                r'cao cấp|sang trọng|premium|trên\s+(\d+)'
+            ]
+            
+            for i, pattern in enumerate(budget_patterns):
+                if re.search(pattern, message_lower):
+                    if i == 0:
+                        user_profile['budget_range'] = 'low'
+                    elif i == 1:
+                        user_profile['budget_range'] = 'medium'
+                    else:
+                        user_profile['budget_range'] = 'high'
+                    break
+            
+            # Extract time constraint
+            if '1 ngày' in message_lower or 'ngắn ngày' in message_lower:
+                user_profile['time_constraint'] = '1day'
+            elif '2 ngày' in message_lower or 'cuối tuần' in message_lower:
+                user_profile['time_constraint'] = '2days'
+            elif '3 ngày' in message_lower or 'dài ngày' in message_lower:
+                user_profile['time_constraint'] = '3+days'
+            
+            # Extract location preference
+            locations = ['huế', 'quảng trị', 'bạch mã', 'trường sơn', 'đông hà', 'miền trung']
+            for loc in locations:
+                if loc in message_lower:
+                    user_profile['preferred_location'] = loc
+                    break
+            
+            # Special requirements
+            special_keywords = {
+                'accessible': ['dễ đi', 'thoải mái', 'nhẹ nhàng', 'ít di chuyển'],
+                'educational': ['học hỏi', 'giáo dục', 'tìm hiểu', 'kiến thức'],
+                'luxury': ['tiện nghi', 'đầy đủ', 'cao cấp', 'sang'],
+                'eco': ['xanh', 'bền vững', 'môi trường', 'thiên nhiên']
+            }
+            
+            for req, keywords in special_keywords.items():
+                if any(keyword in message_lower for keyword in keywords):
+                    user_profile['special_requirements'].append(req)
+            
+            logger.info(f"🎯 User profile extracted: {user_profile}")
+            
+            # SCORING SYSTEM NÂNG CẤP
             matching_tours = []
             
             for idx, tour in TOURS_DB.items():
                 score = 0
                 reasons = []
+                match_details = {}
                 
-                # Kiểm tra tags
-                tour_tags = [tag.lower() for tag in (tour.tags or [])]
+                # 1. Group type matching (30%)
+                if user_profile['group_type']:
+                    tour_tags = [tag.lower() for tag in (tour.tags or [])]
+                    
+                    if user_profile['group_type'] == 'family':
+                        if any('family' in tag for tag in tour_tags):
+                            score += 30
+                            reasons.append("phù hợp gia đình")
+                            match_details['group'] = 'excellent'
+                        elif not any('adventure' in tag or 'extreme' in tag for tag in tour_tags):
+                            score += 15
+                            reasons.append("có thể phù hợp gia đình")
+                            match_details['group'] = 'good'
+                    
+                    elif user_profile['group_type'] == 'senior':
+                        if any('senior' in tag or 'accessible' in tag for tag in tour_tags):
+                            score += 30
+                            reasons.append("thiết kế cho người lớn tuổi")
+                            match_details['group'] = 'excellent'
+                        elif any('nature' in tag or 'meditation' in tag for tag in tour_tags):
+                            score += 20
+                            reasons.append("nhẹ nhàng, phù hợp lớn tuổi")
+                            match_details['group'] = 'good'
+                    
+                    elif user_profile['group_type'] == 'friends':
+                        if any('friends' in tag or 'group' in tag for tag in tour_tags):
+                            score += 30
+                            reasons.append("phù hợp nhóm bạn")
+                            match_details['group'] = 'excellent'
+                        elif any('adventure' in tag or 'experience' in tag for tag in tour_tags):
+                            score += 20
+                            reasons.append("nhiều hoạt động nhóm")
+                            match_details['group'] = 'good'
                 
-                # Phù hợp gia đình
-                if requirements['family']:
-                    if any('family' in tag for tag in tour_tags):
-                        score += 3
-                        reasons.append("phù hợp gia đình")
-                    elif 'history' in tour_tags and not requirements['history']:
-                        score -= 1  # Trừ điểm nếu tour lịch sử nhưng không yêu cầu
+                # 2. Interest matching (40%)
+                if user_profile['interests']:
+                    tour_summary = (tour.summary or '').lower()
+                    tour_tags = [tag.lower() for tag in (tour.tags or [])]
+                    
+                    for interest in user_profile['interests']:
+                        if interest == 'history':
+                            if any('history' in tag for tag in tour_tags) or 'lịch sử' in tour_summary:
+                                score += 40
+                                reasons.append("trọng tâm lịch sử")
+                                match_details['interest'] = 'history'
+                                break
+                        
+                        elif interest == 'nature':
+                            if any('nature' in tag for tag in tour_tags) or 'thiên nhiên' in tour_summary:
+                                score += 40
+                                reasons.append("trải nghiệm thiên nhiên")
+                                match_details['interest'] = 'nature'
+                                break
+                        
+                        elif interest == 'meditation':
+                            if any('meditation' in tag for tag in tour_tags) or 'thiền' in tour_summary:
+                                score += 40
+                                reasons.append("có hoạt động thiền/retreat")
+                                match_details['interest'] = 'meditation'
+                                break
+                        
+                        elif interest == 'culture':
+                            if any('culture' in tag for tag in tour_tags) or 'văn hóa' in tour_summary:
+                                score += 40
+                                reasons.append("khám phá văn hóa")
+                                match_details['interest'] = 'culture'
+                                break
                 
-                # Người lớn tuổi
-                if requirements['senior']:
-                    if any('nature' in tag for tag in tour_tags) or any('meditation' in tag for tag in tour_tags):
-                        score += 2
-                        reasons.append("nhẹ nhàng cho người lớn tuổi")
+                # 3. Budget matching (15%)
+                if user_profile['budget_range'] and tour.price:
+                    price_value = self._extract_price_value(tour.price)
+                    
+                    if price_value:
+                        if user_profile['budget_range'] == 'low' and price_value < 1500000:
+                            score += 15
+                            reasons.append("giá hợp lý")
+                            match_details['budget'] = 'good'
+                        elif user_profile['budget_range'] == 'medium' and 1500000 <= price_value <= 3000000:
+                            score += 15
+                            reasons.append("giá tầm trung")
+                            match_details['budget'] = 'good'
+                        elif user_profile['budget_range'] == 'high' and price_value > 3000000:
+                            score += 15
+                            reasons.append("dịch vụ cao cấp")
+                            match_details['budget'] = 'good'
                 
-                # Thiên nhiên
-                if requirements['nature']:
-                    if any('nature' in tag for tag in tour_tags):
-                        score += 2
-                        reasons.append("trải nghiệm thiên nhiên")
+                # 4. Time constraint matching (10%)
+                if user_profile['time_constraint'] and tour.duration:
+                    duration_lower = tour.duration.lower()
+                    
+                    if user_profile['time_constraint'] == '1day' and '1 ngày' in duration_lower:
+                        score += 10
+                        reasons.append("đúng 1 ngày")
+                        match_details['time'] = 'perfect'
+                    elif user_profile['time_constraint'] == '2days' and '2 ngày' in duration_lower:
+                        score += 10
+                        reasons.append("đúng 2 ngày")
+                        match_details['time'] = 'perfect'
+                    elif user_profile['time_constraint'] == '3+days' and ('3 ngày' in duration_lower or '4 ngày' in duration_lower):
+                        score += 10
+                        reasons.append("đa ngày như yêu cầu")
+                        match_details['time'] = 'perfect'
                 
-                # Thiền/tĩnh tâm
-                if requirements['meditation']:
-                    if any('meditation' in tag for tag in tour_tags):
-                        score += 3
-                        reasons.append("có hoạt động thiền")
+                # 5. Location preference (5%)
+                if user_profile['preferred_location'] and tour.location:
+                    if user_profile['preferred_location'] in tour.location.lower():
+                        score += 5
+                        reasons.append(f"tại {user_profile['preferred_location']}")
+                        match_details['location'] = 'exact'
                 
-                # Nghỉ ngơi
-                if requirements['relax']:
-                    if any('nature' in tag for tag in tour_tags) or any('meditation' in tag for tag in tour_tags):
-                        score += 2
-                        reasons.append("tập trung nghỉ ngơi")
-                
-                # Budget
-                if requirements['budget']:
-                    if tour.price:
-                        # Tìm số trong price
-                        nums = re.findall(r'\d[\d,\.]+', tour.price)
-                        if nums:
-                            try:
-                                price_num = int(nums[0].replace(',', '').replace('.', ''))
-                                if price_num < 2000000:
-                                    score += 2
-                                    reasons.append("giá hợp lý")
-                            except:
-                                pass
+                # 6. Special requirements bonus
+                if user_profile['special_requirements']:
+                    tour_summary = (tour.summary or '').lower()
+                    
+                    if 'accessible' in user_profile['special_requirements']:
+                        if 'dễ dàng' in tour_summary or 'thoải mái' in tour_summary:
+                            score += 5
+                            reasons.append("dễ tiếp cận")
+                    
+                    if 'educational' in user_profile['special_requirements']:
+                        if 'học hỏi' in tour_summary or 'tìm hiểu' in tour_summary:
+                            score += 5
+                            reasons.append("giáo dục, học hỏi")
+                    
+                    if 'eco' in user_profile['special_requirements']:
+                        if any('nature' in tag or 'eco' in tag for tag in (tour.tags or [])):
+                            score += 5
+                            reasons.append("thân thiện môi trường")
                 
                 if score > 0:
-                    matching_tours.append((idx, score, reasons))
+                    matching_tours.append((idx, score, reasons, match_details))
             
             # Sắp xếp theo điểm
             matching_tours.sort(key=lambda x: x[1], reverse=True)
             
+            # ================== FALLBACK STRATEGIES ==================
+            # Strategy 1: Content-based fallback
+            if not matching_tours:
+                logger.info("🔄 Trying content-based fallback")
+                content_matches = []
+                
+                for idx, tour in TOURS_DB.items():
+                    content_score = 0
+                    content_reasons = []
+                    
+                    # Kiểm tra từ khóa trong summary
+                    summary = (tour.summary or '').lower()
+                    query_words = [word for word in message_lower.split() if len(word) > 3]
+                    
+                    for word in query_words:
+                        if word in summary:
+                            content_score += 10
+                            content_reasons.append(f"có từ khóa '{word}'")
+                    
+                    if content_score > 0:
+                        content_matches.append((idx, content_score, content_reasons, {}))
+                
+                if content_matches:
+                    content_matches.sort(key=lambda x: x[1], reverse=True)
+                    matching_tours = content_matches[:5]
+                    logger.info(f"🔍 Content-based matches found: {len(matching_tours)} tours")
+            
+            # Strategy 2: Popular tours fallback
+            if not matching_tours:
+                logger.info("🔄 Trying popular tours fallback")
+                # Chọn các tour phổ biến dựa trên tags và duration
+                popular_tours = []
+                for idx, tour in TOURS_DB.items():
+                    popularity_score = 0
+                    
+                    # Tour 1-2 ngày phổ biến hơn
+                    if tour.duration and ('1 ngày' in tour.duration.lower() or '2 ngày' in tour.duration.lower()):
+                        popularity_score += 20
+                    
+                    # Tour có price rõ ràng
+                    if tour.price and 'liên hệ' not in tour.price.lower():
+                        popularity_score += 10
+                    
+                    # Tour có summary dài (nhiều thông tin)
+                    if tour.summary and len(tour.summary) > 100:
+                        popularity_score += 10
+                    
+                    if popularity_score > 0:
+                        popular_tours.append((idx, popularity_score, ["tour phổ biến"], {}))
+                
+                if popular_tours:
+                    popular_tours.sort(key=lambda x: x[1], reverse=True)
+                    matching_tours = popular_tours[:3]
+                    logger.info(f"🔍 Popular tours fallback: {len(matching_tours)} tours")
+            
+            # Strategy 3: Last resort - random 2 tours
+            if not matching_tours and TOURS_DB:
+                logger.info("🔄 Last resort: selecting 2 random tours")
+                import random
+                all_indices = list(TOURS_DB.keys())
+                if len(all_indices) >= 2:
+                    random_indices = random.sample(all_indices, min(2, len(all_indices)))
+                    matching_tours = [(idx, 10, ["tour tiêu biểu"], {}) for idx in random_indices]
+            
+            # ================== GENERATE RECOMMENDATION RESPONSE ==================
             if matching_tours:
-                reply = "🎯 **ĐỀ XUẤT TOUR PHÙ HỢP** 🎯\n\n"
+                # Lưu recommendations vào context
+                context.last_recommended_tours = [idx for idx, _, _, _ in matching_tours]
                 
-                # Top recommendation
-                top_idx, top_score, top_reasons = matching_tours[0]
-                top_tour = TOURS_DB.get(top_idx)
+                # Phân loại recommendations
+                excellent_matches = [t for t in matching_tours if t[1] >= 60]
+                good_matches = [t for t in matching_tours if 30 <= t[1] < 60]
+                other_matches = [t for t in matching_tours if t[1] < 30]
                 
-                if top_tour:
-                    reply += f"🏆 **PHÙ HỢP NHẤT ({int(top_score/10*100)}%)**\n"
-                    reply += f"**{top_tour.name}**\n"
-                    reply += f"✅ Lý do: {', '.join(top_reasons[:3])}\n"
-                    if top_tour.duration:
-                        reply += f"⏱️ Thời gian: {top_tour.duration}\n"
-                    if top_tour.location:
-                        reply += f"📍 Địa điểm: {top_tour.location}\n"
-                    if top_tour.price:
-                        reply += f"💰 Giá: {top_tour.price[:80]}\n"
+                reply = "🎯 **ĐỀ XUẤT TOUR THÔNG MINH** 🎯\n\n"
+                
+                # Hiển thị thông tin user profile
+                if any([user_profile['group_type'], user_profile['interests'], user_profile['budget_range']]):
+                    reply += "📋 **DỰA TRÊN YÊU CẦU CỦA BẠN:**\n"
+                    
+                    if user_profile['group_type']:
+                        group_names = {
+                            'family': 'Gia đình',
+                            'senior': 'Người lớn tuổi/Cựu chiến binh',
+                            'friends': 'Nhóm bạn',
+                            'corporate': 'Công ty/Team building',
+                            'couple': 'Cặp đôi',
+                            'solo': 'Đi một mình'
+                        }
+                        reply += f"• **Đối tượng:** {group_names.get(user_profile['group_type'], user_profile['group_type'])}\n"
+                    
+                    if user_profile['interests']:
+                        interest_names = {
+                            'history': 'Lịch sử',
+                            'nature': 'Thiên nhiên',
+                            'meditation': 'Thiền/Retreat',
+                            'culture': 'Văn hóa/Ẩm thực',
+                            'adventure': 'Phiêu lưu',
+                            'relaxation': 'Thư giãn',
+                            'photography': 'Chụp ảnh'
+                        }
+                        interests_str = ', '.join([interest_names.get(i, i) for i in user_profile['interests'][:3]])
+                        reply += f"• **Sở thích:** {interests_str}\n"
+                    
+                    if user_profile['budget_range']:
+                        budget_names = {
+                            'low': 'Tiết kiệm (dưới 1.5 triệu)',
+                            'medium': 'Tầm trung (1.5-3 triệu)',
+                            'high': 'Cao cấp (trên 3 triệu)'
+                        }
+                        reply += f"• **Ngân sách:** {budget_names.get(user_profile['budget_range'], 'Không xác định')}\n"
+                    
                     reply += "\n"
                 
-                # Other recommendations (tối đa 2 tour)
-                other_tours = matching_tours[1:3]
-                if other_tours:
-                    reply += "📋 **LỰA CHỌN KHÁC:**\n"
-                    for idx, score, reasons in other_tours:
+                # Top recommendations (xuất sắc)
+                if excellent_matches:
+                    reply += "🏆 **PHÙ HỢP NHẤT VỚI BẠN**\n\n"
+                    
+                    for idx, score, reasons, details in excellent_matches[:2]:
                         tour = TOURS_DB.get(idx)
                         if tour:
-                            reply += f"• **{tour.name}** ({int(score/10*100)}%)\n"
+                            # Tính phần trăm phù hợp
+                            match_percent = min(100, int(score))
+                            
+                            reply += f"**{tour.name}** ({match_percent}% phù hợp)\n"
+                            reply += f"✅ **Lý do đề xuất:** {', '.join(reasons[:3])}\n"
+                            
+                            if tour.duration:
+                                reply += f"⏱️ **Thời gian:** {tour.duration}\n"
+                            if tour.location:
+                                location_short = tour.location[:50] + "..." if len(tour.location) > 50 else tour.location
+                                reply += f"📍 **Địa điểm:** {location_short}\n"
+                            if tour.price:
+                                price_short = tour.price[:80] + "..." if len(tour.price) > 80 else tour.price
+                                reply += f"💰 **Giá:** {price_short}\n"
+                            
+                            # Thêm điểm nổi bật từ summary
+                            if tour.summary:
+                                # Lấy câu đầu tiên của summary
+                                first_sentence = tour.summary.split('.')[0]
+                                if len(first_sentence) > 100:
+                                    first_sentence = first_sentence[:100] + "..."
+                                if first_sentence:
+                                    reply += f"✨ **Điểm nổi bật:** {first_sentence}\n"
+                            
+                            reply += "\n"
+                
+                # Good recommendations
+                if good_matches and (not excellent_matches or len(excellent_matches) < 2):
+                    reply += "🥈 **LỰA CHỌN TỐT KHÁC**\n\n"
+                    
+                    display_count = min(2, len(good_matches))
+                    for idx, score, reasons, details in good_matches[:display_count]:
+                        tour = TOURS_DB.get(idx)
+                        if tour:
+                            match_percent = min(100, int(score))
+                            reply += f"• **{tour.name}** ({match_percent}%)\n"
+                            
                             if tour.duration:
                                 reply += f"  ⏱️ {tour.duration}"
                             if tour.location:
-                                reply += f" | 📍 {tour.location[:30]}"
+                                loc_short = tour.location[:30] + "..." if len(tour.location) > 30 else tour.location
+                                reply += f" | 📍 {loc_short}"
                             reply += "\n"
                 
-                reply += "\n💡 **CẦN TƯ VẤN CHI TIẾT?**\n"
-                reply += "📞 Gọi ngay 0332510486 để:\n"
-                reply += "• Nhận lịch trình chi tiết\n"
-                reply += "• Báo giá chính xác\n"
-                reply += "• Đặt tour ưu đãi\n"
+                # Other recommendations (nếu cần)
+                if other_matches and (not excellent_matches and not good_matches):
+                    reply += "📋 **CÁC LỰA CHỌN KHÁC**\n\n"
+                    
+                    for idx, score, reasons, details in other_matches[:2]:
+                        tour = TOURS_DB.get(idx)
+                        if tour:
+                            reply += f"• **{tour.name}**\n"
+                            if tour.duration:
+                                reply += f"  ⏱️ {tour.duration}\n"
+                
+                # Personalized advice
+                reply += "\n💡 **LỜI KHUYÊN CÁ NHÂN HÓA:**\n"
+                
+                if user_profile['group_type'] == 'senior' or 'cựu chiến binh' in message_lower:
+                    reply += "• **Với cựu chiến binh:** Chọn tour có lịch trình nhẹ nhàng, ý nghĩa tri ân\n"
+                    reply += "• **Lưu ý:** Thông báo trước về nhu cầu đặc biệt (nếu có)\n"
+                    reply += "• **Ưu đãi:** Cựu chiến binh được giảm 5-10% giá tour\n\n"
+                    
+                    # Đặc biệt tìm tour cho cựu chiến binh
+                    veteran_tours = []
+                    for idx, tour in TOURS_DB.items():
+                        if tour.summary and any(word in tour.summary.lower() for word in ['lịch sử', 'tri ân', 'chiến tranh', 'ký ức']):
+                            veteran_tours.append(idx)
+                    
+                    if veteran_tours and veteran_tours[0] not in [t[0] for t in matching_tours]:
+                        vet_tour = TOURS_DB.get(veteran_tours[0])
+                        if vet_tour:
+                            reply += f"🎖️ **GỢI Ý ĐẶC BIỆT:** {vet_tour.name}\n"
+                            reply += f"   ⏱️ {vet_tour.duration or 'N/A'} | 📍 {vet_tour.location[:40] if vet_tour.location else 'N/A'}\n\n"
+                
+                elif user_profile['group_type'] == 'family':
+                    reply += "• **Với gia đình:** Ưu tiên tour có hoạt động đa dạng cho mọi lứa tuổi\n"
+                    reply += "• **Lưu ý:** Kiểm tra độ tuổi phù hợp và điều kiện sức khỏe\n"
+                    reply += "• **Ưu đãi:** Trẻ em được giảm 30-50% tùy độ tuổi\n\n"
+                
+                elif 'retreat' in message_lower or 'thiền' in message_lower:
+                    reply += "• **Với retreat:** Chọn không gian yên tĩnh, hướng dẫn viên chuyên môn\n"
+                    reply += "• **Lưu ý:** Mang theo trang phục thoải mái, tâm thế cởi mở\n"
+                    reply += "• **Hiệu quả:** Nên tham gia ít nhất 2 ngày để có trải nghiệm sâu\n\n"
+                
+                else:
+                    reply += "• Xác định rõ mục đích chuyến đi (nghỉ dưỡng, khám phá, học hỏi)\n"
+                    reply += "• Cân nhắc thời gian và ngân sách thực tế\n"
+                    reply += "• Đọc kỹ thông tin tour và chuẩn bị tinh thần phù hợp\n\n"
+                
+                reply += "📞 **CẦN TƯ VẤN CHI TIẾT?**\n"
+                reply += "Gọi ngay **0332510486** để:\n"
+                reply += "• Nhận lịch trình chi tiết và báo giá chính xác\n"
+                reply += "• Được tư vấn tour riêng theo nhu cầu cụ thể\n"
+                reply += "• Đặt tour với ưu đãi tốt nhất\n"
+                
+                # Lưu user profile vào context
+                context.user_profile.update(user_profile)
             
             else:
-                # Dùng AI để đề xuất thông minh
+                # No tours found - use intelligent response
                 if client and HAS_OPENAI:
                     try:
-                        prompt = f"""Bạn là tư vấn viên Ruby Wings chuyên nghiệp. Khách hàng cần tư vấn tour nhưng chưa tìm thấy tour phù hợp.
+                        prompt = f"""Bạn là tư vấn viên Ruby Wings chuyên nghiệp. Khách hàng hỏi: "{user_message}"
 
-YÊU CẦU KHÁCH: {user_message}
-
-THÔNG TIN RUBY WINGS:
+DỮ LIỆU RUBY WINGS:
 - Chuyên tour trải nghiệm: lịch sử, thiên nhiên, retreat
-- Đa dạng tour từ 1 ngày đến 4 ngày
+- 32 tour đa dạng từ 1-4 ngày
 - Phù hợp mọi đối tượng: gia đình, nhóm, cá nhân
+- Địa bàn: Huế, Quảng Trị, Bạch Mã, Trường Sơn
+- Hotline: 0332510486
 
 YÊU CẦU:
-1. Thừa nhận chưa tìm thấy tour phù hợp ngay
-2. Đề nghị cung cấp thêm thông tin để tư vấn tốt hơn
-3. Gợi ý một số loại tour phổ biến
-4. Khuyến khích liên hệ hotline
+1. Thừa nhận chưa tìm thấy tour phù hợp ngay lập tức
+2. Hỏi thêm 2-3 câu hỏi để hiểu rõ nhu cầu khách
+3. Gợi ý 3 loại tour phổ biến của Ruby Wings
+4. Khuyến khích liên hệ hotline để được tư vấn chi tiết
 
-Trả lời thân thiện, chuyên nghiệp."""
+Trả lời tự nhiên, thân thiện, chuyên nghiệp."""
+
+                        response = client.chat.completions.create(
+                            model=CHAT_MODEL,
+                            messages=[
+                                {"role": "system", "content": prompt},
+                                {"role": "user", "content": user_message}
+                            ],
+                            temperature=0.7,
+                            max_tokens=350
+                        )
+                        
+                        if response.choices:
+                            reply = response.choices[0].message.content or ""
+                        else:
+                            reply = "Để tôi tư vấn tour phù hợp nhất, bạn có thể cho biết thêm:\n• Số người và độ tuổi tham gia\n• Sở thích chính (thiên nhiên, lịch sử, nghỉ dưỡng)\n• Ngân sách dự kiến và thời gian có thể đi\n\n📞 Hoặc gọi ngay 0332510486 để được tư vấn nhanh!"
+                    
+                    except Exception as e:
+                        logger.error(f"OpenAI recommendation error: {e}")
+                        reply = "Ruby Wings có nhiều tour đa dạng phù hợp với nhu cầu của bạn. Vui lòng liên hệ hotline 0332510486 để được tư vấn chi tiết và đề xuất tour riêng."
+                else:
+                    reply = "Để tư vấn tour phù hợp nhất, vui lòng cung cấp thêm thông tin hoặc liên hệ trực tiếp hotline 0332510486."
+        
+        # 🔹 CASE 5: GENERAL INFORMATION - NÂNG CẤP
+        elif 'general_info' in detected_intents or any(keyword in message_lower for keyword in ['giới thiệu', 'là gì', 'thế nào', 'sứ mệnh', 'giá trị', 'triết lý']):
+            logger.info("🏛️ Processing enhanced general information request")
+            
+            # Xác định loại thông tin cụ thể
+            if any(word in message_lower for word in ['sứ mệnh', 'mission', 'mục đích']):
+                reply = "🌟 **SỨ MỆNH RUBY WINGS** 🌟\n\n"
+                reply += "Ruby Wings ra đời với sứ mệnh:\n\n"
+                reply += "🎯 **1. KẾT NỐI QUÁ KHỨ - HIỆN TẠI:**\n"
+                reply += "• Tạo cầu nối giữa lịch sử hào hùng và thế hệ hôm nay\n"
+                reply += "• Giúp khách hàng hiểu và trân trọng giá trị lịch sử\n"
+                reply += "• Bảo tồn và phát huy di sản văn hóa dân tộc\n\n"
+                reply += "🎯 **2. CHỮA LÀNH VÀ CÂN BẰNG:**\n"
+                reply += "• Mang đến không gian retreat giữa thiên nhiên\n"
+                reply += "• Giúp khách hàng tìm lại sự bình an nội tâm\n"
+                reply += "• Cân bằng cuộc sống qua thiền và khí công\n\n"
+                reply += "🎯 **3. LAN TỎA GIÁ TRỊ TÍCH CỰC:**\n"
+                reply += "• Tạo trải nghiệm du lịch có ý nghĩa và chiều sâu\n"
+                reply += "• Đóng góp cho cộng đồng và phát triển bền vững\n"
+                reply += "• Truyền cảm hứng sống tích cực, có mục đích\n\n"
+                reply += "📞 **Đồng hành cùng sứ mệnh của chúng tôi:** 0332510486"
+            
+            elif any(word in message_lower for word in ['giá trị cốt lõi', 'core value', 'giá trị']):
+                reply = "💎 **3 GIÁ TRỊ CỐT LÕI RUBY WINGS** 💎\n\n"
+                reply += "**1. 🏛️ TÔN VINH LỊCH SỬ DÂN TỘC**\n"
+                reply += "• Tổ chức các hành trình về nguồn có chiều sâu\n"
+                reply += "• Kết nối thế hệ trẻ với quá khứ hào hùng\n"
+                reply += "• Bảo tồn và phát huy giá trị di sản\n"
+                reply += "• Tạo không gian tri ân và tưởng nhớ\n\n"
+                reply += "**2. 🌿 BẢO TỒN VĂN HÓA BẢN ĐỊA**\n"
+                reply += "• Đưa khách đến với văn hóa địa phương chân thực\n"
+                reply += "• Hỗ trợ cộng đồng và kinh tế địa phương\n"
+                reply += "• Giới thiệu ẩm thực, nghề truyền thống đặc sắc\n"
+                reply += "• Tạo tương tác có ý nghĩa với người dân\n\n"
+                reply += "**3. ✨ LAN TỎA NĂNG LƯỢNG TÍCH CỰC**\n"
+                reply += "• Thiết kế tour giúp khách tái tạo năng lượng\n"
+                reply += "• Tạo môi trường để khám phá bản thân\n"
+                reply += "• Truyền cảm hứng sống chậm, sống sâu\n"
+                reply += "• Kết nối con người với thiên nhiên và nội tâm\n\n"
+                reply += "📞 **Trải nghiệm giá trị cốt lõi trong từng hành trình:** 0332510486"
+            
+            elif 'triết lý' in message_lower or 'chuẩn mực' in message_lower:
+                reply = self._get_philosophy_response()
+            
+            elif 'ruby wings' in message_lower or 'công ty' in message_lower:
+                reply = self._get_company_introduction()
+            
+            else:
+                # Dùng AI cho các câu hỏi chung khác
+                if client and HAS_OPENAI:
+                    try:
+                        prompt = f"""Bạn là đại diện Ruby Wings Travel. Trả lời câu hỏi: "{user_message}"
+
+THÔNG TIN CÔNG TY:
+- Tên: Ruby Wings Travel
+- Chuyên: Tour trải nghiệm lịch sử, retreat, văn hóa
+- Triết lý: Chuẩn mực - Chân thành - Có chiều sâu
+- Sứ mệnh: Kết nối quá khứ, chữa lành hiện tại, lan tỏa tương lai
+- Giá trị: Tôn vinh lịch sử, bảo tồn văn hóa, lan tỏa năng lượng tích cực
+- Hotline: 0332510486
+
+YÊU CẦU:
+1. Trả lời đúng trọng tâm câu hỏi
+2. Kết hợp thông tin về Ruby Wings một cách tự nhiên
+3. Giọng văn chuyên nghiệp, thân thiện
+4. Kết thúc bằng lời mời tìm hiểu tour cụ thể
+
+Trả lời trong 200-250 từ."""
 
                         response = client.chat.completions.create(
                             model=CHAT_MODEL,
@@ -3775,89 +5368,7 @@ Trả lời thân thiện, chuyên nghiệp."""
                                 {"role": "user", "content": user_message}
                             ],
                             temperature=0.6,
-                            max_tokens=300
-                        )
-                        
-                        if response.choices:
-                            reply = response.choices[0].message.content or ""
-                        else:
-                            reply = "Để tôi tư vấn tour phù hợp nhất, bạn có thể cho biết thêm:\n• Số người tham gia\n• Độ tuổi các thành viên\n• Sở thích chính (thiên nhiên, lịch sử, nghỉ dưỡng)\n• Ngân sách dự kiến\n• Thời gian có thể đi"
-                    
-                    except Exception as e:
-                        logger.error(f"OpenAI recommendation error: {e}")
-                        reply = "Ruby Wings có nhiều tour đa dạng phù hợp với nhu cầu của bạn. Vui lòng liên hệ hotline 0332510486 để được tư vấn chi tiết và đề xuất tour riêng."
-                else:
-                    reply = "Để tư vấn tour phù hợp nhất, vui lòng cung cấp thêm thông tin hoặc liên hệ trực tiếp hotline 0332510486."
-        
-        # 🔹 CASE 5: GENERAL INFORMATION (giới thiệu, triết lý, văn hóa)
-        elif 'general_info' in detected_intents or any(keyword in message_lower for keyword in ['giới thiệu', 'là gì', 'thế nào', 'triết lý']):
-            logger.info("🏛️ Processing general information request")
-            
-            # Xác định loại thông tin cần
-            if 'ruby wings' in message_lower or 'công ty' in message_lower:
-                reply = "🏛️ **GIỚI THIỆU RUBY WINGS TRAVEL** 🏛️\n\n"
-                reply += "Ruby Wings là đơn vị tổ chức tour du lịch trải nghiệm đặc sắc, chuyên sâu về:\n\n"
-                reply += "🎯 **3 TRỤ CỘT CHÍNH:**\n"
-                reply += "1. **Tour Lịch Sử - Tri Ân:** Hành trình về nguồn, kết nối quá khứ\n"
-                reply += "2. **Tour Retreat - Chữa Lành:** Thiền, khí công, tĩnh tâm giữa thiên nhiên\n"
-                reply += "3. **Tour Trải Nghiệm - Khám Phá:** Văn hóa, ẩm thực, đời sống địa phương\n\n"
-                reply += "✨ **TRIẾT LÝ HOẠT ĐỘNG:**\n"
-                reply += "• Chuẩn mực trong dịch vụ\n"
-                reply += "• Chân thành trong kết nối\n"
-                reply += "• Chiều sâu trong trải nghiệm\n\n"
-                reply += "🌿 **GIÁ TRỊ CỐT LÕI:**\n"
-                reply += "• Tôn vinh lịch sử dân tộc\n"
-                reply += "• Bảo tồn văn hóa bản địa\n"
-                reply += "• Lan tỏa năng lượng tích cực\n\n"
-                reply += "📞 **Kết nối với chúng tôi:** 0332510486"
-            
-            elif 'triết lý' in message_lower or 'chuẩn mực' in message_lower:
-                reply = "✨ **TRIẾT LÝ 'CHUẨN MỰC - CHÂN THÀNH - CÓ CHIỀU SÂU'** ✨\n\n"
-                reply += "Triết lý này được thể hiện trong mọi tour của Ruby Wings:\n\n"
-                reply += "🏆 **CHUẨN MỰC:**\n"
-                reply += "• Tiêu chuẩn dịch vụ cao nhất\n"
-                reply += "• An toàn tuyệt đối cho khách hàng\n"
-                reply += "• Chuyên nghiệp trong từng chi tiết\n\n"
-                reply += "❤️ **CHÂN THÀNH:**\n"
-                reply += "• Kết nối thật với con người, văn hóa\n"
-                reply += "• Đồng hành chân thành cùng khách hàng\n"
-                reply += "• Tư vấn trung thực, minh bạch\n\n"
-                reply += "🌌 **CÓ CHIỀU SÂU:**\n"
-                reply += "• Trải nghiệm có ý nghĩa, giá trị\n"
-                reply += "• Khám phá bản chất, không chỉ bề nổi\n"
-                reply += "• Đọng lại bài học, cảm xúc sâu sắc\n\n"
-                reply += "📞 **Trải nghiệm triết lý này trong tour:** 0332510486"
-            
-            else:
-                # Dùng AI cho các câu hỏi chung khác
-                if client and HAS_OPENAI:
-                    try:
-                        prompt = f"""Bạn là đại diện Ruby Wings Travel. Trả lời câu hỏi chung về công ty.
-
-CÂU HỎI: {user_message}
-
-THÔNG TIN CÔNG TY:
-- Tên: Ruby Wings Travel
-- Chuyên: Tour trải nghiệm lịch sử, retreat, văn hóa
-- Triết lý: Chuẩn mực - Chân thành - Có chiều sâu
-- Hotline: 0332510486
-
-YÊU CẦU:
-1. Trả lời đúng trọng tâm câu hỏi
-2. Giới thiệu ngắn gọn về Ruby Wings nếu phù hợp
-3. Kết thúc bằng lời mời tìm hiểu tour cụ thể
-4. Giọng văn chuyên nghiệp, thân thiện
-
-Trả lời trong 150-200 từ."""
-
-                        response = client.chat.completions.create(
-                            model=CHAT_MODEL,
-                            messages=[
-                                {"role": "system", "content": prompt},
-                                {"role": "user", "content": user_message}
-                            ],
-                            temperature=0.5,
-                            max_tokens=300
+                            max_tokens=400
                         )
                         
                         if response.choices:
@@ -3873,12 +5384,110 @@ Trả lời trong 150-200 từ."""
                 else:
                     reply = "Ruby Wings Travel - Đồng hành cùng bạn trong những hành trình ý nghĩa. 📞 Hotline: 0332510486"
         
-        # 🔹 CASE 6: LOCATION & WEATHER INFO
+        # 🔹 CASE 6: WELLNESS & MEDITATION INFO - NÂNG CẤP
+        elif 'wellness_info' in detected_intents or any(keyword in message_lower for keyword in ['thiền', 'yoga', 'chữa lành', 'retreat', 'tĩnh tâm', 'khí công']):
+            logger.info("🕉️ Processing enhanced wellness/meditation inquiry")
+            
+            # Tìm tour có hoạt động thiền/retreat
+            meditation_tours = []
+            for idx, tour in TOURS_DB.items():
+                tour_text = f"{tour.name or ''} {tour.summary or ''} {tour.style or ''}".lower()
+                if any(keyword in tour_text for keyword in ['thiền', 'yoga', 'retreat', 'tĩnh tâm', 'khí công', 'chữa lành']):
+                    meditation_tours.append(idx)
+            
+            if meditation_tours:
+                # Lấy thông tin chi tiết
+                detailed_tours = []
+                for idx in meditation_tours[:5]:  # Giới hạn 5 tour
+                    tour = TOURS_DB.get(idx)
+                    if tour:
+                        # Phân loại mức độ tập trung vào thiền
+                        meditation_level = "có hoạt động"
+                        tour_text = f"{tour.summary or ''}".lower()
+                        
+                        if 'thiền định' in tour_text or 'retreat' in tour_text:
+                            meditation_level = "trọng tâm"
+                        elif 'khí công' in tour_text or 'yoga' in tour_text:
+                            meditation_level = "kết hợp"
+                        
+                        detailed_tours.append({
+                            'tour': tour,
+                            'level': meditation_level,
+                            'duration': tour.duration or 'N/A',
+                            'location': tour.location or 'N/A'
+                        })
+                
+                if detailed_tours:
+                    reply = "🕉️ **TOUR THIỀN & RETREAT RUBY WINGS** 🕉️\n\n"
+                    
+                    # Phân loại theo mức độ
+                    focus_tours = [t for t in detailed_tours if t['level'] == 'trọng tâm']
+                    combined_tours = [t for t in detailed_tours if t['level'] == 'kết hợp']
+                    activity_tours = [t for t in detailed_tours if t['level'] == 'có hoạt động']
+                    
+                    if focus_tours:
+                        reply += "🎯 **TOUR RETREAT CHUYÊN SÂU**\n"
+                        reply += "(Tập trung vào thiền, khí công, chữa lành)\n\n"
+                        
+                        for tour_info in focus_tours[:2]:
+                            tour = tour_info['tour']
+                            reply += f"• **{tour.name}**\n"
+                            reply += f"  ⏱️ {tour_info['duration']} | 📍 {tour_info['location'][:40] if len(tour_info['location']) > 40 else tour_info['location']}\n"
+                            
+                            # Trích dẫn điểm đặc biệt
+                            if tour.summary:
+                                # Tìm câu có từ khóa thiền
+                                sentences = tour.summary.split('.')
+                                meditation_sentences = [s.strip() for s in sentences if any(word in s.lower() for word in ['thiền', 'yoga', 'khí công', 'tĩnh tâm'])]
+                                if meditation_sentences:
+                                    highlight = meditation_sentences[0][:100] + "..." if len(meditation_sentences[0]) > 100 else meditation_sentences[0]
+                                    reply += f"  ✨ {highlight}\n"
+                            
+                            reply += "\n"
+                    
+                    if combined_tours:
+                        reply += "🧘 **TOUR KẾT HỢP THIỀN**\n"
+                        reply += "(Có hoạt động thiền/yoga trong lịch trình)\n\n"
+                        
+                        for tour_info in combined_tours[:2]:
+                            tour = tour_info['tour']
+                            reply += f"• **{tour.name}**\n"
+                            reply += f"  ⏱️ {tour_info['duration']} | 📍 {tour_info['location'][:35]}\n"
+                            reply += "\n"
+                    
+                    if activity_tours and not (focus_tours or combined_tours):
+                        reply += "🌿 **TOUR CÓ HOẠT ĐỘNG THIỀN**\n\n"
+                        for tour_info in activity_tours[:3]:
+                            tour = tour_info['tour']
+                            reply += f"• **{tour.name}**\n"
+                            reply += f"  ⏱️ {tour_info['duration']} | 📍 {tour_info['location'][:30]}\n"
+                    
+                    # Thông tin về lợi ích
+                    reply += "\n💫 **LỢI ÍCH THIỀN & RETREAT:**\n"
+                    reply += "1. **Giảm stress:** Hạ cortisol, tăng serotonin\n"
+                    reply += "2. **Cải thiện sức khỏe:** Hạ huyết áp, tăng miễn dịch\n"
+                    reply += "3. **Tăng tập trung:** Cải thiện khả năng chú ý\n"
+                    reply += "4. **Cân bằng cảm xúc:** Kiểm soát lo âu, trầm cảm\n"
+                    reply += "5. **Kết nối nội tâm:** Hiểu rõ bản thân hơn\n\n"
+                    
+                    reply += "👥 **ĐỐI TƯỢNG PHÙ HỢP:**\n"
+                    reply += "• Người làm việc căng thẳng, stress\n"
+                    reply += "• Muốn tìm lại sự bình an nội tâm\n"
+                    reply += "• Cần không gian để suy ngẫm và phát triển\n"
+                    reply += "• Muốn cải thiện sức khỏe tinh thần và thể chất\n\n"
+                    
+                    reply += "📞 **Đặt tour retreat thiền:** 0332510486"
+                else:
+                    reply = "Ruby Wings chuyên tổ chức các tour retreat kết hợp thiền, khí công và trị liệu thiên nhiên. Liên hệ 0332510486 để được tư vấn."
+            else:
+                reply = "Ruby Wings có nhiều tour kết hợp hoạt động thiền và retreat. Liên hệ 0332510486 để được tư vấn tour phù hợp."
+        
+        # 🔹 CASE 7: LOCATION & WEATHER INFO - NÂNG CẤP
         elif 'location_info' in detected_intents or 'weather_info' in detected_intents:
-            logger.info("🌤️ Processing location/weather inquiry")
+            logger.info("🌤️ Processing enhanced location/weather inquiry")
             
             # Xác định địa điểm được hỏi
-            locations = ['huế', 'quảng trị', 'bạch mã', 'trường sơn', 'đông hà']
+            locations = ['huế', 'quảng trị', 'bạch mã', 'trường sơn', 'đông hà', 'miền trung']
             mentioned_location = None
             
             for loc in locations:
@@ -3887,285 +5496,79 @@ Trả lời trong 150-200 từ."""
                     break
             
             if mentioned_location:
+                # Tìm tour tại địa điểm này
+                location_tours = []
+                for idx, tour in TOURS_DB.items():
+                    if tour.location and mentioned_location in tour.location.lower():
+                        location_tours.append(tour)
+                
                 if 'weather' in message_lower or 'thời tiết' in message_lower:
-                    # Xử lý câu hỏi thời tiết
-                    reply = f"🌤️ **THÔNG TIN THỜI TIẾT {mentioned_location.upper()}** 🌤️\n\n"
-                    
-                    if mentioned_location == 'huế':
-                        reply += "**Tháng 12 tại Huế:**\n"
-                        reply += "• Nhiệt độ: 18-24°C (mát mẻ)\n"
-                        reply += "• Thời tiết: Ít mưa, nhiều nắng nhẹ\n"
-                        reply += "• Đặc điểm: Se lạnh về đêm và sáng\n"
-                        reply += "• Lưu ý: Mang theo áo khoác nhẹ\n\n"
-                    elif mentioned_location == 'bạch mã':
-                        reply += "**Thời tiết Bạch Mã:**\n"
-                        reply += "• Nhiệt độ: 15-22°C (mát lạnh)\n"
-                        reply += "• Đặc điểm: Sương mù buổi sáng\n"
-                        reply += "• Lưu ý: Mang giày trekking, áo ấm\n\n"
-                    else:
-                        reply += f"**Thời tiết {mentioned_location.title()}:**\n"
-                        reply += "• Miền Trung: Khí hậu nhiệt đới gió mùa\n"
-                        reply += "• Mùa khô: Từ tháng 1-8 (ít mưa)\n"
-                        reply += "• Mùa mưa: Từ tháng 9-12 (mưa nhiều)\n\n"
-                    
-                    reply += "📅 **Thời điểm lý tưởng để đi tour:**\n"
-                    reply += "• Tháng 1-4: Thời tiết đẹp nhất\n"
-                    reply += "• Tháng 5-8: Nắng đẹp, phù hợp trekking\n"
-                    reply += "• Tháng 9-12: Mưa nhiều, check kỹ dự báo\n\n"
-                    reply += "📞 **Tư vấn tour phù hợp thời tiết:** 0332510486"
-                
+                    reply = self._get_weather_info(mentioned_location, location_tours)
                 else:
-                    # Xử lý câu hỏi địa điểm chung
-                    reply = f"📍 **THÔNG TIN {mentioned_location.upper()}** 📍\n\n"
-                    
-                    if mentioned_location == 'huế':
-                        reply += "**Huế - Kinh đô cổ của Việt Nam:**\n"
-                        reply += "• Di sản văn hóa UNESCO\n"
-                        reply += "• Nổi tiếng: Đại Nội, Lăng tẩm, Sông Hương\n"
-                        reply += "• Ẩm thực: Bún bò Huế, bánh bèo, cơm hến\n"
-                        reply += "• Tour phổ biến: Di sản Huế, ẩm thực Huế\n\n"
-                    elif mentioned_location == 'bạch mã':
-                        reply += "**Bạch Mã - Vườn quốc gia:**\n"
-                        reply += "• Độ cao: 1.450m so với mực nước biển\n"
-                        reply += "• Hệ sinh thái: Rừng nguyên sinh đa dạng\n"
-                        reply += "• Hoạt động: Trekking, thiền, ngắm cảnh\n"
-                        reply += "• Tour phổ biến: Retreat Bạch Mã 1 ngày\n\n"
-                    elif mentioned_location == 'trường sơn':
-                        reply += "**Trường Sơn - Dãy núi hùng vĩ:**\n"
-                        "• Ý nghĩa lịch sử: Đường Hồ Chí Minh huyền thoại\n"
-                        reply += "• Văn hóa: Cộng đồng Vân Kiều - Pa Kô\n"
-                        reply += "• Hoạt động: Tìm hiểu lịch sử, văn hóa\n"
-                        reply += "• Tour phổ biến: Mưa Đỏ và Trường Sơn\n\n"
-                    
-                    reply += "🎯 **TOUR PHÙ HỢP TẠI ĐÂY:**\n"
-                    # Tìm tour tại địa điểm này
-                    location_tours = []
-                    for idx, tour in TOURS_DB.items():
-                        if tour.location and mentioned_location in tour.location.lower():
-                            location_tours.append(tour)
-                    
-                    if location_tours:
-                        for tour in location_tours[:3]:
-                            reply += f"• **{tour.name}**"
-                            if tour.duration:
-                                reply += f" ({tour.duration})"
-                            reply += "\n"
-                    else:
-                        reply += "• Tour thiên nhiên Bạch Mã\n"
-                        reply += "• Tour lịch sử Trường Sơn\n"
-                        reply += "• Tour di sản Huế\n"
-                    
-                    reply += "\n📞 **Đặt tour khám phá:** 0332510486"
-            
+                    reply = self._get_location_info(mentioned_location, location_tours)
             else:
-                reply = "Ruby Wings tổ chức tour tại nhiều địa điểm: Huế, Quảng Trị, Bạch Mã, Trường Sơn. Bạn quan tâm tour tại khu vực nào?"
+                reply = "Ruby Wings tổ chức tour tại nhiều địa điểm: Huế, Quảng Trị, Bạch Mã, Trường Sơn, Đông Hà. Bạn quan tâm tour tại khu vực nào?"
         
-        # 🔹 CASE 7: FOOD & CULTURE INFO
+        # 🔹 CASE 8: FOOD & CULTURE INFO - NÂNG CẤP
         elif 'food_info' in detected_intents or 'culture_info' in detected_intents:
-            logger.info("🍜 Processing food/culture inquiry")
-            
-            if 'bánh bèo' in message_lower or 'ẩm thực huế' in message_lower:
-                reply = "🍜 **BÁNH BÈO HUẾ - ĐẶC SẢN NỔI TIẾNG** 🍜\n\n"
-                reply += "**Đặc điểm:**\n"
-                reply += "• Làm từ bột gạo, hấp trong chén nhỏ\n"
-                reply += "• Nhân: Tôm cháy, thịt xay, mỡ hành\n"
-                reply += "• Nước chấm: Mắm nêm Huế đặc trưng\n"
-                reply += "• Ăn kèm: Rau sống, ớt xanh\n\n"
-                reply += "🎯 **TRẢI NGHIỆM TRONG TOUR:**\n"
-                reply += "• Tour Ẩm thực Huế: Học làm bánh bèo\n"
-                reply += "• Tour Văn hóa: Thăm làng nghề truyền thống\n"
-                reply += "• Tour Đêm Huế: Thưởng thức đặc sản\n\n"
-                reply += "📞 **Đặt tour ẩm thực Huế:** 0332510486"
-            
-            elif 'văn hóa' in message_lower or 'lịch sử' in message_lower:
-                reply = "🏛️ **VĂN HÓA & LỊCH SỬ MIỀN TRUNG** 🏛️\n\n"
-                reply += "**Điểm nổi bật:**\n"
-                reply += "• Di sản Huế: Cố đô triều Nguyễn\n"
-                reply += "• Chiến tranh: Địa đạo Vịnh Mốc, Thành cổ Quảng Trị\n"
-                reply += "• Văn hóa bản địa: Dân tộc Vân Kiều, Pa Kô\n"
-                reply += "• Kiến trúc: Nhà rường, đình làng\n\n"
-                reply += "🎯 **TOUR VĂN HÓA NỔI BẬT:**\n"
-                
-                # Tìm tour văn hóa
-                culture_tours = []
-                for idx, tour in TOURS_DB.items():
-                    if tour.tags and any('history' in tag or 'culture' in tag for tag in tour.tags):
-                        culture_tours.append(tour)
-                
-                if culture_tours:
-                    for tour in culture_tours[:3]:
-                        reply += f"• **{tour.name}**\n"
-                        if tour.summary:
-                            reply += f"  {tour.summary[:80]}...\n"
-                else:
-                    reply += "• Mưa Đỏ và Trường Sơn\n"
-                    reply += "• Ký ức - Lịch Sử và Đại Ngàn\n"
-                    reply += "• Di sản Huế & Đầm Chuồn\n\n"
-                
-                reply += "\n📞 **Tư vấn tour văn hóa:** 0332510486"
-            
-            else:
-                reply = "Miền Trung Việt Nam nổi tiếng với ẩm thực phong phú và văn hóa đa dạng. Ruby Wings có nhiều tour khám phá ẩm thực và văn hóa đặc sắc."
+            reply = self._get_food_culture_response(message_lower, tour_indices)
         
-        # 🔹 CASE 8: WELLNESS & MEDITATION INFO
-        elif 'wellness_info' in detected_intents:
-            logger.info("🕉️ Processing wellness/meditation inquiry")
-            
-            if 'thiền' in message_lower or 'meditation' in message_lower:
-                reply = "🕉️ **THIỀN & LỢI ÍCH SỨC KHỎE** 🕉️\n\n"
-                reply += "**Lợi ích chính:**\n"
-                reply += "1. **Giảm căng thẳng:** Giảm cortisol, tăng serotonin\n"
-                reply += "2. **Cải thiện tập trung:** Tăng khả năng chú ý\n"
-                reply += "3. **Tăng cường sức khỏe:** Hạ huyết áp, cải thiện tim mạch\n"
-                reply += "4. **Cân bằng cảm xúc:** Kiểm soát lo âu, trầm cảm\n"
-                reply += "5. **Nâng cao nhận thức:** Hiểu rõ bản thân hơn\n\n"
-                reply += "🎯 **TOUR THIỀN & RETREAT RUBY WINGS:**\n"
-                
-                # Tìm tour thiền
-                meditation_tours = []
-                for idx, tour in TOURS_DB.items():
-                    if tour.tags and any('meditation' in tag or 'retreat' in tag for tag in tour.tags):
-                        meditation_tours.append(tour)
-                
-                if meditation_tours:
-                    for tour in meditation_tours[:3]:
-                        reply += f"• **{tour.name}**\n"
-                        if tour.duration:
-                            reply += f"  ⏱️ {tour.duration}"
-                        if tour.location:
-                            reply += f" | 📍 {tour.location[:30]}"
-                        reply += "\n"
-                else:
-                    reply += "• Non nước Bạch Mã - 1 ngày thiền\n"
-                    reply += "• Retreat Trường Sơn - 2 ngày 1 đêm\n"
-                    reply += "• Khí công giữa đại ngàn\n\n"
-                
-                reply += "\n💡 **Phù hợp cho:** Người stress, cần cân bằng, muốn tĩnh tâm\n"
-                reply += "📞 **Đặt retreat thiền:** 0332510486"
-            
-            else:
-                reply = "Ruby Wings chuyên tổ chức các tour retreat kết hợp thiền, khí công và trị liệu thiên nhiên. Liên hệ 0332510486 để được tư vấn."
+        # 🔹 CASE 9: SUSTAINABILITY INFO
+        elif 'sustainability' in detected_intents or any(word in message_lower for word in ['bền vững', 'môi trường', 'xanh', 'cộng đồng']):
+            reply = self._get_sustainability_response()
         
-        # 🔹 CASE 9: GROUP & CUSTOM REQUEST
+        # 🔹 CASE 10: EXPERIENCE INFO
+        elif 'experience' in detected_intents or any(word in message_lower for word in ['trải nghiệm', 'cảm giác', 'cảm nhận']):
+            reply = self._get_experience_response(message_lower, tour_indices)
+        
+        # 🔹 CASE 11: GROUP & CUSTOM REQUEST - NÂNG CẤP
         elif 'group_info' in detected_intents or 'custom_request' in detected_intents:
-            logger.info("👥 Processing group/custom request")
-            
-            if 'nhóm' in message_lower or 'đoàn' in message_lower:
-                reply = "👥 **TOUR NHÓM & ƯU ĐÃI ĐẶC BIỆT** 👥\n\n"
-                reply += "**Chính sách ưu đãi nhóm:**\n"
-                reply += "• Nhóm 10-15 người: Giảm 10%\n"
-                reply += "• Nhóm 16-20 người: Giảm 15%\n"
-                reply += "• Nhóm 21+ người: Giảm 20% + quà tặng\n"
-                reply += "• Cựu chiến binh: Ưu đãi thêm 5%\n\n"
-                reply += "🎯 **TOUR PHÙ HỢP NHÓM:**\n"
-                reply += "1. **Teambuilding công ty:** Tour kết hợp hoạt động nhóm\n"
-                reply += "2. **Gia đình đa thế hệ:** Tour nhẹ nhàng, đa dạng hoạt động\n"
-                reply += "3. **Nhóm bạn:** Tour khám phá, phiêu lưu\n"
-                reply += "4. **Nhóm học sinh/sinh viên:** Tour giáo dục, trải nghiệm\n\n"
-                reply += "✨ **DỊCH VỤ ĐẶC BIỆT CHO NHÓM:**\n"
-                reply += "• Thiết kế tour riêng theo yêu cầu\n"
-                reply += "• Hướng dẫn viên chuyên biệt\n"
-                reply += "• Phương tiện riêng, linh hoạt lịch trình\n"
-                reply += "• Hỗ trợ quay phim, chụp ảnh\n\n"
-                reply += "📞 **Tư vấn tour nhóm:** 0332510486"
-            
-            elif 'cá nhân hóa' in message_lower or 'riêng' in message_lower or 'theo yêu cầu' in message_lower:
-                reply = "✨ **TOUR CÁ NHÂN HÓA - THEO YÊU CẦU** ✨\n\n"
-                reply += "Ruby Wings chuyên thiết kế tour riêng biệt:\n\n"
-                reply += "🎯 **QUY TRÌNH THIẾT KẾ TOUR RIÊNG:**\n"
-                reply += "1. **Tiếp nhận yêu cầu:** Hiểu rõ nhu cầu, sở thích\n"
-                reply += "2. **Thiết kế lịch trình:** Phù hợp thời gian, ngân sách\n"
-                reply += "3. **Báo giá chi tiết:** Minh bạch, cạnh tranh\n"
-                reply += "4. **Chỉnh sửa & hoàn thiện:** Theo feedback của bạn\n"
-                reply += "5. **Triển khai tour:** Chuyên nghiệp, tận tâm\n\n"
-                reply += "🏆 **TOUR RIÊNG NỔI BẬT ĐÃ THỰC HIỆN:**\n"
-                reply += "• Tour gia đình 3 thế hệ (từ 6-70 tuổi)\n"
-                reply += "• Tour teambuilding công ty (50 người)\n"
-                reply += "• Tour retreat thiền 7 ngày\n"
-                reply += "• Tour nhiếp ảnh chuyên nghiệp\n\n"
-                reply += "💡 **YÊU CẦU TOUR RIÊNG CẦN CÓ:**\n"
-                reply += "• Số lượng người tham gia\n"
-                reply += "• Thời gian dự kiến\n"
-                reply += "• Ngân sách ước tính\n"
-                reply += "• Sở thích, yêu cầu đặc biệt\n\n"
-                reply += "📞 **Liên hệ thiết kế tour riêng:** 0332510486"
-            
-            else:
-                reply = "Ruby Wings có chính sách ưu đãi đặc biệt cho nhóm và dịch vụ thiết kế tour theo yêu cầu. Liên hệ hotline để biết thêm chi tiết."
+            reply = self._get_group_custom_response(message_lower)
         
-        # 🔹 CASE 10: BOOKING & POLICY INFO
+        # 🔹 CASE 12: BOOKING & POLICY INFO - NÂNG CẤP
         elif 'booking_info' in detected_intents or 'policy' in detected_intents:
-            logger.info("📝 Processing booking/policy inquiry")
-            
-            if 'đặt tour' in message_lower or 'booking' in message_lower:
-                reply = "📝 **QUY TRÌNH ĐẶT TOUR RUBY WINGS** 📝\n\n"
-                reply += "**Bước 1: Tư vấn & chọn tour**\n"
-                reply += "• Liên hệ hotline 0332510486\n"
-                reply += "• Nhận tư vấn tour phù hợp\n"
-                reply += "• Xác nhận lịch trình, giá cả\n\n"
-                reply += "**Bước 2: Đặt cọc & xác nhận**\n"
-                reply += "• Đặt cọc 30% giá trị tour\n"
-                reply += "• Ký hợp đồng dịch vụ\n"
-                reply += "• Nhận xác nhận booking\n\n"
-                reply += "**Bước 3: Chuẩn bị & thanh toán**\n"
-                reply += "• Thanh toán 70% còn lại trước 7 ngày\n"
-                reply += "• Nhận thông tin chi tiết tour\n"
-                reply += "• Chuẩn bị hành lý, giấy tờ\n\n"
-                reply += "**Bước 4: Khởi hành & trải nghiệm**\n"
-                reply += "• Đón khách tại điểm hẹn\n"
-                reply += "• Trải nghiệm tour tuyệt vời\n"
-                reply += "• Feedback sau tour\n\n"
-                reply += "📞 **Đặt tour ngay:** 0332510486"
-            
-            elif 'giảm giá' in message_lower or 'ưu đãi' in message_lower:
-                reply = "🎁 **CHÍNH SÁCH ƯU ĐÃI & KHUYẾN MÃI** 🎁\n\n"
-                reply += "**1. Ưu đãi nhóm:**\n"
-                reply += "• 10-15 người: Giảm 10%\n"
-                reply += "• 16-20 người: Giảm 15%\n"
-                reply += "• 21+ người: Giảm 20%\n\n"
-                reply += "**2. Ưu đãi đặt sớm:**\n"
-                reply += "• Đặt trước 30 ngày: Giảm 5%\n"
-                reply += "• Đặt trước 60 ngày: Giảm 8%\n\n"
-                reply += "**3. Ưu đãi đặc biệt:**\n"
-                reply += "• Cựu chiến binh: Thêm 5%\n"
-                reply += "• Học sinh/sinh viên: Giảm 10%\n"
-                reply += "• Khách quay lại: Giảm 5%\n\n"
-                reply += "**4. Chương trình tích điểm:**\n"
-                reply += "• Mỗi tour: Tích 1 điểm\n"
-                reply += "• 5 điểm: Giảm 10% tour tiếp theo\n"
-                reply += "• 10 điểm: Tặng 1 tour 1 ngày\n\n"
-                reply += "📞 **Nhận ưu đãi tốt nhất:** 0332510486"
-            
-            else:
-                reply = "Ruby Wings có chính sách ưu đãi hấp dẫn và quy trình đặt tour chuyên nghiệp. Liên hệ hotline để được tư vấn chi tiết."
+            reply = self._get_booking_policy_response(message_lower)
         
-        # 🔹 CASE 11: OUT OF SCOPE QUESTIONS (xử lý bằng AI)
+        # 🔹 CASE 13: OUT OF SCOPE QUESTIONS (xử lý bằng AI nâng cao)
         else:
-            logger.info("🤖 Processing out-of-scope question with AI")
+            logger.info("🤖 Processing complex/out-of-scope question with enhanced AI")
             
-            # Kiểm tra xem có phải câu hỏi ngoài phạm vi không
-            out_of_scope_keywords = [
-                'vàng', 'chứng khoán', 'tỉ giá', 'thời sự', 'tin tức',
-                'chuyện cười', 'đố vui', 'game', 'giải trí',
-                'thể thao', 'bóng đá', 'ca nhạc', 'phim ảnh',
-                'chính trị', 'tôn giáo', 'nhạy cảm'
-            ]
+            # Kiểm tra mức độ phức tạp
+            is_complex = complexity_score >= 5 or len(user_message.split()) > 20
             
-            is_out_of_scope = any(keyword in message_lower for keyword in out_of_scope_keywords)
-            
-            if is_out_of_scope and client and HAS_OPENAI:
+            if is_complex and client and HAS_OPENAI:
                 try:
-                    prompt = f"""Bạn là tư vấn viên Ruby Wings Travel. Khách hỏi câu hỏi ngoài phạm vi tour du lịch.
+                    # Chuẩn bị context từ database
+                    db_context = ""
+                    if tour_indices:
+                        tour_info = []
+                        for idx in tour_indices[:3]:
+                            tour = TOURS_DB.get(idx)
+                            if tour:
+                                tour_info.append(f"- {tour.name}: {tour.summary[:150] if tour.summary else 'Không có mô tả'}")
+                        if tour_info:
+                            db_context = "THÔNG TIN TOUR LIÊN QUAN:\n" + "\n".join(tour_info)
+                    
+                    prompt = f"""Bạn là tư vấn viên Ruby Wings Travel chuyên nghiệp, thông minh.
 
-CÂU HỎI: {user_message}
+CÂU HỎI KHÁCH: {user_message}
+
+{db_context}
+
+THÔNG TIN RUBY WINGS:
+- Chuyên tour trải nghiệm: lịch sử, thiên nhiên, retreat
+- Triết lý: Chuẩn mực - Chân thành - Có chiều sâu
+- 32 tour đa dạng từ 1-4 ngày
+- Hotline: 0332510486
 
 YÊU CẦU:
-1. Lịch sự thông báo không thể trả lời câu hỏi này
-2. Chuyển hướng sang chủ đề tour du lịch
-3. Giới thiệu ngắn về Ruby Wings
-4. Đề nghị liên hệ hotline nếu cần
+1. Phân tích câu hỏi và trả lời chính xác, thông minh
+2. Kết hợp thông tin về Ruby Wings một cách tự nhiên
+3. Nếu không chắc chắn, đề xuất các tour phù hợp
+4. Kết thúc bằng lời mời liên hệ hotline
+5. Giọng văn: chuyên nghiệp, thân thiện, nhiệt tình
 
-Trả lời ngắn gọn, lịch sự, chuyên nghiệp."""
+Trả lời trong 250-300 từ."""
 
                     response = client.chat.completions.create(
                         model=CHAT_MODEL,
@@ -4173,19 +5576,18 @@ Trả lời ngắn gọn, lịch sự, chuyên nghiệp."""
                             {"role": "system", "content": prompt},
                             {"role": "user", "content": user_message}
                         ],
-                        temperature=0.4,
-                        max_tokens=200
+                        temperature=0.7,
+                        max_tokens=500
                     )
                     
                     if response.choices:
                         reply = response.choices[0].message.content or ""
                     else:
-                        reply = "Xin lỗi, tôi chưa thể trả lời câu hỏi này. Tôi là trợ lý AI của Ruby Wings Travel, chuyên tư vấn về các tour du lịch trải nghiệm. Bạn có câu hỏi nào về tour không?"
+                        reply = _generate_fallback_response(user_message, [], tour_indices)
                 
                 except Exception as e:
-                    logger.error(f"OpenAI out-of-scope error: {e}")
-                    reply = "Tôi chuyên tư vấn về các tour du lịch của Ruby Wings. Bạn có câu hỏi nào về tour không?"
-            
+                    logger.error(f"OpenAI complex question error: {e}")
+                    reply = _generate_fallback_response(user_message, [], tour_indices)
             else:
                 # Default: Semantic search + AI
                 search_results = query_index(user_message, TOP_K)
@@ -4198,11 +5600,13 @@ Trả lời ngắn gọn, lịch sự, chuyên nghiệp."""
                     'user_message': user_message,
                     'tour_indices': tour_indices,
                     'detected_intents': detected_intents,
-                    'filters': mandatory_filters.to_dict() if mandatory_filters else {}
+                    'primary_intent': primary_intent,
+                    'filters': mandatory_filters.to_dict() if mandatory_filters else {},
+                    'complexity_score': complexity_score
                 }
                 
                 # Tạo prompt thông minh
-                prompt = _prepare_llm_prompt(user_message, search_results, context_info)
+                prompt = _prepare_enhanced_llm_prompt(user_message, search_results, context_info, TOURS_DB)
                 
                 # Gọi AI
                 if client and HAS_OPENAI:
@@ -4216,7 +5620,7 @@ Trả lời ngắn gọn, lịch sự, chuyên nghiệp."""
                             model=CHAT_MODEL,
                             messages=messages,
                             temperature=0.6,
-                            max_tokens=500,
+                            max_tokens=600,
                             top_p=0.9,
                             frequency_penalty=0.2,
                             presence_penalty=0.1
@@ -4225,40 +5629,51 @@ Trả lời ngắn gọn, lịch sự, chuyên nghiệp."""
                         if response.choices:
                             reply = response.choices[0].message.content or ""
                         else:
-                            reply = _generate_fallback_response(user_message, search_results, tour_indices)
+                            reply = _generate_enhanced_fallback_response(user_message, search_results, tour_indices, TOURS_DB)
                     
                     except Exception as e:
                         logger.error(f"OpenAI general error: {e}")
-                        reply = _generate_fallback_response(user_message, search_results, tour_indices)
+                        reply = _generate_enhanced_fallback_response(user_message, search_results, tour_indices, TOURS_DB)
                 else:
-                    reply = _generate_fallback_response(user_message, search_results, tour_indices)
+                    reply = _generate_enhanced_fallback_response(user_message, search_results, tour_indices, TOURS_DB)
                 
                 sources = [m for _, m in search_results]
         
         # ================== ENHANCE RESPONSE QUALITY ==================
         # Đảm bảo mọi response đều có hotline
-        if "0332510486" not in reply and "hotline" not in reply.lower():
+        if "0332510486" not in reply and "hotline" not in reply.lower() and "liên hệ" not in reply.lower():
             reply += "\n\n📞 **Hotline tư vấn 24/7:** 0332510486"
         
+        # Thêm signature nếu response dài
+        if len(reply) > 300:
+            if not reply.endswith("0332510486") and not reply.endswith("Hotline"):
+                reply += "\n\n---\n**Ruby Wings Travel** - Hành trình ý nghĩa, trải nghiệm sâu sắc"
+        
         # Giới hạn độ dài response
-        if len(reply) > 2000:
-            reply = reply[:2000] + "...\n\n💡 Để biết thêm chi tiết, vui lòng liên hệ hotline 0332510486"
+        if len(reply) > 2500:
+            reply = reply[:2500] + "...\n\n💡 **Để biết thêm chi tiết, vui lòng liên hệ hotline 0332510486**"
         
         # ================== UPDATE CONTEXT ==================
-        # Cập nhật tour context nếu có tour được đề cập
+        # Cập nhật tour context
         if tour_indices and len(tour_indices) > 0:
             context.current_tour = tour_indices[0]
             tour = TOURS_DB.get(tour_indices[0])
             if tour:
                 context.last_tour_name = tour.name
         
-        # Lưu reply vào history
+        # Cập nhật conversation history với metadata
         context.conversation_history.append({
             'role': 'assistant',
             'message': reply,
             'timestamp': datetime.utcnow().isoformat(),
-            'tour_indices': tour_indices
+            'tour_indices': tour_indices,
+            'detected_intents': detected_intents,
+            'primary_intent': primary_intent,
+            'complexity_score': complexity_score
         })
+        
+        # Lưu session context
+        save_session_context(session_id, context)
         
         # ================== FINAL RESPONSE ==================
         processing_time = time.time() - start_time
@@ -4272,30 +5687,35 @@ Trả lời ngắn gọn, lịch sự, chuyên nghiệp."""
                 "last_tour_name": getattr(context, 'last_tour_name', None),
                 "user_preferences": getattr(context, 'user_profile', {}),
                 "detected_intents": detected_intents,
+                "primary_intent": primary_intent,
                 "processing_time_ms": int(processing_time * 1000),
                 "tours_found": len(tour_indices),
-                "complexity_score": complexity_score
+                "complexity_score": complexity_score,
+                "filter_applied": filter_applied
             },
             tour_indices=tour_indices,
             processing_time_ms=int(processing_time * 1000),
             from_memory=False
         )
         
-        # Cache response
+        # Cache response với key nâng cao
         if UpgradeFlags.get_all_flags().get("ENABLE_CACHING", True):
             context_hash = hashlib.md5(json.dumps({
                 'tour_indices': tour_indices,
                 'detected_intents': detected_intents,
-                'complexity': complexity_score
+                'primary_intent': primary_intent,
+                'complexity': complexity_score,
+                'filters': mandatory_filters.to_dict() if mandatory_filters else {}
             }, sort_keys=True).encode()).hexdigest()
             
             cache_key = CacheSystem.get_cache_key(user_message, context_hash)
-            CacheSystem.set(cache_key, chat_response.to_dict())
+            CacheSystem.set(cache_key, chat_response.to_dict(), expiry=300)  # 5 phút
         
         logger.info(f"✅ Processed in {processing_time:.2f}s | "
-                   f"Intents: {detected_intents} | "
+                   f"Primary Intent: {primary_intent} | "
                    f"Tours: {len(tour_indices)} | "
-                   f"Complexity: {complexity_score}")
+                   f"Complexity: {complexity_score} | "
+                   f"Filters: {filter_applied}")
         
         return jsonify(chat_response.to_dict())
     
@@ -4304,18 +5724,23 @@ Trả lời ngắn gọn, lịch sự, chuyên nghiệp."""
         
         processing_time = time.time() - start_time
         
-        # Smart error response
+        # Enhanced error response
         error_response = ChatResponse(
-            reply="⚡ **Có chút trục trặc kỹ thuật, nhưng đội ngũ Ruby Wings vẫn sẵn sàng hỗ trợ bạn!**\n\n"
-                  "🔧 **Cách giải quyết nhanh:**\n"
-                  "1. **Gọi ngay:** 📞 0332510486 (tư vấn trực tiếp)\n"
-                  "2. **Thử lại:** Gõ câu hỏi ngắn gọn hơn\n"
-                  "3. **Chọn tour:** 'Tour 1 ngày Huế', 'Tour gia đình 2 ngày'\n\n"
-                  "⏰ **Chúng tôi hoạt động 24/7 để phục vụ bạn!** 😊",
+            reply="⚡ **Có chút trục trặc kỹ thuật!**\n\n"
+                  "Đội ngũ Ruby Wings vẫn sẵn sàng hỗ trợ bạn qua các kênh sau:\n\n"
+                  "🔧 **GIẢI PHÁP NHANH:**\n"
+                  "1. **Gọi trực tiếp:** 📞 0332510486 (tư vấn ngay)\n"
+                  "2. **Hỏi đơn giản hơn:** 'Tour 1 ngày Huế', 'Tour gia đình 2 ngày'\n"
+                  "3. **Chọn từ danh sách:**\n"
+                  "   • Tour thiên nhiên Bạch Mã\n"
+                  "   • Tour lịch sử Trường Sơn\n"
+                  "   • Tour retreat thiền\n\n"
+                  "⏰ **Chúng tôi hoạt động 24/7 để phục vụ bạn tốt nhất!** 😊",
             sources=[],
             context={
                 "error": str(e),
-                "processing_time_ms": int(processing_time * 1000)
+                "processing_time_ms": int(processing_time * 1000),
+                "error_type": type(e).__name__
             },
             tour_indices=[],
             processing_time_ms=int(processing_time * 1000),
@@ -4324,6 +5749,771 @@ Trả lời ngắn gọn, lịch sự, chuyên nghiệp."""
         
         return jsonify(error_response.to_dict()), 500
 
+
+# ================== HELPER FUNCTIONS ==================
+
+def _extract_price_value(price_text):
+    """Trích xuất giá trị số từ text giá"""
+    if not price_text:
+        return None
+    
+    import re
+    
+    # Tìm tất cả các số trong text
+    numbers = re.findall(r'\d[\d,\.]+', price_text)
+    if not numbers:
+        return None
+    
+    try:
+        # Lấy số đầu tiên và chuyển đổi
+        num_str = numbers[0].replace(',', '').replace('.', '')
+        if num_str.isdigit():
+            return int(num_str)
+    except:
+        pass
+    
+    return None
+
+
+def _get_philosophy_response():
+    """Trả lời về triết lý Ruby Wings"""
+    return """✨ **TRIẾT LÝ 'CHUẨN MỰC - CHÂN THÀNH - CÓ CHIỀU SÂU'** ✨
+
+Triết lý này thấm nhuần trong mọi hoạt động của Ruby Wings:
+
+🏆 **CHUẨN MỰC - SỰ HOÀN HẢO TRONG TỪNG CHI TIẾT:**
+• Tiêu chuẩn dịch vụ cao nhất, an toàn tuyệt đối
+• Chuyên nghiệp từ khâu thiết kế đến triển khai tour
+• Cam kết chất lượng không thỏa hiệp
+
+❤️ **CHÂN THÀNH - KẾT NỐI TỪ TRÁI TIM:**
+• Tương tác chân thật với khách hàng và cộng đồng
+• Tư vấn trung thực, minh bạch mọi thông tin
+• Đồng hành cùng khách hàng như người thân
+
+🌌 **CÓ CHIỀU SÂU - GIÁ TRỊ BỀN VỮNG:**
+• Thiết kế tour có ý nghĩa, để lại bài học sâu sắc
+• Khám phá bản chất chứ không chỉ bề nổi
+• Tạo trải nghiệm chạm đến cảm xúc và nhận thức
+
+📞 **Trải nghiệm triết lý này trong từng hành trình:** 0332510486"""
+
+
+def _get_company_introduction():
+    """Trả lời giới thiệu công ty"""
+    return """🏛️ **GIỚI THIỆU RUBY WINGS TRAVEL** 🏛️
+
+Ruby Wings là đơn vị tổ chức tour du lịch trải nghiệm đặc sắc, chuyên sâu về:
+
+🎯 **3 TRỤ CỘT CHÍNH:**
+
+1. **TOUR LỊCH SỬ - TRI ÂN**
+   • Hành trình về nguồn, kết nối quá khứ
+   • Tham quan di tích, tìm hiểu lịch sử
+   • Hoạt động tri ân, tưởng nhớ
+
+2. **TOUR RETREAT - CHỮA LÀNH**
+   • Thiền, khí công, yoga giữa thiên nhiên
+   • Tĩnh tâm, tái tạo năng lượng
+   • Kết nối với bản thân và vũ trụ
+
+3. **TOUR TRẢI NGHIỆM - KHÁM PHÁ**
+   • Văn hóa, ẩm thực, đời sống địa phương
+   • Hoạt động tương tác với cộng đồng
+   • Khám phá thiên nhiên hùng vĩ
+
+✨ **TẦM NHÌN:**
+Trở thành đơn vị dẫn đầu về tour trải nghiệm có chiều sâu tại Việt Nam
+
+🌟 **SỨ MỆNH:**
+Mang đến hành trình ý nghĩa, kết nối con người với lịch sử, thiên nhiên và chính mình
+
+📞 **Kết nối với chúng tôi:** 0332510486"""
+
+
+def _get_weather_info(location, location_tours):
+    """Trả lời thông tin thời tiết"""
+    reply = f"🌤️ **THÔNG TIN THỜI TIẾT {location.upper()}** 🌤️\n\n"
+    
+    if location == 'huế':
+        reply += "**HUẾ - THỜI TIẾT ĐẶC TRƯNG:**\n"
+        reply += "• **Nhiệt độ:** 18-35°C (mát về đêm, ấm về ngày)\n"
+        reply += "• **Mùa khô:** Tháng 1-8 (ít mưa, nắng đẹp)\n"
+        reply += "• **Mùa mưa:** Tháng 9-12 (mưa nhiều, lụt cục bộ)\n"
+        reply += "• **Độ ẩm:** 70-85% (cao vào mùa mưa)\n\n"
+        
+        reply += "📅 **THÁNG LÝ TƯỞNG ĐI TOUR:**\n"
+        reply += "• **Tháng 1-3:** Mát mẻ, ít mưa, hoa mai nở\n"
+        reply += "• **Tháng 4-6:** Nắng đẹp, phù hợp tham quan\n"
+        reply += "• **Tháng 7-8:** Nóng nhưng ít mưa, giá tour tốt\n"
+        reply += "• **Tháng 9-12:** Mưa nhiều, check dự báo kỹ\n\n"
+        
+    elif location == 'bạch mã':
+        reply += "**BẠCH MÃ - KHÍ HẬU ÔN ĐỚI:**\n"
+        reply += "• **Nhiệt độ:** 15-25°C (mát lạnh quanh năm)\n"
+        reply += "• **Đặc điểm:** Sương mù buổi sáng, se lạnh đêm\n"
+        reply += "• **Mùa đẹp:** Tháng 2-5 (hoa phong lan nở rộ)\n"
+        reply += "• **Mùa mưa:** Tháng 9-12 (đường trơn, cẩn thận)\n\n"
+        
+        reply += "🎒 **CHUẨN BỊ KHI ĐI BẠCH MÃ:**\n"
+        reply += "• Áo ấm, áo mưa nhẹ\n"
+        reply += "• Giày trekking chống trượt\n"
+        reply += "• Thuốc chống côn trùng\n"
+        reply += "• Đèn pin (nếu ở lại qua đêm)\n\n"
+        
+    elif location == 'trường sơn':
+        reply += "**TRƯỜNG SƠN - KHÍ HẬU ĐẶC BIỆT:**\n"
+        reply += "• **Nhiệt độ:** 18-30°C (chênh lệch ngày đêm lớn)\n"
+        reply += "• **Mùa khô:** Tháng 1-4 (đẹp nhất để tham quan)\n"
+        reply += "• **Mùa mưa:** Tháng 5-12 (mưa rừng, ẩm ướt)\n"
+        reply += "• **Đặc điểm:** Nhiều sương mù, thời tiết thay đổi nhanh\n\n"
+        
+    else:
+        reply += f"**{location.upper()} - KHÍ HẬU MIỀN TRUNG:**\n"
+        reply += "• **Đặc trưng:** Nhiệt đới gió mùa\n"
+        reply += "• **Mùa khô:** Tháng 1-8 (nắng nóng, ít mưa)\n"
+        reply += "• **Mùa mưa:** Tháng 9-12 (mưa bão, lũ lụt)\n"
+        reply += "• **Lời khuyên:** Check dự báo 3-5 ngày trước khi đi\n\n"
+    
+    if location_tours:
+        reply += "🎯 **TOUR PHÙ HỢP THEO THỜI TIẾT:**\n"
+        for tour in location_tours[:3]:
+            reply += f"• **{tour.name}**"
+            if tour.duration:
+                reply += f" ({tour.duration})"
+            reply += "\n"
+    
+    reply += "\n📞 **Tư vấn tour phù hợp thời tiết:** 0332510486"
+    return reply
+
+
+def _get_location_info(location, location_tours):
+    """Trả lời thông tin địa điểm"""
+    reply = f"📍 **THÔNG TIN {location.upper()}** 📍\n\n"
+    
+    if location == 'huế':
+        reply += "**HUẾ - KINH ĐÔ CỔ VIỆT NAM**\n\n"
+        reply += "🏛️ **DI SẢN UNESCO:**\n"
+        reply += "• Đại Nội, Lăng tẩm các vua Nguyễn\n"
+        reply += "• Nhã nhạc cung đình Huế\n"
+        reply += "• Hệ thống đình, chùa, miếu cổ\n\n"
+        
+        reply += "🍜 **ẨM THỰC ĐẶC SẮC:**\n"
+        reply += "• Bún bò Huế, cơm hến, bánh bèo\n"
+        reply += "• Chè Huế, mứt cung đình\n"
+        reply += "• Rượu ngô làng Chuồn\n\n"
+        
+        reply += "🌿 **THIÊN NHIÊN:**\n"
+        reply += "• Sông Hương, Núi Ngự thơ mộng\n"
+        reply += "• Biển Lăng Cô, Cảnh Dương\n"
+        reply += "• Vườn quốc gia Bạch Mã\n\n"
+        
+    elif location == 'bạch mã':
+        reply += "**BẠCH MÃ - VƯỜN QUỐC GIA**\n\n"
+        reply += "🏞️ **THIÊN NHIÊN HÙNG VĨ:**\n"
+        reply += "• Độ cao: 1.450m so với mực nước biển\n"
+        reply += "• Hệ sinh thái: Rừng nguyên sinh đa dạng\n"
+        reply += "• Động thực vật: Nhiều loài quý hiếm\n\n"
+        
+        reply += "🚶 **HOẠT ĐỘNG:**\n"
+        reply += "• Trekking khám phá rừng\n"
+        reply += "• Ngắm thác, suối, cảnh quan\n"
+        reply += "• Thiền, yoga giữa thiên nhiên\n"
+        reply += "• Quan sát động vật hoang dã\n\n"
+        
+        reply += "🌡️ **KHÍ HẬU:**\n"
+        reply += "• Mát mẻ quanh năm (15-25°C)\n"
+        reply += "• Sương mù buổi sáng tạo cảm giác huyền ảo\n"
+        reply += "• Lý tưởng để tránh nóng\n\n"
+        
+    elif location == 'trường sơn':
+        reply += "**TRƯỜNG SƠN - DÃY NÚI HUYỀN THOẠI**\n\n"
+        reply += "🎖️ **LỊCH SỬ HÀO HÙNG:**\n"
+        reply += "• Đường Hồ Chí Minh huyền thoại\n"
+        reply += "• Địa đạo Vịnh Mốc, Thành cổ Quảng Trị\n"
+        reply += "• Cầu Hiền Lương, sông Bến Hải\n\n"
+        
+        reply += "👥 **VĂN HÓA BẢN ĐỊA:**\n"
+        reply += "• Cộng đồng Vân Kiều, Pa Kô\n"
+        reply += "• Kiến trúc nhà sàn truyền thống\n"
+        reply += "• Lễ hội, âm nhạc dân tộc\n\n"
+        
+        reply += "🌄 **CẢNH QUAN:**\n"
+        reply += "• Núi rừng trùng điệp\n"
+        reply += "• Thác, suối, hang động\n"
+        reply += "• Không khí trong lành, yên tĩnh\n\n"
+    
+    if location_tours:
+        reply += "🎯 **TOUR RUBY WINGS TẠI ĐÂY:**\n"
+        for i, tour in enumerate(location_tours[:4], 1):
+            reply += f"{i}. **{tour.name}**\n"
+            if tour.duration:
+                reply += f"   ⏱️ {tour.duration}\n"
+            if i == 1 and tour.price:
+                price_short = tour.price[:60] + "..." if len(tour.price) > 60 else tour.price
+                reply += f"   💰 {price_short}\n"
+            reply += "\n"
+    
+    reply += "📞 **Đặt tour khám phá:** 0332510486"
+    return reply
+
+
+def _get_food_culture_response(message_lower, tour_indices):
+    """Trả lời về ẩm thực và văn hóa"""
+    if 'bánh bèo' in message_lower or 'ẩm thực huế' in message_lower:
+        reply = "🍜 **BÁNH BÈO HUẾ - ĐẶC SẢN NỔI TIẾNG** 🍜\n\n"
+        reply += "**NGUỒN GỐC & Ý NGHĨA:**\n"
+        reply += "• Món ăn cung đình, sau phổ biến ra dân gian\n"
+        reply += "• Tên gọi từ hình dáng giống lá bèo\n"
+        reply += "• Biểu tượng ẩm thực tinh tế của Huế\n\n"
+        
+        reply += "**THÀNH PHẦN CHÍNH:**\n"
+        reply += "• Bột gạo hấp trong chén nhỏ\n"
+        reply += "• Nhân: Tôm cháy, thịt xay, mỡ hành\n"
+        reply += "• Nước chấm: Mắm nêm Huế đặc trưng\n"
+        reply += "• Rau sống: Xà lách, rau thơm, ớt xanh\n\n"
+        
+        reply += "**CÁCH THƯỞNG THỨC:**\n"
+        reply += "1. Dùng thìa nhỏ xúc từng chén\n"
+        reply += "2. Chan nước mắm vừa phải\n"
+        reply += "3. Ăn kèm rau sống cho cân bằng\n"
+        reply += "4. Nhâm nhi với trà nóng\n\n"
+        
+        reply += "🎯 **TRẢI NGHIỆM TRONG TOUR:**\n"
+        reply += "• **Tour Ẩm thực Huế:** Học làm bánh bèo từ nghệ nhân\n"
+        reply += "• **Tour Văn hóa:** Thăm làng nghề truyền thống\n"
+        reply += "• **Tour Đêm Huế:** Thưởng thức tại quán đặc sản\n\n"
+        
+        reply += "📞 **Đặt tour ẩm thực Huế:** 0332510486"
+    
+    elif 'văn hóa' in message_lower or 'lịch sử' in message_lower or 'di sản' in message_lower:
+        reply = "🏛️ **VĂN HÓA & DI SẢN MIỀN TRUNG** 🏛️\n\n"
+        
+        reply += "**DI SẢN UNESCO TẠI HUẾ:**\n"
+        reply += "• Quần thể di tích Cố đô Huế\n"
+        reply += "• Nhã nhạc cung đình Huế\n"
+        reply += "• Mộc bản triều Nguyễn\n"
+        reply += "• Châu bản triều Nguyễn\n\n"
+        
+        reply += "**DI TÍCH LỊCH SỬ QUẢNG TRỊ:**\n"
+        reply += "• Thành cổ Quảng Trị\n"
+        reply += "• Địa đạo Vịnh Mốc\n"
+        reply += "• Cầu Hiền Lương - sông Bến Hải\n"
+        reply += "• Nghĩa trang Trường Sơn\n\n"
+        
+        reply += "**VĂN HÓA BẢN ĐỊA:**\n"
+        reply += "• Dân tộc Vân Kiều, Pa Kô\n"
+        reply += "• Kiến trúc nhà rường Huế\n"
+        reply += "• Lễ hội cung đình, dân gian\n"
+        reply += "• Nghề thủ công truyền thống\n\n"
+        
+        reply += "🎯 **TOUR VĂN HÓA NỔI BẬT:**\n"
+        
+        # Tìm tour văn hóa
+        culture_tours = []
+        for idx, tour in TOURS_DB.items():
+            tour_text = f"{tour.summary or ''}".lower()
+            if any(keyword in tour_text for keyword in ['văn hóa', 'lịch sử', 'di sản', 'di tích', 'truyền thống']):
+                culture_tours.append(tour)
+        
+        if culture_tours:
+            for i, tour in enumerate(culture_tours[:4], 1):
+                reply += f"{i}. **{tour.name}**\n"
+                if tour.duration:
+                    reply += f"   ⏱️ {tour.duration}\n"
+                if i <= 2 and tour.summary:
+                    summary_short = tour.summary[:80] + "..." if len(tour.summary) > 80 else tour.summary
+                    reply += f"   📝 {summary_short}\n"
+                reply += "\n"
+        else:
+            reply += "• Mưa Đỏ và Trường Sơn\n"
+            reply += "• Ký ức - Lịch Sử và Đại Ngàn\n"
+            reply += "• Di sản Huế & Đầm Chuồn\n"
+            reply += "• Hành trình về nguồn\n\n"
+        
+        reply += "📞 **Tư vấn tour văn hóa:** 0332510486"
+    
+    else:
+        reply = "Miền Trung Việt Nam là vùng đất của:\n\n"
+        reply += "🍜 **ẨM THỰC PHONG PHÚ:**\n"
+        reply += "• Huế: Bún bò, bánh bèo, cơm hến\n"
+        reply += "• Quảng Trị: Bánh ướt, mì quảng\n"
+        reply += "• Đặc sản: Mắm nêm, ruốc Huế\n\n"
+        
+        reply += "🏛️ **DI SẢN ĐA DẠNG:**\n"
+        reply += "• Di tích lịch sử chiến tranh\n"
+        reply += "• Kiến trúc cung đình Huế\n"
+        reply += "• Văn hóa các dân tộc thiểu số\n\n"
+        
+        reply += "Ruby Wings có nhiều tour khám phá ẩm thực và văn hóa đặc sắc. 📞 0332510486"
+    
+    return reply
+
+
+def _get_sustainability_response():
+    """Trả lời về phát triển bền vững"""
+    reply = "🌱 **DU LỊCH BỀN VỮNG TẠI RUBY WINGS** 🌱\n\n"
+    
+    reply += "Ruby Wings cam kết phát triển du lịch bền vững qua 3 trụ cột:\n\n"
+    
+    reply += "🏞️ **1. BẢO VỆ MÔI TRƯỜNG:**\n"
+    reply += "• Thiết kế tour tác động tối thiểu đến thiên nhiên\n"
+    reply += "• Khuyến khích du khách không xả rác, tiết kiệm nước\n"
+    reply += "• Tổ chức hoạt động dọn dẹp môi trường\n"
+    reply += "• Sử dụng vật liệu thân thiện, tái chế\n\n"
+    
+    reply += "👥 **2. HỖ TRỢ CỘNG ĐỒNG ĐỊA PHƯƠNG:**\n"
+    reply += "• Hợp tác với doanh nghiệp địa phương\n"
+    reply += "• Tạo việc làm cho người dân bản địa\n"
+    reply += "• Mua sắm nguyên liệu tại chỗ\n"
+    reply += "• Tôn trọng và phát huy văn hóa địa phương\n\n"
+    
+    reply += "📚 **3. GIÁO DỤC VÀ NÂNG CAO NHẬN THỨC:**\n"
+    reply += "• Cung cấp thông tin về môi trường và văn hóa\n"
+    reply += "• Hướng dẫn du khách ứng xử có trách nhiệm\n"
+    reply += "• Tổ chức hoạt động học tập về bảo tồn\n"
+    reply += "• Khuyến khích du khách trở thành đại sứ môi trường\n\n"
+    
+    reply += "🎯 **TOUR BỀN VỮNG TIÊU BIỂU:**\n"
+    reply += "• Tour thiên nhiên Bạch Mã: Bảo vệ rừng nguyên sinh\n"
+    reply += "• Tour văn hóa bản địa: Hỗ trợ cộng đồng dân tộc\n"
+    reply += "• Tour ẩm thực địa phương: Phát triển kinh tế địa phương\n\n"
+    
+    reply += "📞 **Tham gia tour bền vững:** 0332510486"
+    
+    return reply
+
+
+def _get_experience_response(message_lower, tour_indices):
+    """Trả lời về trải nghiệm"""
+    reply = "🌟 **TRẢI NGHIỆM ĐỘC ĐÁO RUBY WINGS** 🌟\n\n"
+    
+    # Xác định loại trải nghiệm được hỏi
+    if 'thiền' in message_lower or 'tĩnh tâm' in message_lower:
+        reply += "🧘 **TRẢI NGHIỆM THIỀN ĐỊNH:**\n\n"
+        reply += "**Không gian:**\n"
+        reply += "• Giữa rừng nguyên sinh Bạch Mã\n"
+        reply += "• Bên dòng suối trong lành\n"
+        reply += "• Trên đỉnh núi với tầm nhìn bao la\n\n"
+        
+        reply += "**Hoạt động:**\n"
+        reply += "• Thiền tĩnh tâm có hướng dẫn\n"
+        reply += "• Khí công dưỡng sinh\n"
+        reply += "• Yoga buổi sáng với sương mai\n"
+        reply += "• Thiền hành trong rừng\n\n"
+        
+        reply += "**Lợi ích:**\n"
+        reply += "• Giảm stress, cân bằng cảm xúc\n"
+        reply += "• Tăng cường sức khỏe tinh thần\n"
+        reply += "• Kết nối sâu với bản thân\n"
+        reply += "• Học cách sống chậm, sống sâu\n\n"
+        
+    elif 'lịch sử' in message_lower or 'tri ân' in message_lower:
+        reply += "🎖️ **TRẢI NGHIỆM LỊCH SỬ SỐNG ĐỘNG:**\n\n"
+        reply += "**Hoạt động đặc biệt:**\n"
+        reply += "• Thăm di tích chiến trường xưa\n"
+        reply += "• Gặp gỡ nhân chứng lịch sử\n"
+        reply += "• Tham quan bảo tàng, địa đạo\n"
+        reply += "• Lễ tri ân các anh hùng liệt sĩ\n\n"
+        
+        reply += "**Cảm xúc:**\n"
+        reply += "• Xúc động trước sự hy sinh\n"
+        reply += "• Tự hào về truyền thống dân tộc\n"
+        reply += "• Hiểu sâu hơn về lịch sử\n"
+        reply += "• Truyền cảm hứng cho thế hệ trẻ\n\n"
+        
+    elif 'thiên nhiên' in message_lower or 'rừng' in message_lower:
+        reply += "🌿 **TRẢI NGHIỆM THIÊN NHIÊN HOANG DÃ:**\n\n"
+        reply += "**Khám phá:**\n"
+        reply += "• Trekking rừng nguyên sinh\n"
+        reply += "• Ngắm thác, suối, hang động\n"
+        reply += "• Quan sát động thực vật hoang dã\n"
+        reply += "• Cắm trại giữa rừng\n\n"
+        
+        reply += "**Kết nối:**\n"
+        reply += "• Cảm nhận sức sống của thiên nhiên\n"
+        reply += "• Thư giãn với âm thanh rừng núi\n"
+        reply += "• Tận hưởng không khí trong lành\n"
+        reply += "• Học về hệ sinh thái đa dạng\n\n"
+        
+    else:
+        reply += "✨ **ĐA DẠNG TRẢI NGHIỆM:**\n\n"
+        reply += "1. **Trải nghiệm văn hóa:**\n"
+        reply += "   • Học làm đặc sản địa phương\n"
+        reply += "   • Tham gia lễ hội truyền thống\n"
+        reply += "   • Giao lưu với người dân bản địa\n\n"
+        
+        reply += "2. **Trải nghiệm thiên nhiên:**\n"
+        reply += "   • Trekking, leo núi\n"
+        reply += "   • Ngắm bình minh, hoàng hôn\n"
+        reply += "   • Tắm suối, thác\n\n"
+        
+        reply += "3. **Trải nghiệm tinh thần:**\n"
+        reply += "   • Thiền, yoga giữa thiên nhiên\n"
+        reply += "   • Workshop phát triển bản thân\n"
+        reply += "   • Hoạt động team building\n\n"
+    
+    if tour_indices:
+        reply += "🎯 **TOUR CÓ TRẢI NGHIỆM ĐẶC SẮC:**\n"
+        for idx in tour_indices[:3]:
+            tour = TOURS_DB.get(idx)
+            if tour:
+                reply += f"• **{tour.name}**\n"
+                if tour.duration:
+                    reply += f"  ⏱️ {tour.duration}\n"
+                reply += "\n"
+    
+    reply += "📞 **Đặt tour trải nghiệm độc đáo:** 0332510486"
+    return reply
+
+
+def _get_group_custom_response(message_lower):
+    """Trả lời về tour nhóm và tùy chỉnh"""
+    if 'nhóm' in message_lower or 'đoàn' in message_lower or 'công ty' in message_lower:
+        reply = "👥 **TOUR NHÓM & TEAM BUILDING** 👥\n\n"
+        
+        reply += "🎯 **CHÍNH SÁCH ƯU ĐÃI NHÓM:**\n"
+        reply += "• **5-9 người:** Giảm 5% + tặng ảnh lưu niệm\n"
+        reply += "• **10-15 người:** Giảm 10% + tặng video tour\n"
+        reply += "• **16-20 người:** Giảm 15% + tặng team building\n"
+        reply += "• **21+ người:** Giảm 20% + tặng teambuilding chuyên nghiệp\n"
+        reply += "• **Cựu chiến binh:** Thêm 5% ưu đãi\n\n"
+        
+        reply += "🏆 **TOUR PHÙ HỢP NHÓM:**\n"
+        reply += "1. **Team building công ty:**\n"
+        reply += "   • Kết hợp hoạt động gắn kết\n"
+        reply += "   • Thiết kế theo văn hóa doanh nghiệp\n"
+        reply += "   • Có chuyên gia đồng hành\n\n"
+        
+        reply += "2. **Tour gia đình đa thế hệ:**\n"
+        reply += "   • Hoạt động phù hợp mọi lứa tuổi\n"
+        reply += "   • Dịch vụ hỗ trợ đặc biệt\n"
+        reply += "   • Không gian riêng tư\n\n"
+        
+        reply += "3. **Tour nhóm bạn/sinh viên:**\n"
+        reply += "   • Nhiều trải nghiệm mới lạ\n"
+        reply += "   • Chi phí hợp lý\n"
+        reply += "   • Linh hoạt lịch trình\n\n"
+        
+        reply += "✨ **DỊCH VỤ ĐẶC BIỆT CHO NHÓM:**\n"
+        reply += "• Hướng dẫn viên chuyên biệt\n"
+        reply += "• Phương tiện riêng, linh hoạt\n"
+        reply += "• Thiết kế lịch trình riêng\n"
+        reply += "• Hỗ trợ quay phim, chụp ảnh\n"
+        reply += "• Tổ chức sự kiện đặc biệt\n\n"
+        
+        reply += "📞 **Tư vấn tour nhóm:** 0332510486"
+    
+    elif 'cá nhân hóa' in message_lower or 'riêng' in message_lower or 'theo yêu cầu' in message_lower:
+        reply = "✨ **TOUR CÁ NHÂN HÓA THEO YÊU CẦU** ✨\n\n"
+        
+        reply += "🎯 **QUY TRÌNH THIẾT KẾ TOUR RIÊNG:**\n"
+        reply += "1. **Tư vấn nhu cầu:** Hiểu rõ mong muốn, sở thích\n"
+        reply += "2. **Thiết kế concept:** Ý tưởng độc đáo, sáng tạo\n"
+        reply += "3. **Lên lịch trình chi tiết:** Phù hợp thời gian, ngân sách\n"
+        reply += "4. **Báo giá minh bạch:** Không phát sinh chi phí ẩn\n"
+        reply += "5. **Chỉnh sửa & hoàn thiện:** Theo feedback của bạn\n"
+        reply += "6. **Triển khai tour:** Chuyên nghiệp, tận tâm\n\n"
+        
+        reply += "🏆 **TOUR RIÊNG NỔI BẬT ĐÃ THỰC HIỆN:**\n"
+        reply += "• **Tour gia đình 3 thế hệ** (từ 6-75 tuổi)\n"
+        reply += "• **Team building công ty 50 người**\n"
+        reply += "• **Retreat thiền 7 ngày cho nhóm đặc biệt**\n"
+        reply += "• **Tour nhiếp ảnh chuyên nghiệp**\n"
+        reply += "• **Hành trình tâm linh cho nhóm tôn giáo**\n\n"
+        
+        reply += "💡 **THÔNG TIN CẦN CUNG CẤP:**\n"
+        reply += "• Số lượng người và độ tuổi\n"
+        reply += "• Thời gian dự kiến\n"
+        reply += "• Ngân sách ước tính\n"
+        reply += "• Sở thích, yêu cầu đặc biệt\n"
+        reply += "• Mục đích chuyến đi\n\n"
+        
+        reply += "📞 **Liên hệ thiết kế tour riêng:** 0332510486"
+    
+    else:
+        reply = "Ruby Wings có chính sách ưu đãi đặc biệt cho nhóm và dịch vụ thiết kế tour theo yêu cầu. Liên hệ hotline để biết thêm chi tiết."
+    
+    return reply
+
+
+def _get_booking_policy_response(message_lower):
+    """Trả lời về đặt tour và chính sách"""
+    if 'đặt tour' in message_lower or 'booking' in message_lower or 'đăng ký' in message_lower:
+        reply = "📝 **QUY TRÌNH ĐẶT TOUR RUBY WINGS** 📝\n\n"
+        
+        reply += "**BƯỚC 1: TƯ VẤN & CHỌN TOUR**\n"
+        reply += "• Liên hệ hotline 0332510486\n"
+        reply += "• Nhận tư vấn tour phù hợp\n"
+        reply += "• Xác nhận lịch trình, giá cả\n"
+        reply += "• Nhận báo giá chi tiết\n\n"
+        
+        reply += "**BƯỚC 2: ĐẶT CỌC & XÁC NHẬN**\n"
+        reply += "• Đặt cọc 30% giá trị tour\n"
+        reply += "• Ký hợp đồng dịch vụ rõ ràng\n"
+        reply += "• Nhận xác nhận booking chính thức\n"
+        reply += "• Cung cấp thông tin cá nhân\n\n"
+        
+        reply += "**BƯỚC 3: CHUẨN BỊ & THANH TOÁN**\n"
+        reply += "• Thanh toán 70% còn lại trước 7 ngày\n"
+        reply += "• Nhận thông tin chi tiết tour\n"
+        reply += "• Chuẩn bị hành lý, giấy tờ\n"
+        reply += "• Tham gia briefing trước tour\n\n"
+        
+        reply += "**BƯỚC 4: KHỞI HÀNH & TRẢI NGHIỆM**\n"
+        reply += "• Đón khách tại điểm hẹn\n"
+        reply += "• Trải nghiệm tour tuyệt vời\n"
+        reply += "• Hỗ trợ 24/7 trong suốt tour\n"
+        reply += "• Feedback và đánh giá sau tour\n\n"
+        
+        reply += "**PHƯƠNG THỨC THANH TOÁN:**\n"
+        reply += "• Chuyển khoản ngân hàng\n"
+        reply += "• Ví điện tử (Momo, ZaloPay)\n"
+        reply += "• Tiền mặt (tại văn phòng)\n"
+        reply += "• Thẻ tín dụng (sắp triển khai)\n\n"
+        
+        reply += "📞 **Đặt tour ngay:** 0332510486"
+    
+    elif 'giảm giá' in message_lower or 'ưu đãi' in message_lower or 'khuyến mãi' in message_lower:
+        reply = "🎁 **CHÍNH SÁCH ƯU ĐÃI & KHUYẾN MÃI** 🎁\n\n"
+        
+        reply += "**1. ƯU ĐÃI THEO NHÓM:**\n"
+        reply += "• 5-9 người: Giảm 5%\n"
+        reply += "• 10-15 người: Giảm 10%\n"
+        reply += "• 16-20 người: Giảm 15%\n"
+        reply += "• 21+ người: Giảm 20%\n\n"
+        
+        reply += "**2. ƯU ĐÃI ĐẶT SỚM:**\n"
+        reply += "• Đặt trước 30 ngày: Giảm 5%\n"
+        reply += "• Đặt trước 60 ngày: Giảm 8%\n"
+        reply += "• Đặt trước 90 ngày: Giảm 10%\n\n"
+        
+        reply += "**3. ƯU ĐÃI ĐẶC BIỆT:**\n"
+        reply += "• Cựu chiến binh: Thêm 5%\n"
+        reply += "• Học sinh/sinh viên: Giảm 10%\n"
+        reply += "• Khách quay lại: Giảm 5%\n"
+        reply += "• Đăng ký nhóm 5 người trở lên: Tặng ảnh lưu niệm\n\n"
+        
+        reply += "**4. CHƯƠNG TRÌNH TÍCH ĐIỂM:**\n"
+        reply += "• Mỗi tour: Tích 1 điểm\n"
+        reply += "• 5 điểm: Giảm 10% tour tiếp theo\n"
+        reply += "• 10 điểm: Tặng 1 tour 1 ngày\n"
+        reply += "• 15 điểm: Tặng 1 tour 2 ngày 1 đêm\n\n"
+        
+        reply += "**LƯU Ý:**\n"
+        reply += "• Ưu đãi không áp dụng đồng thời\n"
+        reply += "• Áp dụng cho tour tiêu chuẩn\n"
+        reply += "• Có thể thay đổi mà không báo trước\n\n"
+        
+        reply += "📞 **Nhận ưu đãi tốt nhất:** 0332510486"
+    
+    elif 'hủy tour' in message_lower or 'hoàn tiền' in message_lower or 'chính sách hủy' in message_lower:
+        reply = "⚠️ **CHÍNH SÁCH HỦY TOUR & HOÀN TIỀN** ⚠️\n\n"
+        
+        reply += "**THỜI GIAN HỦY & MỨC PHÍ:**\n"
+        reply += "• **Trước 30 ngày:** Hoàn 100% tiền cọc\n"
+        reply += "• **Trước 15-29 ngày:** Hoàn 50% tiền cọc\n"
+        reply += "• **Trước 7-14 ngày:** Hoàn 30% tiền cọc\n"
+        reply += "• **Dưới 7 ngày:** Không hoàn tiền cọc\n\n"
+        
+        reply += "**TRƯỜNG HỢP ĐẶC BIỆT:**\n"
+        reply += "• Thiên tai, dịch bệnh: Hoàn 100%\n"
+        reply += "• Có giấy tờ y tế: Hoàn 80-100%\n"
+        reply += "• Lý do khẩn cấp: Xem xét từng trường hợp\n\n"
+        
+        reply += "**QUY TRÌNH HOÀN TIỀN:**\n"
+        reply += "1. Thông báo hủy bằng văn bản\n"
+        reply += "2. Cung cấp lý do và giấy tờ (nếu có)\n"
+        reply += "3. Xử lý trong 7-10 ngày làm việc\n"
+        reply += "4. Hoàn tiền về tài khoản đã chuyển\n\n"
+        
+        reply += "📞 **Liên hệ hỗ trợ:** 0332510486"
+    
+    else:
+        reply = "Ruby Wings có chính sách ưu đãi hấp dẫn và quy trình đặt tour chuyên nghiệp. Liên hệ hotline để được tư vấn chi tiết."
+    
+    return reply
+
+
+def _prepare_enhanced_llm_prompt(user_message, search_results, context_info, tours_db):
+    """
+    Prompt builder chuẩn RAG – CHỐNG BỊA TUYỆT ĐỐI
+    - Có dữ liệu → trả lời từ dữ liệu
+    - Không có dữ liệu → bắt buộc thừa nhận không biết
+    """
+
+    # ================== NO DATA CASE ==================
+    if not search_results:
+        return f"""
+BẠN LÀ TRỢ LÝ AI CỦA RUBY WINGS TRAVEL.
+
+🚨 QUY TẮC BẮT BUỘC (KHÔNG ĐƯỢC VI PHẠM):
+- KHÔNG được suy đoán
+- KHÔNG được tự tạo thông tin
+- KHÔNG trả lời khi KHÔNG có dữ liệu từ hệ thống
+- KHÔNG nói chung chung cho có
+
+TÌNH TRẠNG HỆ THỐNG:
+❌ Không tìm thấy thông tin phù hợp trong cơ sở dữ liệu Ruby Wings
+để trả lời câu hỏi sau:
+
+"{user_message}"
+
+CÁCH TRẢ LỜI DUY NHẤT ĐƯỢC PHÉP:
+1. Nói rõ: "Hiện tại tôi chưa có dữ liệu để trả lời chính xác câu hỏi này."
+2. Gợi ý khách hỏi lại theo hướng CỤ THỂ hơn, ví dụ:
+   - tên tour
+   - địa điểm
+   - thời gian
+   - giá tour
+3. Mời liên hệ hotline 0332510486 để được tư vấn trực tiếp
+
+🚫 TUYỆT ĐỐI CẤM:
+- Bịa thông tin
+- Suy luận ngoài dữ liệu
+- Đề xuất tour không tồn tại
+"""
+
+    # ================== DATA AVAILABLE CASE ==================
+    # Chuẩn bị context dữ liệu (KHÔNG cắt nghĩa, KHÔNG suy diễn)
+    relevant_info = "THÔNG TIN TRÍCH XUẤT TỪ CƠ SỞ DỮ LIỆU RUBY WINGS:\n"
+    for i, (score, passage) in enumerate(search_results[:3], 1):
+        relevant_info += f"{i}. {passage.strip()}\n"
+
+    # Thông tin tour nếu có
+    tour_info = ""
+    tour_indices = context_info.get("tour_indices") or []
+    if tour_indices:
+        tour_info = "THÔNG TIN TOUR LIÊN QUAN (NẾU CÓ):\n"
+        for idx in tour_indices[:3]:
+            tour = tours_db.get(idx)
+            if tour:
+                summary = tour.summary.strip() if tour.summary else "Không có mô tả"
+                tour_info += f"- {tour.name}: {summary}\n"
+
+    return f"""
+BẠN LÀ TRỢ LÝ AI CỦA RUBY WINGS TRAVEL.
+
+⚠️ QUY TẮC BẮT BUỘC:
+- CHỈ sử dụng thông tin có trong phần "THÔNG TIN TRÍCH XUẤT"
+- KHÔNG sử dụng kiến thức bên ngoài
+- KHÔNG suy diễn, KHÔNG thêm chi tiết không tồn tại
+- Nếu dữ liệu KHÔNG đủ → PHẢI NÓI RÕ là không đủ
+
+CÂU HỎI KHÁCH:
+"{user_message}"
+
+{relevant_info}
+
+{tour_info}
+
+CONTEXT PHÂN TÍCH (CHỈ ĐỂ ĐỊNH HƯỚNG, KHÔNG ĐƯỢC BỊA):
+- Ý định chính: {context_info.get('primary_intent', 'Không xác định')}
+- Độ phức tạp: {context_info.get('complexity_score', 0)}/10
+- Số tour liên quan: {len(tour_indices)}
+
+YÊU CẦU TRẢ LỜI:
+1. Trả lời NGẮN GỌN – ĐÚNG TRỌNG TÂM
+2. Trích dẫn đúng nội dung từ dữ liệu
+3. Không mở rộng ngoài phạm vi dữ liệu
+4. Nếu thiếu thông tin → nói rõ thiếu gì
+5. Kết thúc bằng lời mời liên hệ hotline 0332510486
+
+🚫 CẤM TUYỆT ĐỐI:
+- Bịa tour
+- Bịa giá
+- Bịa lịch trình
+- Suy đoán ý khách
+"""
+
+
+
+def _generate_enhanced_fallback_response(user_message, search_results, tour_indices, tours_db):
+    """Tạo fallback response nâng cao"""
+    # Cố gắng tạo response từ thông tin có sẵn
+    if tour_indices:
+        reply = "Dựa trên câu hỏi của bạn, tôi tìm thấy một số tour có thể phù hợp:\n\n"
+        
+        for idx in tour_indices[:3]:
+            tour = tours_db.get(idx)
+            if tour:
+                reply += f"**{tour.name}**\n"
+                if tour.duration:
+                    reply += f"⏱️ {tour.duration}\n"
+                if tour.location:
+                    location_short = tour.location[:50] + "..." if len(tour.location) > 50 else tour.location
+                    reply += f"📍 {location_short}\n"
+                if tour.summary:
+                    summary_short = tour.summary[:100] + "..." if len(tour.summary) > 100 else tour.summary
+                    reply += f"📝 {summary_short}\n"
+                reply += "\n"
+        
+        reply += "Để được tư vấn chi tiết hơn về các tour này hoặc tìm tour phù hợp nhất với nhu cầu của bạn, vui lòng liên hệ hotline 0332510486."
+    elif search_results:
+        reply = "Dựa trên thông tin tôi có, đây là một số thông tin liên quan:\n\n"
+        
+        for i, (score, passage) in enumerate(search_results[:2], 1):
+            reply += f"{i}. {passage[:150]}...\n\n"
+        
+        reply += "Để có thông tin chính xác và đầy đủ hơn, vui lòng liên hệ hotline 0332510486."
+    else:
+        reply = "Cảm ơn câu hỏi của bạn. Để tư vấn chính xác nhất về các tour của Ruby Wings, bạn có thể:\n\n"
+        reply += "1. Cung cấp thêm thông tin về nhu cầu của bạn\n"
+        reply += "2. Gọi trực tiếp hotline 0332510486\n"
+        reply += "3. Tham khảo các tour phổ biến:\n"
+        reply += "   • Tour thiên nhiên Bạch Mã (1 ngày)\n"
+        reply += "   • Tour lịch sử Trường Sơn (2 ngày 1 đêm)\n"
+        reply += "   • Tour retreat thiền (1-2 ngày)\n\n"
+        reply += "📞 **Hotline tư vấn 24/7:** 0332510486"
+    
+    return reply
+
+
+# ================== MODULE COMPATIBILITY CHECK ==================
+# Các module cần nâng cấp để tương thích:
+
+"""
+1. MandatoryFilterSystem.apply_filters() cần sửa lỗi:
+   - Lỗi "không có nhóm nào như vậy" 
+   - Thêm xử lý exception và fallback
+
+2. FuzzyMatcher.find_similar_tours() cần cải thiện:
+   - Giảm ngưỡng matching từ 0.7 xuống 0.6
+   - Tăng số kết quả trả về
+
+3. CacheSystem cần hỗ trợ:
+   - Cache với expiry time
+   - Key generation với nhiều tham số hơn
+
+4. DeduplicationEngine cần:
+   - Xử lý tốt hơn với các tour tương tự
+   - Giữ lại tour chất lượng cao hơn
+
+5. QueryIndex cần:
+   - Trả về nhiều kết quả hơn (tăng TOP_K)
+   - Cải thiện relevance scoring
+"""
+
+# Thêm các hàm helper mới vào các module tương ứng
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Thêm các hàm helper mới vào các module tương ứng
 # =========== OTHER ENDPOINTS ===========
 @app.route("/")
 def home():
