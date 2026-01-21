@@ -32,6 +32,7 @@ import time
 import random
 from functools import lru_cache, wraps
 from typing import List, Tuple, Dict, Optional, Any, Set, Union, Callable
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from collections import defaultdict, deque
 from difflib import SequenceMatcher
