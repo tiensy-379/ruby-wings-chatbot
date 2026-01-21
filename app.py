@@ -3458,7 +3458,7 @@ def query_index(
     if not query or not query.strip():
         return []
 
-    if not FAISS_INDEX or not FAISS_MAPPING:
+    if not INDEX or not MAPPING: 
         logger.error("❌ FAISS index hoặc mapping chưa được load")
         return []
 
@@ -3730,7 +3730,20 @@ def get_session_context(session_id: str) -> ConversationContext:
 
     return ctx
 
-
+def save_session_context(session_id: str, context: ConversationContext):
+    """Lưu context cho session"""
+    with SESSION_LOCK:
+        SESSION_CONTEXTS[session_id] = context
+        # Dọn dẹp session cũ (giữ tối đa 100 session)
+        if len(SESSION_CONTEXTS) > 100:
+            # Xóa các session cũ nhất
+            sorted_sessions = sorted(
+                SESSION_CONTEXTS.items(),
+                key=lambda x: getattr(x[1], 'last_updated', datetime.utcnow())
+            )
+            for key, _ in sorted_sessions[:20]:
+                if key in SESSION_CONTEXTS:
+                    del SESSION_CONTEXTS[key]
 def extract_session_id(request_data: Dict, remote_addr: str) -> str:
     """Extract or create session ID"""
     session_id = request_data.get("session_id")
