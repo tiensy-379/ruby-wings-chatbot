@@ -32,7 +32,7 @@ import time
 import random
 from functools import lru_cache, wraps
 from typing import List, Tuple, Dict, Optional, Any, Set, Union, Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from collections import defaultdict, deque
 from difflib import SequenceMatcher
@@ -6348,32 +6348,29 @@ def _prepare_enhanced_llm_prompt(user_message, search_results, context_info, tou
         return f"""
 BẠN LÀ TRỢ LÝ AI CỦA RUBY WINGS TRAVEL.
 
-🚨 QUY TẮC BẮT BUỘC (KHÔNG ĐƯỢC VI PHẠM):
+⚠️ QUY TẮC BẮT BUỘC:
+- CHỈ được trả lời dựa trên dữ liệu Ruby Wings cung cấp
 - KHÔNG được suy đoán
 - KHÔNG được tự tạo thông tin
-- KHÔNG trả lời khi KHÔNG có dữ liệu từ hệ thống
-- KHÔNG nói chung chung cho có
+- Nếu không có dữ liệu phù hợp → PHẢI NÓI RÕ LÀ KHÔNG CÓ
 
-TÌNH TRẠNG HỆ THỐNG:
-❌ Không tìm thấy thông tin phù hợp trong cơ sở dữ liệu Ruby Wings
-để trả lời câu hỏi sau:
-
+CÂU HỎI KHÁCH:
 "{user_message}"
 
-CÁCH TRẢ LỜI DUY NHẤT ĐƯỢC PHÉP:
-1. Nói rõ: "Hiện tại tôi chưa có dữ liệu để trả lời chính xác câu hỏi này."
-2. Gợi ý khách hỏi lại theo hướng CỤ THỂ hơn, ví dụ:
-   - tên tour
-   - địa điểm
-   - thời gian
-   - giá tour
-3. Mời liên hệ hotline 0332510486 để được tư vấn trực tiếp
+TÌNH TRẠNG:
+Hệ thống KHÔNG tìm thấy thông tin phù hợp trong cơ sở dữ liệu Ruby Wings.
 
-🚫 TUYỆT ĐỐI CẤM:
+CÁCH TRẢ LỜI DUY NHẤT ĐƯỢC PHÉP:
+- Nói rõ: "Hiện tại tôi chưa có dữ liệu để trả lời chính xác câu hỏi này."
+- Đề nghị khách hỏi cụ thể hơn (tên tour / địa điểm / thời gian / giá)
+- Mời liên hệ hotline 0332510486
+
+🚫 TUYỆT ĐỐI KHÔNG:
 - Bịa thông tin
-- Suy luận ngoài dữ liệu
+- Đoán giá
 - Đề xuất tour không tồn tại
 """
+
 
     # ================== DATA AVAILABLE CASE ==================
     # Chuẩn bị context dữ liệu (KHÔNG cắt nghĩa, KHÔNG suy diễn)
