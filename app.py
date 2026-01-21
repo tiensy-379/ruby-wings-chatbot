@@ -386,6 +386,7 @@ class MandatoryFilterSystem:
             (r'(\d+)\s*ngày\s*(?:và\s*)?(\d+)?\s*đêm', 'days_nights'),
             (r'(\d+)\s*ngày\s*(?:trở lên|trở xuống)', 'duration_range'),
             (r'(?:tour|hành trình)\s*(?:khoảng|tầm|khoảng)?\s*(\d+)\s*ngày', 'approx_duration'),
+            (r'(\d+)\s*ngày', 'exact_duration'),  # THÊM DÒNG NÀY
         ],
         
         'price': [
@@ -4127,27 +4128,100 @@ def chat_endpoint_ultimate():
         elif word_count > 25:
             complexity_score += 3
         
-        # ================== ENHANCED INTENT DETECTION ==================
+        # ================== ENHANCED INTENT DETECTION (UPDATED) ==================
         intent_categories = {
-            'tour_listing': ['có những tour nào', 'danh sách tour', 'liệt kê tour', 'tour nào có', 'tour gì'],
-            'price_inquiry': ['giá bao nhiêu', 'bao nhiêu tiền', 'chi phí', 'giá tour', 'bảng giá', 'bao nhiêu'],
-            'tour_detail': ['chi tiết tour', 'lịch trình', 'có gì', 'bao gồm gì', 'thông tin', 'mô tả'],
-            'comparison': ['so sánh', 'khác nhau', 'nên chọn', 'tốt hơn', 'hơn kém', 'phân biệt'],
-            'recommendation': ['phù hợp', 'gợi ý', 'đề xuất', 'tư vấn', 'nên đi', 'chọn nào', 'tìm tour'],
-            'booking_info': ['đặt tour', 'đăng ký', 'booking', 'giữ chỗ', 'thanh toán', 'đặt chỗ'],
-            'policy': ['chính sách', 'giảm giá', 'ưu đãi', 'khuyến mãi', 'giảm', 'promotion'],
-            'general_info': ['giới thiệu', 'là gì', 'thế nào', 'ra sao', 'sứ mệnh', 'giá trị', 'triết lý'],
-            'location_info': ['ở đâu', 'địa điểm', 'đến đâu', 'vị trí', 'tại đâu', 'chỗ nào'],
-            'time_info': ['khi nào', 'thời gian', 'bao lâu', 'mấy ngày', 'bao giờ', 'thời điểm'],
-            'weather_info': ['thời tiết', 'khí hậu', 'nắng mưa', 'mùa nào', 'nhiệt độ'],
-            'food_info': ['ẩm thực', 'món ăn', 'đặc sản', 'đồ ăn', 'bánh bèo', 'mắm nêm'],
-            'culture_info': ['văn hóa', 'lịch sử', 'truyền thống', 'di tích', 'di sản', 'văn minh'],
-            'wellness_info': ['thiền', 'yoga', 'chữa lành', 'sức khỏe', 'retreat', 'tĩnh tâm', 'khí công'],
-            'group_info': ['nhóm', 'đoàn', 'công ty', 'gia đình', 'bạn bè', 'tập thể', 'cựu chiến binh'],
-            'custom_request': ['tùy chỉnh', 'riêng', 'cá nhân hóa', 'theo yêu cầu', 'riêng biệt'],
-            'sustainability': ['bền vững', 'môi trường', 'xanh', 'cộng đồng', 'phát triển bền vững'],
-            'experience': ['trải nghiệm', 'cảm giác', 'cảm nhận', 'thực tế', 'trực tiếp']
-        }
+    'tour_listing': [
+        'có những tour nào', 'danh sách tour', 'liệt kê tour', 'tour nào có', 'tour gì',
+        'có tour', 'có tour nào', 'có chương trình', 'có dịch vụ', 'có hành trình',
+        'xem tour', 'xem các tour', 'tour đang có', 'tour hiện tại'
+    ],
+
+    'price_inquiry': [
+        'giá bao nhiêu', 'bao nhiêu tiền', 'chi phí', 'giá tour', 'bảng giá', 'bao nhiêu',
+        'giá thế nào', 'giá sao', 'giá không', 'hết bao nhiêu tiền', 'chi phí hết bao nhiêu'
+    ],
+
+    'tour_detail': [
+        'chi tiết tour', 'lịch trình', 'có gì', 'bao gồm gì', 'thông tin', 'mô tả',
+        'đi những đâu', 'tham quan gì', 'chương trình thế nào', 'nội dung tour'
+    ],
+
+    'comparison': [
+        'so sánh', 'khác nhau', 'nên chọn', 'tốt hơn', 'hơn kém', 'phân biệt',
+        'so với', 'cái nào hơn', 'tour nào tốt hơn'
+    ],
+
+    'recommendation': [
+        'phù hợp', 'gợi ý', 'đề xuất', 'tư vấn', 'nên đi', 'chọn nào', 'tìm tour',
+        'nên chọn tour nào', 'tư vấn giúp', 'gợi ý giúp mình'
+    ],
+
+    'booking_info': [
+        'đặt tour', 'đăng ký', 'booking', 'giữ chỗ', 'thanh toán', 'đặt chỗ',
+        'cách đặt', 'đặt như thế nào', 'đặt ra sao', 'quy trình đặt'
+    ],
+
+    'policy': [
+        'chính sách', 'giảm giá', 'ưu đãi', 'khuyến mãi', 'giảm', 'promotion',
+        'hoàn tiền', 'hủy tour', 'đổi lịch', 'điều kiện', 'điều khoản'
+    ],
+
+    'general_info': [
+        'giới thiệu', 'là gì', 'thế nào', 'ra sao', 'sứ mệnh', 'giá trị', 'triết lý',
+        'bên bạn là ai', 'công ty là gì', 'ruby wings là gì'
+    ],
+
+    'location_info': [
+        'ở đâu', 'địa điểm', 'đến đâu', 'vị trí', 'tại đâu', 'chỗ nào',
+        'đi đâu', 'tham quan ở đâu', 'địa điểm nào'
+    ],
+
+    'time_info': [
+        'khi nào', 'thời gian', 'bao lâu', 'mấy ngày', 'bao giờ', 'thời điểm',
+        'đi mấy ngày', 'kéo dài bao lâu', 'lịch khởi hành'
+    ],
+
+    'weather_info': [
+        'thời tiết', 'khí hậu', 'nắng mưa', 'mùa nào', 'nhiệt độ',
+        'thời tiết có đẹp không', 'mưa không', 'nắng không'
+    ],
+
+    'food_info': [
+        'ẩm thực', 'món ăn', 'đặc sản', 'đồ ăn', 'bánh bèo', 'mắm nêm',
+        'ăn gì', 'ăn uống thế nào', 'có ăn đặc sản không'
+    ],
+
+    'culture_info': [
+        'văn hóa', 'lịch sử', 'truyền thống', 'di tích', 'di sản', 'văn minh',
+        'bản sắc', 'văn hóa địa phương'
+    ],
+
+    'wellness_info': [
+        'thiền', 'yoga', 'chữa lành', 'sức khỏe', 'retreat', 'tĩnh tâm', 'khí công',
+        'nghỉ dưỡng', 'hồi phục', 'thư giãn'
+    ],
+
+    'group_info': [
+        'nhóm', 'đoàn', 'công ty', 'gia đình', 'bạn bè', 'tập thể', 'cựu chiến binh',
+        'đi theo đoàn', 'đi đông người', 'đoàn riêng'
+    ],
+
+    'custom_request': [
+        'tùy chỉnh', 'riêng', 'cá nhân hóa', 'theo yêu cầu', 'riêng biệt',
+        'thiết kế tour', 'làm tour riêng', 'tour theo yêu cầu'
+    ],
+
+    'sustainability': [
+        'bền vững', 'môi trường', 'xanh', 'cộng đồng', 'phát triển bền vững',
+        'du lịch xanh', 'du lịch bền vững'
+    ],
+
+    'experience': [
+        'trải nghiệm', 'cảm giác', 'cảm nhận', 'thực tế', 'trực tiếp',
+        'trải nghiệm như thế nào', 'có gì hay'
+    ]
+}
+
         
         detected_intents = []
         for intent, keywords in intent_categories.items():
@@ -4501,9 +4575,9 @@ def chat_endpoint_ultimate():
                         reply += "\n"
                     
                     reply += "🎯 **ƯU ĐÃI ĐẶC BIỆT:**\n"
-                    reply += "• Nhóm 5-9 người: Giảm 5%\n"
-                    reply += "• Nhóm 10-15 người: Giảm 10%\n"
-                    reply += "• Nhóm 16+ người: Giảm 15%\n"
+                    reply += "• Nhóm 8-13 người: Giảm 5%\n"
+                    reply += "• Nhóm 14-20 người: Giảm 7%\n"
+                    reply += "• Nhóm 21+ người: Giảm 10%\n"
                     reply += "• Đặt trước 30 ngày: Giảm thêm 5%\n"
                     reply += "• Cựu chiến binh: Ưu đãi đặc biệt\n\n"
                     reply += "📞 **Liên hệ ngay để nhận báo giá tốt nhất:** 0332510486"
@@ -4515,11 +4589,11 @@ def chat_endpoint_ultimate():
                 
                 # Tạo bảng giá theo loại tour
                 price_categories = [
-                    ("🌿 TOUR 1 NGÀY (Thiên nhiên, Văn hóa)", "500.000đ - 1.500.000đ", 
+                    ("🌿 TOUR 1 NGÀY (Thiên nhiên, Văn hóa)", "600.000đ - 1.500.000đ", 
                      "Bạch Mã, Huế city tour, Ẩm thực Huế"),
                     ("🏛️ TOUR 2 NGÀY 1 ĐÊM (Lịch sử, Retreat)", "1.500.000đ - 3.000.000đ", 
                      "Trường Sơn, Di tích lịch sử, Thiền định"),
-                    ("🕉️ TOUR 3+ NGÀY (Cao cấp, Cá nhân hóa)", "2.500.000đ - 5.000.000đ", 
+                    ("🕉️ TOUR 3+ NGÀY (Cao cấp, Cá nhân hóa)", "3.000.000đ - 5.000.000đ", 
                      "Tour riêng, Nhóm đặc biệt, Retreat sâu"),
                     ("👥 TOUR TEAMBUILDING (Công ty, Nhóm lớn)", "Liên hệ tư vấn", 
                      "Thiết kế riêng, Hoạt động nhóm, Gắn kết")
@@ -5486,9 +5560,9 @@ Trả lời trong 200-250 từ."""
                     
                     reply += "👥 **ĐỐI TƯỢNG PHÙ HỢP:**\n"
                     reply += "• Người làm việc căng thẳng, stress\n"
-                    reply += "• Muốn tìm lại sự bình an nội tâm\n"
-                    reply += "• Cần không gian để suy ngẫm và phát triển\n"
-                    reply += "• Muốn cải thiện sức khỏe tinh thần và thể chất\n\n"
+                    reply += "• Muốn tìm lại sự cân bằng, bình an trong tâm\n"
+                    reply += "• Cần không gian để suy ngẫm và phát triển...\n"
+                    reply += "• Muốn cải thiện đến nâng cao sức khỏe tinh thần và thể chất\n\n"
                     
                     reply += "📞 **Đặt tour retreat thiền:** 0332510486"
                 else:
@@ -5625,6 +5699,7 @@ Trả lời trong 250-300 từ."""
                 # Gọi AI
                 if client and HAS_OPENAI:
                     try:
+                        prompt = _prepare_enhanced_llm_prompt(user_message, search_results, context_info, TOURS_DB) 
                         messages = [
                             {"role": "system", "content": prompt},
                             {"role": "user", "content": user_message}
@@ -5661,7 +5736,7 @@ Trả lời trong 250-300 từ."""
         # Thêm signature nếu response dài
         if len(reply) > 300:
             if not reply.endswith("0332510486") and not reply.endswith("Hotline"):
-                reply += "\n\n---\n**Ruby Wings Travel** - Hành trình ý nghĩa, trải nghiệm sâu sắc"
+                reply += "\n\n---\n**Ruby Wings Travel** - Hành trình ý nghĩa, trải nghiệm thực tế, có chiều sâu"
         
         # Giới hạn độ dài response
         if len(reply) > 2500:
@@ -6351,38 +6426,68 @@ def _get_booking_policy_response(message_lower):
 
 def _prepare_enhanced_llm_prompt(user_message, search_results, context_info, tours_db):
     """
-    Prompt builder chuẩn RAG – CHỐNG BỊA TUYỆT ĐỐI
-    - Có dữ liệu → trả lời từ dữ liệu
-    - Không có dữ liệu → bắt buộc thừa nhận không biết
+    Prompt builder THÔNG MINH - Cho phép trả lời linh hoạt
     """
+    
+    # Xác định loại câu hỏi
+    message_lower = user_message.lower()
+    is_general_question = any(keyword in message_lower for keyword in [
+        'có tour', 'có những tour', 'có những gì', 'có dịch vụ',
+        'có tổ chức', 'có đi', 'có hoạt động'
+    ])
+    
+    # Chuẩn bị context dữ liệu
+    relevant_info = ""
+    if search_results:
+        relevant_info = "THÔNG TIN TRÍCH XUẤT TỪ CƠ SỞ DỮ LIỆU RUBY WINGS:\n"
+        for i, (score, passage) in enumerate(search_results[:3], 1):
+            text = passage.get('text', '').strip()
+            if text:
+                relevant_info += f"{i}. {text[:200]}\n"
+    
+    # Thông tin tour nếu có
+    tour_info = ""
+    tour_indices = context_info.get("tour_indices") or []
+    if tour_indices:
+        tour_info = "THÔNG TIN TOUR LIÊN QUAN:\n"
+        for idx in tour_indices[:2]:
+            tour = tours_db.get(idx)
+            if tour:
+                tour_info += f"- {tour.name}: "
+                if tour.duration:
+                    tour_info += f"{tour.duration} | "
+                if tour.location:
+                    tour_info += f"{tour.location[:50]}"
+                if tour.summary:
+                    tour_info += f" | {tour.summary[:100]}"
+                tour_info += "\n"
+    
+    # Tạo prompt thông minh
+    prompt = f"""BẠN LÀ TRỢ LÝ AI THÔNG MINH CỦA RUBY WINGS TRAVEL.
 
-    # ================== NO DATA CASE ==================
-    if not search_results:
-        return f"""
-BẠN LÀ TRỢ LÝ AI CỦA RUBY WINGS TRAVEL.
+THÔNG TIN CÓ SẴN:
+{relevant_info}
+{tour_info}
 
-⚠️ QUY TẮC BẮT BUỘC:
-- CHỈ được trả lời dựa trên dữ liệu Ruby Wings cung cấp
-- KHÔNG được suy đoán
-- KHÔNG được tự tạo thông tin
-- Nếu không có dữ liệu phù hợp → PHẢI NÓI RÕ LÀ KHÔNG CÓ
+CÂU HỎI KHÁCH: "{user_message}"
 
-CÂU HỎI KHÁCH:
-"{user_message}"
+HƯỚNG DẪN TRẢ LỜI:
+1. NẾU CÓ THÔNG TIN TRÊN → Trả lời dựa trên đó, tự nhiên, nhiệt tình
+2. NẾU THIẾU THÔNG TIN → Tự tin trả lời dựa kiến thức chung về tour du lịch
+3. LUÔN kết thúc bằng câu hỏi dẫn dắt hoặc mời gọi liên hệ hotline 0332510486
+4. KHÔNG BAO GIỜ nói "không có dữ liệu", "xin lỗi không tìm thấy"
+5. Với câu hỏi chung: Trả lời ngắn gọn, thân thiện, gợi mở
 
-TÌNH TRẠNG:
-Hệ thống KHÔNG tìm thấy thông tin phù hợp trong cơ sở dữ liệu Ruby Wings.
+VÍ DỤ TỐT:
+Q: "Có tour 1 ngày từ Huế không?"
+A: "Ruby Wings có nhiều tour 1 ngày khởi hành từ Huế như tour Bạch Mã, tour Huế city. Bạn quan tâm loại tour nào (thiên nhiên, lịch sử, ẩm thực) để tôi tư vấn cụ thể? 😊"
 
-CÁCH TRẢ LỜI DUY NHẤT ĐƯỢC PHÉP:
-- Nói rõ: "Hiện tại tôi chưa có dữ liệu để trả lời chính xác câu hỏi này."
-- Đề nghị khách hỏi cụ thể hơn (tên tour / địa điểm / thời gian / giá)
-- Mời liên hệ hotline 0332510486
+Q: "Giá tour đã bao gồm ăn ở chưa?"
+A: "Giá tour Ruby Wings thường bao gồm: ăn uống theo chương trình, chỗ ở, xe đưa đón và hướng dẫn viên. Tùy từng tour có thể có thêm dịch vụ khác. Bạn quan tâm tour cụ thể nào để tôi kiểm tra chi tiết?"
 
-🚫 TUYỆT ĐỐI KHÔNG:
-- Bịa thông tin
-- Đoán giá
-- Đề xuất tour không tồn tại
-"""
+HÃY TRẢ LỜI TỰ NHIÊN, THÂN THIỆN VÀ CHUYÊN NGHIỆP!"""
+    
+    return prompt
 
 
     # ================== DATA AVAILABLE CASE ==================
