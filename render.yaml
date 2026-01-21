@@ -4,7 +4,7 @@ services:
   - type: web
     name: ruby-wings-chatbot-v4
     env: python
-    plan: starter
+    plan: standard
     region: singapore
     autoDeploy: true
     branch: main
@@ -15,58 +15,40 @@ services:
 
     buildCommand: |
       echo "🚀 Ruby Wings build started"
-      
+
       python -m pip install --upgrade pip setuptools wheel
-      
-      echo "📦 Installing dependencies"
       pip install -r requirements.txt
 
-      
-      echo "📁 Prepare folders"
       mkdir -p data logs
-      
+
       if [ ! -f "knowledge.json" ]; then
         echo '{"tours": []}' > knowledge.json
       fi
-      
-      # Build embeddings ONLY if FAISS is enabled
-      if [ "$FAISS_ENABLED" = "true" ]; then
-        echo "🧠 FAISS enabled – building index"
-        python build_index.py
-      else
-        echo "🧠 FAISS disabled – using numpy fallback only"
-      fi
-      
+
+      echo "🧠 Building FAISS index (2GB mode)"
+      python build_index.py
+
       echo "✅ Build done"
 
     startCommand: |
-      echo "🚀 Ruby Wings starting"
+      echo "🚀 Ruby Wings starting (2GB mode)"
 
-      export RAM_PROFILE=${RAM_PROFILE:-512}
-
-      if [ "$RAM_PROFILE" = "2048" ]; then
-        echo "🚀 High-RAM mode (2GB)"
-        export GUNICORN_WORKERS=${GUNICORN_WORKERS:-2}
-        export GUNICORN_THREADS=${GUNICORN_THREADS:-4}
-        export FAISS_ENABLED=true
-      else
-        echo "🧠 Low-RAM mode (512MB)"
-        export GUNICORN_WORKERS=${GUNICORN_WORKERS:-1}
-        export GUNICORN_THREADS=${GUNICORN_THREADS:-2}
-        export FAISS_ENABLED=false
-      fi
+      export RAM_PROFILE=2048
+      export FAISS_ENABLED=true
+      export GUNICORN_WORKERS=2
+      export GUNICORN_THREADS=4
 
       gunicorn app:app \
-        --workers $GUNICORN_WORKERS \
-        --threads $GUNICORN_THREADS \
+        --workers 2 \
+        --threads 4 \
         --bind=0.0.0.0:$PORT \
-        --timeout ${TIMEOUT:-120} \
-        --graceful-timeout ${GUNICORN_GRACEFUL_TIMEOUT:-30} \
-        --keepalive ${GUNICORN_KEEPALIVE:-5} \
-        --max-requests ${GUNICORN_MAX_REQUESTS:-1000} \
-        --max-requests-jitter ${GUNICORN_MAX_REQUESTS_JITTER:-50} \
-        --worker-connections ${GUNICORN_WORKER_CONNECTIONS:-1000} \
-        --log-level ${GUNICORN_LOG_LEVEL:-info} \
+        --timeout 120 \
+        --graceful-timeout 30 \
+        --keepalive 5 \
+        --max-requests 1000 \
+        --max-requests-jitter 50 \
+        --worker-connections 1000 \
+        --log-level info \
         --access-logfile - \
         --error-logfile -
 
@@ -76,27 +58,36 @@ services:
       sizeGB: 1
 
     envVars:
-      # ===== RAM MODE =====
+      # ===== RAM / MODE =====
       - key: RAM_PROFILE
-        value: "512"
+        value: "2048"
 
       # ===== AI =====
       - key: OPENAI_API_KEY
         sync: false
         required: true
 
-      - key: EMBEDDING_MODEL
-        value: "text-embedding-3-small"
-
       - key: CHAT_MODEL
         value: "gpt-4o-mini"
 
-      # ===== INDEX =====
+      - key: EMBEDDING_MODEL
+        value: "text-embedding-3-small"
+
+      - key: ENABLE_CACHING
+        value: "true"
+
+      - key: TOP_K
+        value: "8"
+
+      - key: TIMEOUT
+        value: "120"
+
+      # ===== KNOWLEDGE / INDEX =====
       - key: KNOWLEDGE_PATH
         value: "knowledge.json"
 
       - key: FAISS_ENABLED
-        value: "false"
+        value: "true"
 
       - key: FAISS_INDEX_PATH
         value: "data/faiss_index.bin"
@@ -107,7 +98,10 @@ services:
       - key: FALLBACK_VECTORS_PATH
         value: "data/vectors.npz"
 
-      # ===== GOOGLE =====
+      - key: ENABLE_FALLBACK_STORAGE
+        value: "false"
+
+      # ===== GOOGLE SHEETS =====
       - key: ENABLE_GOOGLE_SHEETS
         value: "true"
 
@@ -141,9 +135,31 @@ services:
       - key: DEBUG
         value: "false"
 
+      - key: DEBUG_META_CAPI
+        value: "false"
+
+      - key: ENABLE_QUERY_LOGGING
+        value: "false"
+
       - key: SECRET_KEY
         sync: false
         generateValue: true
+
+      # ===== FEATURES =====
+      - key: ENABLE_INTENT_DETECTION
+        value: "true"
+
+      - key: ENABLE_LOCATION_CONTEXT
+        value: "true"
+
+      - key: LOCATION_FILTER_STRICT
+        value: "true"
+
+      - key: FEATURE_STATE_MACHINE
+        value: "true"
+
+      - key: STATE_MACHINE_ENABLED
+        value: "true"
 
       # ===== UPGRADES =====
       - key: UPGRADE_1_MANDATORY_FILTER
@@ -168,8 +184,8 @@ services:
         value: "true"
 
     resources:
-      cpu: 1
-      memoryMB: 512
+      cpu: 2
+      memoryMB: 2048
 
     scaling:
       minInstances: 1
