@@ -4162,13 +4162,23 @@ def chat_endpoint_ultimate():
         # ================== CONTEXT MANAGEMENT SYSTEM ==================
         context = get_session_context(session_id)
         
-        # Khởi tạo context nếu chưa có
+                # Khởi tạo context nếu chưa có
         if not hasattr(context, 'conversation_history'):
             context.conversation_history = []
         if not hasattr(context, 'current_tour'):
             context.current_tour = None
         if not hasattr(context, 'user_profile'):
-            context.user_profile = {}
+            context.user_profile = {
+                'basic_info': {},
+                'preferences': {},
+                'interaction_stats': {
+                    'avg_complexity': 0,
+                    'total_messages': 0,
+                    'intent_counts': {}
+                },
+                'inferred_interests': [],
+                'request_history': []
+            }
         
         # Lưu user message vào history
         context.conversation_history.append({
@@ -6861,23 +6871,37 @@ def chat_endpoint_ultimate():
                     if len(context.tour_view_history) > 10:
                         context.tour_view_history = context.tour_view_history[-10:]
         
-        # 2. ENHANCED USER PROFILE TRACKING
+                                # 2. ENHANCED USER PROFILE TRACKING
         if not hasattr(context, 'user_profile'):
             context.user_profile = {
                 'basic_info': {},
                 'preferences': {},
-                'interaction_stats': {},
+                'interaction_stats': {
+                    'avg_complexity': 0,
+                    'total_messages': 0,
+                    'intent_counts': {}
+                },
                 'inferred_interests': [],
                 'request_history': []
             }
-        
+
+        # Đảm bảo tất cả các keys đều tồn tại
+        context.user_profile.setdefault('basic_info', {})
+        context.user_profile.setdefault('preferences', {})
+        context.user_profile.setdefault('inferred_interests', [])
+        context.user_profile.setdefault('request_history', [])
+        context.user_profile.setdefault('interaction_stats', {
+            'avg_complexity': 0,
+            'total_messages': 0,
+            'intent_counts': {}
+        })
+
         # Cập nhật thông tin từ context_analysis (nếu có)
         if 'context_analysis' in locals():
             analysis = context_analysis
             
             # Cập nhật audience type
             if analysis.get('audience_type'):
-                context.user_profile.setdefault('basic_info', {})
                 context.user_profile['basic_info']['audience_type'] = analysis.get('audience_type')
             
             # Cập nhật interests từ analysis
@@ -6891,35 +6915,49 @@ def chat_endpoint_ultimate():
                 sentiment_key = f"sentiment_{analysis['sentiment']['type']}"
                 context.user_profile['interaction_stats'][sentiment_key] = \
                     context.user_profile['interaction_stats'].get(sentiment_key, 0) + 1
-        
+                
+
+            # 5. Cập nhật complexity profile - FIX LỖI interaction_stats
+            # Đảm bảo interaction_stats tồn tại và có đủ keys
+            if 'interaction_stats' not in context.user_profile:
+                context.user_profile['interaction_stats'] = {
+                    'avg_complexity': 0,
+                    'total_messages': 0,
+                    'intent_counts': {}
+                }
+
+            # Tính toán avg_complexity
+            old_avg = context.user_profile['interaction_stats'].get('avg_complexity', 0)
+            old_total = context.user_profile['interaction_stats'].get('total_messages', 0)
+
+            new_avg = old_avg * 0.8 + complexity_score * 0.2
+            new_total = old_total + 1
+
+            context.user_profile['interaction_stats']['avg_complexity'] = new_avg
+            context.user_profile['interaction_stats']['total_messages'] = new_total
+
+
         # Cập nhật thông tin từ mandatory_filters
         if mandatory_filters and not mandatory_filters.is_empty():
             if hasattr(mandatory_filters, 'group_type') and mandatory_filters.group_type:
                 context.user_profile['basic_info']['preferred_group_type'] = mandatory_filters.group_type
             
             if hasattr(mandatory_filters, 'location') and mandatory_filters.location:
-                context.user_profile.setdefault('preferences', {})
                 context.user_profile['preferences']['preferred_location'] = mandatory_filters.location
 
-            
             if hasattr(mandatory_filters, 'duration_min') or hasattr(mandatory_filters, 'duration_max'):
                 context.user_profile['preferences']['tour_duration'] = {
                     'min': getattr(mandatory_filters, 'duration_min', None),
                     'max': getattr(mandatory_filters, 'duration_max', None)
                 }
-        
+
         # Cập nhật từ primary_intent và detected_intents
         if primary_intent:
-            context.user_profile['interaction_stats']['intent_counts'] = \
-                context.user_profile['interaction_stats'].get('intent_counts', {})
-            context.user_profile['interaction_stats']['intent_counts'][primary_intent] = \
-                context.user_profile['interaction_stats']['intent_counts'].get(primary_intent, 0) + 1
-        
-        # Cập nhật complexity profile
-        context.user_profile['interaction_stats']['avg_complexity'] = \
-            context.user_profile['interaction_stats'].get('avg_complexity', 0) * 0.8 + complexity_score * 0.2
-        context.user_profile['interaction_stats']['total_messages'] = \
-            context.user_profile['interaction_stats'].get('total_messages', 0) + 1
+            intent_counts = context.user_profile['interaction_stats'].get('intent_counts', {})
+            intent_counts[primary_intent] = intent_counts.get(primary_intent, 0) + 1
+            context.user_profile['interaction_stats']['intent_counts'] = intent_counts
+                                
+
         
         # 3. ENHANCED CONVERSATION HISTORY MANAGEMENT
         # Tạo metadata entry chi tiết
