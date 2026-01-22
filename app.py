@@ -37,6 +37,8 @@ from datetime import datetime, timedelta
 from collections import defaultdict, deque
 from difflib import SequenceMatcher
 from enum import Enum
+from app import TOURS_DB
+
 # Try to import numpy with detailed error handling
 try:
     
@@ -142,6 +144,9 @@ logging.basicConfig(
 logger = logging.getLogger("rbw_v4")
 
 # =========== IMPORTS WITH FALLBACKS ===========
+# Global FAISS index
+FAISS_INDEX = None
+
 HAS_FAISS = False
 try:
     import faiss
@@ -157,6 +162,9 @@ try:
     HAS_OPENAI = True
 except ImportError:
     logger.warning("⚠️ OpenAI not available, using fallback responses")
+# FAISS index mapping (id -> tour index)
+FAISS_MAPPING = {}
+
 
 # Google Sheets
 try:
@@ -296,6 +304,8 @@ CORS(app, origins=CORS_ORIGINS, supports_credentials=True)
 # Initialize OpenAI client
 # ==== OpenAI client (SDK 1.x safe, Render compatible) ====
 from openai import OpenAI
+embedding_client = client
+
 import httpx
 import os
 
@@ -2019,7 +2029,7 @@ class FuzzyMatcher:
         # Remove multiple spaces again
         normalized = ' '.join(normalized.split())
         
-        return normalizeds
+        return normalized
         
     @staticmethod
     def find_tour_by_partial_name(partial_name: str, tours_db: Dict[int, Tour]) -> List[int]:
@@ -2456,7 +2466,9 @@ class AutoValidator:
                         constraints = AutoValidator.VALIDATION_RULES['duration']['constraints']
                         
                         valid_combos = constraints['valid_day_night_combos']
-                        is_valid_combo = any(d == d2 and n == n2 for d2, n2 in valid_combos)
+                        is_valid_combo = (constraints.get('day'), constraints.get('night')) in valid_combos
+
+
                         
                         if days > constraints['max_days'] or nights > constraints['max_nights']:
                             replacement = random.choice(constraints['common_durations'])
