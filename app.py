@@ -1708,6 +1708,7 @@ class ComplexQueryProcessor:
             for match in matches:
                 for i in range(1, (match.lastindex or 0) + 1):
                     if match.group(i):
+
                         tour_name = match.group(i).strip()
                         normalized_name = FuzzyMatcher.normalize_vietnamese(tour_name)
                         for name, idx in TOUR_NAME_TO_INDEX.items():
@@ -3728,6 +3729,9 @@ def build_index(force_rebuild: bool = False) -> bool:
         return True
 
 # =========== HELPER FUNCTIONS ===========
+def _get_general_info_response_v4(message_lower, tour_indices):
+    return _get_general_food_culture_response(message_lower, tour_indices)
+
 def _format_price(price):
     return price
 def normalize_text_simple(s: str) -> str:
