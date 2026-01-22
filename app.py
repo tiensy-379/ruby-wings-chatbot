@@ -4284,6 +4284,11 @@ def chat_endpoint_ultimate():
 
         
         # ================== ENHANCED INTENT DETECTION V3 ==================
+        detected_intents = []
+        intent_scores = {}
+        detected_categories = []  # THÊM DÒNG NÀY - KHỞI TẠO MẶC ĐỊNH
+        primary_intent = None
+
         intent_categories = {
             'service_inquiry': [
                 'bao gồm', 'có những gì', 'dịch vụ', 'cung cấp', 'có cho',
@@ -4522,6 +4527,7 @@ def chat_endpoint_ultimate():
         # NÂNG CẤP LOGIC PHÁT HIỆN INTENT THÔNG MINH HƠN
         detected_intents = []
         intent_scores = {}
+        detected_categories = []  # THÊM DÒNG NÀY - FIX LỖI
         
         for intent, keywords in intent_categories.items():
             score = 0
@@ -4596,6 +4602,7 @@ def chat_endpoint_ultimate():
                 logger.info(f"🎯 Multiple High-Score Intents: {top_intents}")
         
         # Ghi log chi tiết
+        detected_categories = detected_intents.copy()  # THÊM DÒNG NÀY - FIX LỖI
         logger.info(f"🎯 Detected Intents: {detected_intents}")
         logger.info(f"🎯 Primary Intent: {primary_intent}")
 
