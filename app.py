@@ -896,8 +896,9 @@ class MandatoryFilterSystem:
             matches = re.finditer(pattern, price_text, re.IGNORECASE)
             for match in matches:
                 try:
-                    for i in range(1, 3):
+                    for i in range(1, (match.lastindex or 0) + 1):
                         if match.group(i):
+
                             num_str = match.group(i).replace(',', '').replace('.', '')
                             if num_str.isdigit():
                                 num = int(num_str)
@@ -1705,7 +1706,7 @@ class ComplexQueryProcessor:
         for pattern in tour_name_patterns:
             matches = re.finditer(pattern, query_lower)
             for match in matches:
-                for i in range(1, 3):
+                for i in range(1, (match.lastindex or 0) + 1):
                     if match.group(i):
                         tour_name = match.group(i).strip()
                         normalized_name = FuzzyMatcher.normalize_vietnamese(tour_name)
@@ -6837,7 +6838,8 @@ def chat_endpoint_ultimate():
             
             # Cập nhật audience type
             if analysis.get('audience_type'):
-                context.user_profile['basic_info']['audience_type'] = analysis['audience_type']
+                context.user_profile.setdefault('basic_info', {})
+                context.user_profile['basic_info']['audience_type'] = analysis.get('audience_type')
             
             # Cập nhật interests từ analysis
             if analysis.get('interests') and len(analysis['interests']) > 0:
@@ -6857,7 +6859,9 @@ def chat_endpoint_ultimate():
                 context.user_profile['basic_info']['preferred_group_type'] = mandatory_filters.group_type
             
             if hasattr(mandatory_filters, 'location') and mandatory_filters.location:
+                context.user_profile.setdefault('preferences', {})
                 context.user_profile['preferences']['preferred_location'] = mandatory_filters.location
+
             
             if hasattr(mandatory_filters, 'duration_min') or hasattr(mandatory_filters, 'duration_max'):
                 context.user_profile['preferences']['tour_duration'] = {
