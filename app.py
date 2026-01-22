@@ -37,7 +37,6 @@ from datetime import datetime, timedelta
 from collections import defaultdict, deque
 from difflib import SequenceMatcher
 from enum import Enum
-from app import TOURS_DB
 
 # Try to import numpy with detailed error handling
 try:
