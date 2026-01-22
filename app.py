@@ -3729,8 +3729,35 @@ def build_index(force_rebuild: bool = False) -> bool:
         return True
 
 # =========== HELPER FUNCTIONS ===========
-def _get_general_info_response_v4(message_lower, tour_indices):
-    return _get_general_food_culture_response(message_lower, tour_indices)
+def _get_general_info_response_v4(message_lower, detected_categories, complexity_score=None, tour_indices=None, tours_db=None):
+    """
+    Trả lời về thông tin chung của công ty dựa trên detected_categories.
+    """
+    # Nếu không có category nào, trả về triết lý
+    if not detected_categories:
+        return _get_philosophy_response()
+
+    # Tạm thời, chỉ xử lý category đầu tiên
+    primary_category = detected_categories[0]
+
+    if primary_category == 'philosophy':
+        return _get_philosophy_response()
+    elif primary_category == 'company':
+        return _get_company_introduction()
+    elif primary_category == 'history':
+        return "📜 **LỊCH SỬ HÌNH THÀNH RUBY WINGS**\n\nRuby Wings được thành lập năm 2018 với sứ mệnh mang đến những hành trình du lịch có chiều sâu, kết nối con người với lịch sử, văn hóa và thiên nhiên. Từ một nhóm nhỏ, chúng tôi đã phát triển thành một công ty du lịch trải nghiệm uy tín tại miền Trung Việt Nam.\n\n📞 Liên hệ để biết thêm chi tiết: 0332510486"
+    elif primary_category == 'mission':
+        return "🎯 **SỨ MỆNH & TẦM NHÌN**\n\n**Sứ mệnh:** Mang đến những hành trình không chỉ là du lịch mà còn là trải nghiệm chuyển hóa, kết nối và chữa lành.\n\n**Tầm nhìn:** Trở thành tổ chức du lịch trải nghiệm dẫn đầu Đông Nam Á, được công nhận về chất lượng dịch vụ và đóng góp cho phát triển bền vững.\n\n📞 Liên hệ: 0332510486"
+    elif primary_category == 'team':
+        return "👥 **ĐỘI NGŨ RUBY WINGS**\n\nChúng tôi có một đội ngũ gồm:\n• Hướng dẫn viên giàu kinh nghiệm, am hiểu văn hóa lịch sử\n• Chuyên gia wellness & thiền định\n• Nhân viên hỗ trợ 24/7\n• Đội ngũ nghiên cứu và phát triển sản phẩm\n\n📞 Liên hệ: 0332510486"
+    elif primary_category == 'awards':
+        return "🏆 **GIẢI THƯỞNG & CHỨNG NHẬN**\n\n• Top 5 Tour Operator uy tín 2023\n• Giải thưởng Du lịch bền vững 2022\n• Doanh nghiệp văn hóa tiêu biểu 2021\n• Đối tác của UNESCO Huế\n• Chứng nhận an toàn du lịch quốc tế\n\n📞 Liên hệ: 0332510486"
+    elif primary_category == 'contact':
+        return "📞 **THÔNG TIN LIÊN HỆ**\n\n• **Hotline 24/7:** 0332510486\n• **Email:** rubywingslsa@gmail.com\n• **Văn phòng:** 148 Đường Trương Gia Mô, TP Huế\n• **Giờ làm việc:** 8:00 - 20:00 hàng ngày\n• **Zalo:** @rubywings\n\nChúng tôi luôn sẵn sàng hỗ trợ bạn!"
+    elif primary_category == 'services':
+        return "🛎️ **DỊCH VỤ CỦA RUBY WINGS**\n\n• Tour du lịch trải nghiệm (lịch sử, văn hóa, thiên nhiên)\n• Tour thiền & wellness\n• Tour team building & công ty\n• Tour gia đình & nhóm bạn\n• Tour tùy chỉnh theo yêu cầu\n• Dịch vụ vé tham quan, đặt phòng, xe đưa đón\n\n📞 Đặt tour ngay: 0332510486"
+    else:
+        return _get_philosophy_response()
 
 def _format_price(price):
     return price
@@ -4115,7 +4142,8 @@ def chat_endpoint_ultimate():
         data = request.get_json() or {}
         user_message = (data.get("message") or "").strip()
         session_id = extract_session_id(data, request.remote_addr)
-        
+        # KHỞI TẠO BIẾN - FIX LỖI detected_categories
+        detected_categories = []
         if not user_message:
             return jsonify({
                 "reply": "👋 **Xin chào! Tôi là trợ lý AI của Ruby Wings Travel**\n\n"
@@ -9858,8 +9886,57 @@ def _generate_enhanced_fallback_response(user_message, search_results, tour_indi
     
     return reply
 
+def _get_philosophy_response():
+    """Trả lời về triết lý Ruby Wings"""
+    return """✨ **TRIẾT LÝ 'CHUẨN MỰC - CHÂN THÀNH - CÓ CHIỀU SÂU'** ✨
 
-# ================== MODULE COMPATIBILITY CHECK ==================
+**🌌 MỤC ĐÍCH SÂU XA:**
+Không chỉ là du lịch, Ruby Wings tạo ra hành trình chạm đến cảm xúc, mở ra nhận thức mới, và kết nối con người với lịch sử, thiên nhiên và chính mình.
+
+**🏆 CHUẨN MỰC - SỰ HOÀN HẢO TRONG TỪNG CHI TIẾT:**
+• An toàn tuyệt đối với đánh giá rủi ro trước mỗi hành trình
+• HDV được chứng nhận quốc tế, quy trình chuẩn hóa ISO
+• Chất lượng không thỏa hiệp với đối tác được lựa chọn kỹ lưỡng
+
+**❤️ CHÂN THÀNH - KẾT NỐI TỪ TRÁI TIM:**
+• Minh bạch tuyệt đối: báo giá chi tiết, không phát sinh
+• Đồng hành như người thân: tư vấn tận tâm, không ép mua
+• Trách nhiệm với cộng đồng: tôn trọng văn hóa địa phương
+
+**🌠 CÓ CHIỀU SÂU - GIÁ TRỊ BỀN VỮNG:**
+• Hành trình ý nghĩa: mỗi chuyến đi là một bài học
+• Khám phá bản chất: vượt qua bề nổi du lịch thông thường
+• Truyền cảm hứng: khơi dậy lòng biết ơn, tạo động lực thay đổi tích cực
+
+📞 **Trải nghiệm triết lý Ruby Wings trong từng hành trình:** 0332510486
+✨ *"Mỗi bước chân là một khám phá, mỗi hành trình là một sự chuyển hóa"* ✨"""
+
+
+def _get_company_introduction():
+    """Trả lời giới thiệu công ty"""
+    return """🏛️ **GIỚI THIỆU CHI TIẾT RUBY WINGS TRAVEL** 🏛️
+
+**📜 LỊCH SỬ HÌNH THÀNH:**
+Thành lập năm 2018 với sứ mệnh thay đổi cách du lịch truyền thống, Ruby Wings đã phát triển từ nhóm nhỏ thành tổ chức du lịch trải nghiệm uy tín tại miền Trung Việt Nam.
+
+**🌟 4 TRỤ CỘT CHÍNH:**
+1. **TOUR LỊCH SỬ - TRI ÂN:** Di tích, chiến trường, di sản
+2. **TOUR RETREAT - CHỮA LÀNH:** Thiền, yoga, khí công, tĩnh tâm  
+3. **TOUR THIÊN NHIÊN - KHÁM PHÁ:** Rừng núi, động thực vật, hệ sinh thái
+4. **TOUR VĂN HÓA - ẨM THỰC:** Ẩm thực, làng nghề, phong tục địa phương
+
+**📊 QUY MÔ HOẠT ĐỘNG:**
+• **Nhân sự:** 25 nhân viên chính thức + 50 cộng tác viên
+• **Khách hàng:** 5,000+ khách/năm
+• **Địa bàn:** Huế, Quảng Trị, Đà Nẵng, Bạch Mã, Trường Sơn
+
+📞 **Kết nối với Ruby Wings:**
+• **Hotline 24/7:** 0332510486
+• **Văn phòng:** 148 Đường Trương Gia Mô, Thành phố Huế
+• **Giờ làm việc:** 8:00 - 20:00 hàng ngày
+
+🌟 *"Ruby Wings - Nâng cánh ước mơ, chạm đến trái tim"* 🌟"""
+# ================== MODULE COMPATIBILITY CHECK
 # Các module cần nâng cấp để tương thích:
 
 """
