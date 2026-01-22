@@ -8728,6 +8728,8 @@ def _prepare_enhanced_llm_prompt(user_message, search_results, context_info, tou
     primary_intent = context_info.get('primary_intent', 'Không xác định')
     complexity_score = context_info.get('complexity_score', 0)
     detected_intents = context_info.get('detected_intents', [])
+    detected_categories = []
+
     
     # Xác định style response
     response_style = ""
