@@ -4360,7 +4360,8 @@ def chat_endpoint_ultimate():
                 'các tour hiện có', 'tất cả tour', 'full list',
                 'danh mục tour', 'catalogue tour', 'bộ sưu tập tour',
                 'tour mới nhất', 'tour hot', 'tour nổi bật', 'tour đặc biệt',
-                'tour limited', 'tour theo mùa', 'tour theo tháng'
+                'tour limited', 'tour theo mùa', 'tour theo tháng',
+                'thiền', 'tour thiền', 'tout thiền' 
             ],
 
             'price_inquiry': [
@@ -4405,7 +4406,8 @@ def chat_endpoint_ultimate():
                 'tour recommend', 'tour suggested', 'tour được đề xuất',
                 'nên đi tour nào', 'tour phù hợp nhất', 'tour tốt nhất cho',
                 'tour hay nhất', 'tour đáng trải nghiệm', 'tour nên thử',
-                'tour hợp với', 'tour dành cho', 'tour theo sở thích'
+                'tour hợp với', 'tour dành cho', 'tour theo sở thích',
+                'thiền', 'tour thiền', 
             ],
 
             'booking_info': [
@@ -4661,7 +4663,7 @@ def chat_endpoint_ultimate():
         
         # Chuẩn hóa từ đồng nghĩa để tăng khả năng matching
         synonym_mapping = {
-            'tour': ['tour', 'tour', 'chương trình', 'lịch trình', 'trip', 'chuyến đi'],
+            'tour': ['tour', 'tout', 'tours', 'chương trình', 'lịch trình', 'trip', 'chuyến đi'],
             'bạch mã': ['bạch mã', 'bach ma', 'vườn quốc gia bạch mã'],
             'trường sơn': ['trường sơn', 'truong son', 'đường hồ chí minh', 'đường hcm'],
             'huế': ['huế', 'hue', 'thành phố huế', 'cố đô huế'],
@@ -6139,7 +6141,33 @@ def chat_endpoint_ultimate():
                     reply = _generate_enhanced_fallback_response(user_message, [], tour_indices, TOURS_DB)
             else:
                 reply = _generate_enhanced_fallback_response(user_message, [], tour_indices, TOURS_DB)
-                
+
+            # 🔹 CASE 0: XỬ LÝ CÂU HỎI "CÓ TOUR THIỀN KHÔNG" - THÊM MỚI
+        if 'thiền' in message_lower and any(word in message_lower for word in ['có', 'có không', 'có tour', 'có tout']):
+            logger.info("🧘 Xử lý câu hỏi về tour thiền")
+            
+            # Tìm tour thiền
+            meditation_tours = []
+            for idx, tour in TOURS_DB.items():
+                tour_lower = (tour.name or '').lower() + ' ' + (tour.summary or '').lower()
+                if 'thiền' in tour_lower or 'meditation' in tour_lower or 'retreat' in tour_lower:
+                    meditation_tours.append(tour)
+            
+            if meditation_tours:
+                reply = f"✅ **CÓ TOUR THIỀN!** Ruby Wings có {len(meditation_tours)} tour thiền/retreat:\n\n"
+                for i, tour in enumerate(meditation_tours[:3], 1):
+                    reply += f"{i}. **{tour.name}**\n"
+                    if tour.duration:
+                        reply += f"   ⏱️ {tour.duration}\n"
+                    if tour.summary:
+                        summary_short = tour.summary[:100] + "..." if len(tour.summary) > 100 else tour.summary
+                        reply += f"   📝 {summary_short}\n"
+                    reply += "\n"
+                reply += "📞 **Đặt tour thiền ngay:** 0332510486"
+            else:
+                reply = "Hiện Ruby Wings chưa có tour thiền cố định, nhưng chúng tôi có thể thiết kế tour retreat thiền riêng theo yêu cầu của bạn.\n\n📞 **Liên hệ thiết kế tour thiền riêng:** 0332510486" 
+
+
         # 🔹 CASE 16: FALLBACK TO AI
       
             logger.info("🤖 Processing with AI fallback")
@@ -7156,6 +7184,17 @@ def chat_endpoint_ultimate():
             }, sort_keys=True).encode()).hexdigest()
             
             cache_key = CacheSystem.get_cache_key(user_message, context_hash)
+                   # Cache response - TẠM THỜI DISABLE
+        if False and UpgradeFlags.get_all_flags().get("ENABLE_CACHING", True):
+            context_hash = hashlib.md5(json.dumps({
+                'tour_indices': tour_indices,
+                'detected_intents': detected_intents,
+                'primary_intent': primary_intent,
+                'complexity': complexity_score,
+                'filters': mandatory_filters.to_dict() if mandatory_filters else {}
+            }, sort_keys=True).encode()).hexdigest()
+            
+            cache_key = CacheSystem.get_cache_key(user_message, context_hash)
             CacheSystem.set(cache_key, chat_response.to_dict(), expiry=300)
         
         logger.info(f"✅ Processed in {processing_time:.2f}s | "
@@ -7886,7 +7925,7 @@ def _get_location_info(location, location_tours):
     return reply
 
 
-def _get_food_culture_response(message_lower, tour_indices):
+def _get_general_info_response_v4(message_lower, detected_categories, complexity_score=None, tour_indices=None, tours_db=None):
     """Trả lời về ẩm thực và văn hóa - NÂNG CẤP CHI TIẾT"""
     # Kiểm tra cụ thể loại ẩm thực/văn hóa được hỏi
     if 'bánh bèo' in message_lower:
@@ -7905,6 +7944,12 @@ def _get_food_culture_response(message_lower, tour_indices):
         return _get_history_culture_response()
     else:
         return _get_general_food_culture_response(message_lower, tour_indices)
+    # Nếu có 'thiền' trong câu hỏi, trả lời về tour thiền
+    if 'thiền' in message_lower: 
+        return "🧘 **TOUR THIỀN & RETREAT** 🧘\n\nRuby Wings có các tour thiền và retreat tại Huế, Bạch Mã với các hoạt động:\n• Thiền định trong rừng\n• Yoga trị liệu\n• Khí công\n• Tĩnh tâm bên suối\n\n📞 **Đặt tour thiền:** 0332510486"
+    
+    # Nếu không, trả về triết lý
+        return _get_philosophy_response()
 
 
 def _get_banh_beo_detail():
