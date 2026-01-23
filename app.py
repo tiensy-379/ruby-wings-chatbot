@@ -20,9 +20,14 @@ from datetime import datetime
 from functools import lru_cache
 from collections import defaultdict, deque
 from difflib import SequenceMatcher
-
+import requests
+import logging
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO)
 import numpy as np
 from flask import Flask, request, jsonify, Response, stream_with_context
+app = Flask(__name__)
+
 from flask_cors import CORS
 
 # Try to import FAISS with fallback
@@ -1810,1359 +1815,1003 @@ def search_tours():
 
 # ==================== PHẦN 8: CHAT ENDPOINT (ĐỂ CHÈN THỦ CÔNG) ====================
 
-# ==================== PHẦN 8: MAIN CHAT ENDPOINT - PHIÊN BẢN CAO CẤP ====================
+# ==================== PHẦN 8: CHAT ENDPOINT - KNOWLEDGE.JSON INTEGRATION ====================
 
 @app.route("/chat", methods=["POST"])
-def chat_endpoint():
+def chat_endpoint_knowledge():
     """
-    TRỢ LÝ AI THÔNG MINH RUBY WINGS - PHIÊN BẢN CAO CẤP
-    Tích hợp đầy đủ 10 upgrades systems với knowledge.json
-    Xử lý đa tầng, context-aware, real-time optimization
+    Main chat endpoint với full knowledge.json integration
+    Version: Knowledge-Aware Chatbot V1.0
     """
-    # ========== KHỞI TẠO BIẾN TOÀN CỤC ==========
     start_time = time.time()
-    session_id = None
-    context = None
-    user_message = ""
-    processing_phase = "initialization"
     
     try:
-        # ========== PHASE 1: REQUEST PROCESSING & VALIDATION ==========
-        processing_phase = "request_processing"
+        # ================== 1. NHẬN REQUEST & PARSE ==================
+        data = request.get_json() or {}
+        user_message = (data.get("message") or "").strip()
+        session_id = extract_session_id(data, request.remote_addr)
         
-        # 1.1 Parse và validate request
-        request_data = request.get_json()
-        if not request_data:
-            logger.warning("Empty request received")
-            return jsonify({
-                "reply": "Vui lòng gửi yêu cầu dưới dạng JSON với trường 'message'.",
-                "tour_indices": [],
-                "context": {"error": "invalid_request"},
-                "processing_time_ms": int((time.time() - start_time) * 1000)
-            }), 400
-        
-        user_message = request_data.get("message", "").strip()
         if not user_message:
-            # Trả về greeting template nếu message rỗng
-            greeting_response = KnowledgeTemplateSystem.render('greeting')
-            return jsonify({
-                "reply": greeting_response,
-                "tour_indices": [],
-                "context": {"session_id": generate_session_id(), "action": "greeting"},
-                "processing_time_ms": int((time.time() - start_time) * 1000),
-                "metadata": {"template": "greeting", "version": "4.2"}
-            })
+            return jsonify(asdict(ChatResponse(
+                reply=KnowledgeTemplateSystem.render('greeting'),
+                tour_indices=[],
+                action="continue",
+                context={"session_id": session_id},
+                metadata={"processing_time_ms": 0}
+            )))
         
-        # 1.2 Extract session information
-        provided_session_id = request_data.get("session_id")
-        client_ip = request.remote_addr
-        user_agent = request.headers.get('User-Agent', 'Unknown')
+        logger.info(f"📩 Received message from {session_id}: {user_message[:100]}...")
         
-        # 1.3 Generate or retrieve session ID
-        session_id = extract_session_id(request_data, client_ip)
-        logger.info(f"Session ID: {session_id}, Client IP: {client_ip}, User Agent: {user_agent[:50]}...")
-        
-        # ========== PHASE 2: SESSION & CONTEXT MANAGEMENT ==========
-        processing_phase = "session_management"
-        
-        # 2.1 Lấy hoặc tạo mới conversation context
+        # ================== 2. KHỞI TẠO & LOAD DỮ LIỆU ==================
+        # 2.1 Lấy context từ session
         context = get_session_context(session_id)
-        
-        # 2.2 Khởi tạo context nếu chưa có
-        context_initialized = False
-        if not hasattr(context, 'conversation_history'):
-            context.conversation_history = []
-            context_initialized = True
-        
-        if not hasattr(context, 'user_preferences'):
-            context.user_preferences = {}
-            context_initialized = True
-        
-        if not hasattr(context, 'last_tours_mentioned'):
-            context.last_tours_mentioned = []
-            context_initialized = True
-        
-        if not hasattr(context, 'current_state'):
-            context.current_state = ConversationState.INITIAL
-            context_initialized = True
-        
-        if context_initialized:
-            logger.info(f"Initialized new context for session: {session_id}")
-        
-        # 2.3 Update activity tracking
         context.last_activity = time.time()
-        context.session_id = session_id
         
-        # 2.4 Add user message to conversation history với metadata
-        message_entry = {
-            "role": "user",
-            "message": user_message,
-            "timestamp": datetime.now().isoformat(),
-            "timestamp_readable": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "client_ip": client_ip,
-            "user_agent": user_agent[:100]
-        }
+        # 2.2 Thêm user message vào history
+        context.conversation_history.append({
+            'role': 'user',
+            'message': user_message,
+            'timestamp': datetime.utcnow().isoformat()
+        })
         
-        context.conversation_history.append(message_entry)
-        
-        # 2.5 Limit conversation history để tránh memory leak
-        if len(context.conversation_history) > 25:
-            # Giữ lại 20 tin nhắn gần nhất
-            context.conversation_history = context.conversation_history[-20:]
-            logger.debug(f"Trimmed conversation history for session {session_id}")
-        
-        # 2.6 Kiểm tra cache trước khi xử lý
+        # 2.3 Check cache
         cache_key = None
-        cached_response = None
-        
-        if UpgradeFlags.is_enabled("ENABLE_CACHING"):
-            # Tạo cache key từ message và context signature
-            context_signature = hashlib.md5(
-                json.dumps({
-                    "last_tours": context.last_tours_mentioned[:3],
-                    "state": context.current_state.value,
-                    "preferences_hash": hashlib.md5(
-                        json.dumps(context.user_preferences, sort_keys=True).encode()
-                    ).hexdigest()[:8]
-                }, sort_keys=True).encode()
-            ).hexdigest()
+        if UpgradeFlags.is_enabled("CACHE_SYSTEM"):
+            context_hash = hashlib.md5(json.dumps({
+                'last_tours': context.last_tours_mentioned[-3:] if context.last_tours_mentioned else [],
+                'state': context.current_state.value,
+                'filters': context.active_filters.to_dict() if context.active_filters else {}
+            }, sort_keys=True).encode()).hexdigest()
             
-            cache_key = cache_system.get_cache_key(user_message, context_signature)
+            cache_key = cache_system.get_cache_key(user_message, context_hash)
             cached_response = cache_system.get(cache_key)
             
             if cached_response:
-                logger.info(f"Cache hit for session {session_id}, key: {cache_key[:20]}...")
-                # Update context với cached response
-                context.conversation_history.append({
-                    "role": "assistant",
-                    "message": cached_response.get('reply', '')[:200] + "...",
-                    "timestamp": datetime.now().isoformat(),
-                    "cached": True
-                })
-                
-                # Update processing time
-                cached_response['processing_time_ms'] = int((time.time() - start_time) * 1000)
-                cached_response['metadata']['cache_hit'] = True
-                
+                logger.info(f"💾 Cache hit for key: {cache_key[:50]}...")
+                cached_response['metadata']['from_cache'] = True
+                cached_response['metadata']['processing_time_ms'] = int((time.time() - start_time) * 1000)
                 return jsonify(cached_response)
         
-        # ========== PHASE 3: ADVANCED QUESTION ANALYSIS ==========
-        processing_phase = "question_analysis"
-        
-        # 3.1 Phân tích câu hỏi với multiple layers
-        message_lower = user_message.lower()
-        message_length = len(user_message)
-        word_count = len(user_message.split())
-        
-        logger.info(f"Analyzing message: '{user_message[:100]}...' (length: {message_length}, words: {word_count})")
-        
-        # 3.2 Phân loại câu hỏi với confidence scoring
-        question_start_time = time.time()
-        question_type, q_confidence, q_metadata = KnowledgeAwareQuestionPipeline.classify_question(user_message)
-        question_analysis_time = int((time.time() - question_start_time) * 1000)
-        
+        # ================== 3. PHÂN TÍCH CÂU HỎI VỚI KNOWLEDGE.JSON ==================
+        # 3.1 Phân loại câu hỏi với knowledge context
+        question_type, confidence, type_details = KnowledgeAwareQuestionPipeline.classify_question(user_message)
         context.last_question_type = question_type
-        logger.info(f"Question classified as: {question_type.value} (confidence: {q_confidence:.2f}, time: {question_analysis_time}ms)")
         
-        # 3.3 Trích xuất filters với knowledge.json support
-        filter_start_time = time.time()
-        filters = MandatoryFilterSystemV2.extract_filters(user_message)
-        filter_analysis_time = int((time.time() - filter_start_time) * 1000)
+        logger.info(f"🎯 Question type: {question_type.value} (confidence: {confidence:.2f})")
         
-        filter_applied = not filters.is_empty()
-        if filter_applied:
-            context.active_filters = filters
-            logger.info(f"Filters extracted in {filter_analysis_time}ms: {filters}")
+        # 3.2 Trích xuất filter với knowledge.json fields
+        mandatory_filters = MandatoryFilterSystemV2.extract_filters(user_message)
+        if not mandatory_filters.is_empty():
+            context.active_filters = mandatory_filters
+            logger.info(f"🔍 Filters extracted: {mandatory_filters}")
         
-        # 3.4 Phát hiện field cụ thể được hỏi
-        field_start_time = time.time()
+        # 3.3 Phát hiện field được hỏi từ knowledge.json
         field_name, field_confidence, field_scores = EnhancedFieldDetectorV2.detect_field_with_confidence(user_message)
-        field_analysis_time = int((time.time() - field_start_time) * 1000)
+        if field_name:
+            logger.info(f"📊 Field detected: {field_name} (confidence: {field_confidence:.2f})")
         
-        if field_name and field_confidence > 0.5:
-            logger.info(f"Field detected: {field_name} (confidence: {field_confidence:.2f}, time: {field_analysis_time}ms)")
-            context.last_field_asked = field_name
-        
-        # 3.5 Semantic analysis và user profiling
-        semantic_profile = {}
-        semantic_analysis_time = 0
-        
+        # 3.4 Phân tích semantic user profile
+        user_profile = {}
         if UpgradeFlags.is_enabled("8_SEMANTIC_ANALYSIS"):
-            semantic_start_time = time.time()
-            try:
-                semantic_profile = SemanticAnalyzer.analyze_user_profile(user_message, context)
-                semantic_analysis_time = int((time.time() - semantic_start_time) * 1000)
-                
-                if semantic_profile:
-                    # Cập nhật user preferences với semantic insights
-                    for key, value in semantic_profile.items():
-                        if isinstance(value, (str, int, float, bool, list, dict)):
-                            context.user_preferences[key] = value
-                    
-                    logger.info(f"Semantic analysis completed in {semantic_analysis_time}ms, profile keys: {list(semantic_profile.keys())}")
-            except Exception as e:
-                logger.error(f"Semantic analysis error: {e}")
+            user_profile = SemanticAnalyzer.analyze_user_profile(user_message, context)
+            if user_profile:
+                context.user_preferences.update(user_profile)
+                logger.info(f"👤 User profile updated: {user_profile}")
         
-        # 3.6 Complexity analysis
-        complexity_score = 0
-        complexity_factors = {
-            'word_count': min(word_count / 50, 2.0),  # Max 2 points
-            'question_words': sum(1 for word in ['ai', 'gì', 'ở đâu', 'tại sao', 'thế nào', 'bao nhiêu'] if word in message_lower) * 0.3,
-            'special_chars': len(re.findall(r'[?!]', user_message)) * 0.2,
-            'multiple_clauses': len(re.findall(r'và|hoặc|nhưng|tuy nhiên', message_lower)) * 0.4
-        }
-        
-        complexity_score = sum(complexity_factors.values())
-        complexity_level = "SIMPLE" if complexity_score < 1.0 else "MODERATE" if complexity_score < 2.0 else "COMPLEX"
-        
-        logger.info(f"Complexity analysis: score={complexity_score:.2f}, level={complexity_level}")
-        
-        # ========== PHASE 4: INTELLIGENT TOUR SEARCH & MATCHING ==========
-        processing_phase = "tour_search"
-        
+        # ================== 4. TÌM KIẾM TOUR TỪ KNOWLEDGE.JSON ==================
         tour_indices = []
-        search_strategies = []
-        search_metadata = {
-            "strategies_used": [],
-            "results_per_strategy": {},
-            "total_time_ms": 0
-        }
+        resolved_tours = []
         
-        search_start_time = time.time()
-        
-        # 4.1 STRATEGY 1: Direct Tour Name Matching (High Precision)
-        strategy1_start = time.time()
-        direct_matches = []
-        
-        # Tìm kiếm trực tiếp trong tour names
-        for norm_name, idx in tour_name_index.items():
-            # Kiểm tra exact match hoặc partial match
-            if norm_name in message_lower:
-                direct_matches.append(idx)
-            else:
-                # Kiểm tra từng từ trong tên tour
-                name_words = norm_name.split()
-                if any(word in message_lower for word in name_words if len(word) > 2):
-                    direct_matches.append(idx)
-        
-        if direct_matches:
-            direct_matches = list(set(direct_matches))[:10]  # Deduplicate và giới hạn
-            tour_indices.extend(direct_matches)
-            search_strategies.append("direct_name_match")
-            search_metadata["results_per_strategy"]["direct_name_match"] = len(direct_matches)
-            logger.info(f"Strategy 1 (Direct Name Match): Found {len(direct_matches)} tours")
-        
-        strategy1_time = int((time.time() - strategy1_start) * 1000)
-        
-        # 4.2 STRATEGY 2: Fuzzy Matching với nâng cấp
-        if not tour_indices and UpgradeFlags.is_enabled("6_FUZZY_MATCHING"):
-            strategy2_start = time.time()
+        # 4.1 DIRECT TOUR NAME MATCHING với knowledge.json
+        message_lower = user_message.lower()
+        for tour_id, tour in tours_db.items():
+            # Kiểm tra tên tour
+            if tour.tour_name and tour.tour_name.lower() in message_lower:
+                if tour_id not in tour_indices:
+                    tour_indices.append(tour_id)
+                    resolved_tours.append(tour)
             
+            # Kiểm tra trong các field khác của knowledge.json
+            search_text = f"{tour.summary} {tour.location} {tour.style} {' '.join(tour.includes)}".lower()
+            important_keywords = ['bạch mã', 'trường sơn', 'huế', 'quảng trị', 'thiền', 'retreat']
+            
+            for keyword in important_keywords:
+                if keyword in message_lower and keyword in search_text:
+                    if tour_id not in tour_indices:
+                        tour_indices.append(tour_id)
+                        resolved_tours.append(tour)
+                    break
+        
+        # 4.2 Áp dụng MANDATORY FILTERS với knowledge.json fields
+        if not mandatory_filters.is_empty():
+            filtered_indices = MandatoryFilterSystemV2.apply_filters(tours_db, mandatory_filters)
+            
+            if filtered_indices:
+                if tour_indices:
+                    # Kết hợp với logic AND: tour phải thỏa cả tìm kiếm và filter
+                    combined = list(set(tour_indices) & set(filtered_indices))
+                    if combined:
+                        tour_indices = combined
+                        logger.info(f"✅ Combined search and filter results: {len(tour_indices)} tours")
+                    else:
+                        # Nếu không có tour nào thỏa cả hai, ưu tiên filter
+                        tour_indices = filtered_indices
+                        logger.info(f"⚠️ No tours match both search and filter, using filter results: {len(tour_indices)} tours")
+                else:
+                    tour_indices = filtered_indices
+                    logger.info(f"🔍 Using filter-only results: {len(tour_indices)} tours")
+        
+        # 4.3 FUZZY MATCHING nếu chưa đủ kết quả
+        if len(tour_indices) < 3 and UpgradeFlags.is_enabled("6_FUZZY_MATCHING"):
             try:
                 fuzzy_matcher = FuzzyMatcher(tours_db)
+                fuzzy_results = fuzzy_matcher.find_tour_by_partial_name(user_message)
                 
-                # Tìm kiếm fuzzy trong tên tour
-                fuzzy_results = fuzzy_matcher.find_similar_tours(user_message, tour_name_index)
+                for tour_id in fuzzy_results:
+                    if tour_id not in tour_indices:
+                        tour_indices.append(tour_id)
+                        tour = tours_db.get(tour_id)
+                        if tour:
+                            resolved_tours.append(tour)
                 
                 if fuzzy_results:
-                    # Lọc với threshold thấp hơn cho fuzzy matching
-                    fuzzy_indices = [idx for idx, score in fuzzy_results if score > 0.4]
-                    fuzzy_indices = fuzzy_indices[:8]  # Giới hạn kết quả
-                    
-                    if fuzzy_indices:
-                        tour_indices.extend(fuzzy_indices)
-                        search_strategies.append("fuzzy_matching")
-                        search_metadata["results_per_strategy"]["fuzzy_matching"] = len(fuzzy_indices)
-                        logger.info(f"Strategy 2 (Fuzzy Matching): Found {len(fuzzy_indices)} tours")
+                    logger.info(f"🔍 Added {len(fuzzy_results)} tours from fuzzy matching")
             except Exception as e:
                 logger.error(f"Fuzzy matching error: {e}")
-            
-            strategy2_time = int((time.time() - strategy2_start) * 1000)
         
-        # 4.3 STRATEGY 3: Semantic Search với FAISS
-        if not tour_indices and search_index is not None:
-            strategy3_start = time.time()
-            
+        # 4.4 SEMANTIC SEARCH với FAISS index
+        if len(tour_indices) < 5 and UpgradeFlags.is_enabled("8_SEMANTIC_ANALYSIS") and search_index is not None:
             try:
-                semantic_results = query_index(
-                    user_message, 
-                    top_k=15,  # Tăng số lượng kết quả
-                    min_score=max(SEMANTIC_MIN_SCORE, 0.65)  # Điều chỉnh threshold
-                )
+                semantic_results = query_index(user_message, top_k=7, min_score=SEMANTIC_MIN_SCORE)
+                
+                for score, passage in semantic_results:
+                    if 'tour_id' in passage:
+                        tour_id = passage['tour_id']
+                        if tour_id not in tour_indices:
+                            tour_indices.append(tour_id)
+                            tour = tours_db.get(tour_id)
+                            if tour:
+                                resolved_tours.append(tour)
                 
                 if semantic_results:
-                    semantic_indices = []
-                    for score, passage in semantic_results:
-                        if 'tour_id' in passage:
-                            tour_id = passage['tour_id']
-                            if tour_id not in semantic_indices:
-                                semantic_indices.append(tour_id)
-                    
-                    if semantic_indices:
-                        # Ưu tiên các kết quả có score cao
-                        semantic_indices = semantic_indices[:10]
-                        tour_indices.extend(semantic_indices)
-                        search_strategies.append("semantic_search")
-                        search_metadata["results_per_strategy"]["semantic_search"] = len(semantic_indices)
-                        logger.info(f"Strategy 3 (Semantic Search): Found {len(semantic_indices)} tours, top score: {semantic_results[0][0]:.3f}")
+                    logger.info(f"🧠 Added {len(semantic_results)} tours from semantic search")
             except Exception as e:
                 logger.error(f"Semantic search error: {e}")
-            
-            strategy3_time = int((time.time() - strategy3_start) * 1000)
         
-        # 4.4 STRATEGY 4: Knowledge.json Field Search
-        if not tour_indices:
-            strategy4_start = time.time()
-            
-            keyword_matches = []
-            search_keywords = [word for word in message_lower.split() if len(word) > 2][:10]  # Lấy 10 từ khóa
-            
-            if search_keywords:
-                for idx, tour in tours_db.items():
-                    match_score = 0
-                    
-                    # Tìm kiếm trong multiple fields của knowledge.json
-                    search_fields = [
-                        tour.tour_name.lower(),
-                        tour.summary.lower() if tour.summary else "",
-                        tour.location.lower() if tour.location else "",
-                        tour.style.lower() if tour.style else "",
-                        " ".join(tour.includes).lower() if tour.includes else ""
-                    ]
-                    
-                    field_weights = [2.0, 1.5, 1.2, 1.0, 0.8]  # Trọng số cho từng field
-                    
-                    for keyword in search_keywords:
-                        for i, field_content in enumerate(search_fields):
-                            if keyword in field_content:
-                                match_score += field_weights[i]
-                    
-                    if match_score > 1.5:  # Ngưỡng tối thiểu
-                        keyword_matches.append((idx, match_score))
-                
-                if keyword_matches:
-                    # Sắp xếp theo match score
-                    keyword_matches.sort(key=lambda x: x[1], reverse=True)
-                    keyword_indices = [idx for idx, score in keyword_matches[:12]]
-                    
-                    tour_indices.extend(keyword_indices)
-                    search_strategies.append("keyword_field_search")
-                    search_metadata["results_per_strategy"]["keyword_field_search"] = len(keyword_indices)
-                    logger.info(f"Strategy 4 (Keyword Field Search): Found {len(keyword_indices)} tours")
-            
-            strategy4_time = int((time.time() - strategy4_start) * 1000)
-        
-        # 4.5 STRATEGY 5: Context-based Search (sử dụng conversation history)
-        if not tour_indices and len(context.conversation_history) > 1:
-            strategy5_start = time.time()
-            
-            # Tìm trong previous mentions
-            if context.last_tours_mentioned:
-                tour_indices.extend(context.last_tours_mentioned[:5])
-                search_strategies.append("context_based")
-                search_metadata["results_per_strategy"]["context_based"] = len(context.last_tours_mentioned[:5])
-                logger.info(f"Strategy 5 (Context-based): Using {len(context.last_tours_mentioned[:5])} previously mentioned tours")
-            
-            strategy5_time = int((time.time() - strategy5_start) * 1000)
-        
-        # 4.6 STRATEGY 6: Popular Tours Fallback
-        if not tour_indices:
-            strategy6_start = time.time()
-            
-            # Lấy các tour phổ biến (có thể dựa trên rating hoặc predefined list)
-            popular_tours = []
-            for idx, tour in tours_db.items():
-                # Ưu tiên tour có rating cao và price hợp lý
-                if (tour.rating or 0) >= 4.0 and (tour.price_numeric or float('inf')) < 3000000:
-                    popular_tours.append(idx)
-            
-            if popular_tours:
-                # Lấy ngẫu nhiên 5 tour phổ biến
-                import random
-                random_seed = int(hashlib.md5(user_message.encode()).hexdigest(), 16) % 1000
-                random.seed(random_seed)
-                popular_sample = random.sample(popular_tours, min(5, len(popular_tours)))
-                
-                tour_indices.extend(popular_sample)
-                search_strategies.append("popular_fallback")
-                search_metadata["results_per_strategy"]["popular_fallback"] = len(popular_sample)
-                logger.info(f"Strategy 6 (Popular Fallback): Using {len(popular_sample)} popular tours")
-            
-            strategy6_time = int((time.time() - strategy6_start) * 1000)
-        
-        # 4.7 Áp dụng Mandatory Filters (nếu có)
-        if filter_applied and filters and tour_indices:
-            filter_start_time = time.time()
-            
+        # 4.5 PROFILE-BASED RECOMMENDATION
+        if len(tour_indices) < 3 and user_profile and UpgradeFlags.is_enabled("8_SEMANTIC_ANALYSIS"):
             try:
-                # Áp dụng filters lên các tour đã tìm được
-                filtered_indices = MandatoryFilterSystemV2.apply_filters(tours_db, filters)
+                profile_matches = SemanticAnalyzer.match_tours_to_profile(user_profile, tours_db)
+                for tour_id, score in profile_matches:
+                    if score > 0.7 and tour_id not in tour_indices:
+                        tour_indices.append(tour_id)
+                        tour = tours_db.get(tour_id)
+                        if tour:
+                            resolved_tours.append(tour)
                 
-                if filtered_indices:
-                    # Tìm giao giữa kết quả tìm kiếm và filtered results
-                    intersection = list(set(tour_indices) & set(filtered_indices))
-                    
-                    if intersection:
-                        tour_indices = intersection[:MAX_TOURS_RETURN]
-                        logger.info(f"Filter application: {len(intersection)} tours pass filters")
-                        search_strategies.append("filter_applied")
-                        search_metadata["filtered_from"] = len(tour_indices)
-                        search_metadata["filtered_to"] = len(intersection)
-                    else:
-                        # Nếu không có giao, ưu tiên filtered results
-                        tour_indices = filtered_indices[:MAX_TOURS_RETURN]
-                        logger.info(f"No intersection, using filter results: {len(tour_indices)} tours")
-                else:
-                    logger.warning("No tours passed the filters")
-                    # Vẫn giữ nguyên tour_indices nhưng sẽ thêm warning sau
+                if profile_matches:
+                    logger.info(f"👤 Added {len(profile_matches)} tours from profile matching")
             except Exception as e:
-                logger.error(f"Filter application error: {e}")
-                # Continue với tour_indices hiện tại
-            
-            filter_time = int((time.time() - filter_start_time) * 1000)
-            search_metadata["filter_time_ms"] = filter_time
+                logger.error(f"Profile matching error: {e}")
         
-        # 4.8 Deduplication và Post-processing
-        if tour_indices:
-            # Remove duplicates
-            tour_indices = list(dict.fromkeys(tour_indices))  # Giữ thứ tự
-            
-            # Apply deduplication engine
-            if UpgradeFlags.is_enabled("2_DEDUPLICATION") and len(tour_indices) > 3:
-                try:
-                    dedup_start = time.time()
-                    deduplicated = DeduplicationEngine.merge_similar_tours(tour_indices, tours_db)
-                    tour_indices = deduplicated[:MAX_TOURS_RETURN]
-                    dedup_time = int((time.time() - dedup_start) * 1000)
-                    search_metadata["deduplication_time_ms"] = dedup_time
-                    logger.info(f"Deduplication: {len(tour_indices)} unique tours after dedup")
-                except Exception as e:
-                    logger.error(f"Deduplication error: {e}")
-            
-            # Sort by relevance (kết hợp multiple factors)
+        # 4.6 DEDUPLICATION
+        if UpgradeFlags.is_enabled("2_DEDUPLICATION"):
             try:
-                sort_start = time.time()
-                
-                def tour_relevance_score(idx):
-                    tour = tours_db.get(idx)
-                    if not tour:
-                        return 0
-                    
-                    score = 0
-                    
-                    # Factor 1: Rating
-                    score += (tour.rating or 3.5) * 100
-                    
-                    # Factor 2: Price (ưu tiên giá vừa phải)
-                    if tour.price_numeric:
-                        if 1000000 <= tour.price_numeric <= 3000000:
-                            score += 50
-                        elif tour.price_numeric < 1000000:
-                            score += 30
-                    
-                    # Factor 3: Duration (ưu tiên tour 1-3 ngày)
-                    if tour.duration_numeric:
-                        if 1 <= tour.duration_numeric <= 3:
-                            score += 40
-                    
-                    # Factor 4: Popularity (dựa trên position trong search results)
-                    if idx in direct_matches:
-                        score += 200
-                    elif idx in tour_indices[:5]:
-                        score += 100
-                    
-                    return score
-                
-                tour_indices.sort(key=tour_relevance_score, reverse=True)
-                sort_time = int((time.time() - sort_start) * 1000)
-                search_metadata["sorting_time_ms"] = sort_time
-                
+                original_count = len(tour_indices)
+                tour_indices = DeduplicationEngine.merge_similar_tours(tour_indices, tours_db)
+                if original_count != len(tour_indices):
+                    logger.info(f"🔄 Deduplication: {original_count} -> {len(tour_indices)} tours")
             except Exception as e:
-                logger.error(f"Sorting error: {e}")
+                logger.error(f"Deduplication error: {e}")
         
-        # 4.9 Search performance logging
-        total_search_time = int((time.time() - search_start_time) * 1000)
-        search_metadata["total_time_ms"] = total_search_time
-        search_metadata["strategies_used"] = search_strategies
+        # 4.7 Sắp xếp theo relevance với knowledge.json fields
+        def calculate_relevance_score(tour_id: int) -> float:
+            """Tính điểm relevance dựa trên knowledge.json fields"""
+            tour = tours_db.get(tour_id)
+            if not tour:
+                return 0
+            
+            score = 0
+            
+            # 1. Direct name match (cao nhất)
+            if tour.tour_name and tour.tour_name.lower() in message_lower:
+                score += 100
+            
+            # 2. Field match
+            if field_name:
+                field_value = EnhancedFieldDetectorV2.get_field_value(tour, field_name)
+                if field_value:
+                    if isinstance(field_value, str) and field_value.lower() in message_lower:
+                        score += 50
+                    elif isinstance(field_value, list):
+                        for item in field_value:
+                            if item.lower() in message_lower:
+                                score += 20
+                                break
+            
+            # 3. Location match
+            if tour.location and any(loc in message_lower for loc in ['huế', 'quảng trị', 'bạch mã', 'trường sơn']):
+                for loc in ['huế', 'quảng trị', 'bạch mã', 'trường sơn']:
+                    if loc in message_lower and loc in tour.location.lower():
+                        score += 30
+                        break
+            
+            # 4. Style match
+            if tour.style and 'style' in type_details.get('field_name', ''):
+                score += 15
+            
+            # 5. Price range match (nếu có filter)
+            if mandatory_filters and (mandatory_filters.min_price or mandatory_filters.max_price):
+                if tour.price_numeric:
+                    if mandatory_filters.min_price and tour.price_numeric >= mandatory_filters.min_price:
+                        score += 10
+                    if mandatory_filters.max_price and tour.price_numeric <= mandatory_filters.max_price:
+                        score += 10
+            
+            # 6. Rating bonus
+            if tour.rating:
+                score += tour.rating * 5
+            
+            return score
         
-        logger.info(f"""
-        SEARCH PERFORMANCE SUMMARY:
-        Total time: {total_search_time}ms
-        Strategies used: {', '.join(search_strategies)}
-        Total tours found: {len(tour_indices)}
-        Final tour indices: {tour_indices[:10] if tour_indices else 'None'}
-        """)
+        # Sắp xếp theo relevance score
+        tour_indices.sort(key=lambda x: calculate_relevance_score(x), reverse=True)
         
-        # ========== PHASE 5: INTELLIGENT RESPONSE GENERATION ==========
-        processing_phase = "response_generation"
+        # 4.8 Giới hạn số lượng
+        tour_indices = tour_indices[:MAX_TOURS_RETURN]
         
+        # Cập nhật resolved_tours
+        resolved_tours = [tours_db.get(idx) for idx in tour_indices if tours_db.get(idx)]
+        
+        logger.info(f"✅ Found {len(tour_indices)} tours: {tour_indices}")
+        
+        # ================== 5. XÂY DỰNG RESPONSE VỚI KNOWLEDGE.JSON TEMPLATES ==================
         reply = ""
         warnings = []
-        suggestions = []
-        response_metadata = {
+        metadata = {
+            "tour_count": len(tour_indices),
             "question_type": question_type.value,
-            "question_confidence": q_confidence,
-            "complexity_score": complexity_score,
-            "complexity_level": complexity_level,
+            "confidence": confidence,
             "field_detected": field_name,
-            "field_confidence": field_confidence,
-            "filter_applied": filter_applied,
-            "tours_found": len(tour_indices),
-            "search_performance": search_metadata
+            "filters_applied": not mandatory_filters.is_empty() if mandatory_filters else False
         }
         
-        response_start_time = time.time()
-        
-        # 5.1 Xác định response strategy dựa trên question type và context
-        response_strategy = None
-        
+        # 5.1 XỬ LÝ THEO QUESTION TYPE VỚI KNOWLEDGE.JSON TEMPLATES
         if question_type == QuestionType.GREETING:
-            response_strategy = "greeting_template"
             reply = KnowledgeTemplateSystem.render('greeting')
             context.current_state = ConversationState.INITIAL
             
         elif question_type == QuestionType.FAREWELL:
-            response_strategy = "farewell_template"
             reply = KnowledgeTemplateSystem.render('farewell')
             context.current_state = ConversationState.CLOSING
             
         elif question_type == QuestionType.LIST_TOURS:
-            response_strategy = "tour_listing"
-            
-            if not tour_indices:
-                reply = KnowledgeTemplateSystem.render('no_results')
-                warnings.append("Không tìm thấy tour phù hợp")
-            else:
-                # Xây dựng danh sách tour chi tiết
-                tour_items = []
-                display_count = min(len(tour_indices), MAX_TOURS_RETURN)
+            if tour_indices:
+                # Nhóm tour theo category từ knowledge.json
+                tours_by_category = {}
+                for tour in resolved_tours:
+                    category = tour.category or 'general'
+                    if category not in tours_by_category:
+                        tours_by_category[category] = []
+                    tours_by_category[category].append(tour)
                 
-                for i, idx in enumerate(tour_indices[:display_count], 1):
-                    tour = tours_db.get(idx)
-                    if tour:
-                        # Format includes cho đẹp
-                        includes_preview = ", ".join(tour.includes[:3])
-                        if len(tour.includes) > 3:
-                            includes_preview += f" và {len(tour.includes) - 3} dịch vụ khác"
-                        
-                        # Tạo tour item với đầy đủ thông tin từ knowledge.json
+                # Tạo danh sách tour có nhóm
+                tour_items_by_category = []
+                for category, tours in tours_by_category.items():
+                    category_tours = []
+                    for idx, tour in enumerate(tours[:4], 1):
                         tour_item = KnowledgeTemplateSystem.render('tour_item',
-                            idx=i,
+                            idx=idx,
                             tour_name=tour.tour_name,
                             location=tour.location,
                             duration=tour.duration,
                             price=tour.price,
-                            summary=(tour.summary[:120] + "...") if len(tour.summary) > 120 else tour.summary,
-                            includes_preview=includes_preview,
-                            style=tour.style or "Không xác định",
-                            category=tour.category or "general"
+                            summary=(tour.summary[:120] + '...') if tour.summary and len(tour.summary) > 120 else (tour.summary or "Không có mô tả")
                         )
-                        tour_items.append(tour_item)
-                
-                if tour_items:
-                    reply = KnowledgeTemplateSystem.render('tour_list',
-                        count=len(tour_indices),
-                        tour_items="\n\n".join(tour_items),
-                        filter_summary=f"📍 **Bộ lọc áp dụng:** {', '.join([f'{k}: {v}' for k, v in filters.__dict__.items() if v])}" if filter_applied else "",
-                        suggestion="💡 **Gợi ý:** Gõ số thứ tự để xem chi tiết tour, hoặc hỏi thêm về tiêu chí cụ thể."
-                    )
+                        category_tours.append(tour_item)
                     
-                    # Cập nhật context
-                    context.last_tours_mentioned = tour_indices[:display_count]
-                    response_metadata["tours_displayed"] = display_count
-                else:
-                    reply = KnowledgeTemplateSystem.render('no_results')
-        
-        elif question_type == QuestionType.TOUR_DETAIL:
-            response_strategy = "tour_detail"
-            
-            if not tour_indices:
-                reply = KnowledgeTemplateSystem.render('no_results')
+                    if category_tours:
+                        category_name = {
+                            'adventure': '🏔️ MẠO HIỂM & KHÁM PHÁ',
+                            'relaxation': '🌿 NGHỈ DƯỠNG & THƯ GIÃN',
+                            'cultural': '🏛️ VĂN HÓA & LỊCH SỬ',
+                            'culinary': '🍜 ẨM THỰC & ĐẶC SẢN',
+                            'event': '🎪 SỰ KIỆN & TEAM BUILDING',
+                            'family': '👨‍👩‍👧‍👦 GIA ĐÌNH & NHÓM',
+                            'luxury': '💎 CAO CẤP & SANG TRỌNG',
+                            'general': '✨ TỔNG HỢP'
+                        }.get(category, category.upper())
+                        
+                        tour_items_by_category.append(f"**{category_name}**\n" + "\n".join(category_tours))
+                
+                tour_items_str = "\n\n".join(tour_items_by_category)
+                
+                reply = KnowledgeTemplateSystem.render('tour_list',
+                    count=len(tour_indices),
+                    tour_items=tour_items_str
+                )
+                
+                # Thêm filter info nếu có
+                if mandatory_filters and not mandatory_filters.is_empty():
+                    filter_info = []
+                    if mandatory_filters.location:
+                        filter_info.append(f"📍 Địa điểm: {mandatory_filters.location}")
+                    if mandatory_filters.style:
+                        filter_info.append(f"🎨 Phong cách: {mandatory_filters.style}")
+                    if mandatory_filters.min_price or mandatory_filters.max_price:
+                        price_range = []
+                        if mandatory_filters.min_price:
+                            price_range.append(f"từ {mandatory_filters.min_price:,.0f} VNĐ")
+                        if mandatory_filters.max_price:
+                            price_range.append(f"đến {mandatory_filters.max_price:,.0f} VNĐ")
+                        filter_info.append(f"💰 Giá: {' '.join(price_range)}")
+                    
+                    if filter_info:
+                        reply += f"\n\n🔍 **Đang áp dụng bộ lọc:**\n" + "\n".join([f"• {info}" for info in filter_info])
             else:
-                # Hiển thị chi tiết đầy đủ cho tour đầu tiên
-                primary_idx = tour_indices[0]
-                tour = tours_db.get(primary_idx)
-                
+                reply = KnowledgeTemplateSystem.render('no_results')
+                warnings.append("Không tìm thấy tour nào phù hợp với yêu cầu")
+            
+            context.current_state = ConversationState.FILTERING
+            
+        elif question_type == QuestionType.TOUR_DETAIL:
+            if tour_indices:
+                # Hiển thị chi tiết đầy đủ từ knowledge.json
+                tour = resolved_tours[0] if resolved_tours else None
                 if tour:
-                    # Format includes với bullet points
-                    includes_items = []
-                    for i, item in enumerate(tour.includes, 1):
-                        includes_items.append(f"{i}. {item}")
-                    includes_formatted = "\n".join(includes_items)
-                    
-                    # Format additional information
-                    additional_info = []
-                    if tour.transport:
-                        additional_info.append(f"🚌 **Phương tiện:** {tour.transport}")
-                    if tour.accommodation:
-                        additional_info.append(f"🏨 **Chỗ ở:** {tour.accommodation}")
-                    if tour.meals:
-                        additional_info.append(f"🍽️ **Ăn uống:** {tour.meals}")
-                    if tour.event_support:
-                        additional_info.append(f"🎪 **Hỗ trợ sự kiện:** {tour.event_support}")
-                    
-                    additional_formatted = "\n".join(additional_info)
-                    
-                    # Render template với đầy đủ fields từ knowledge.json
                     reply = KnowledgeTemplateSystem.render('tour_detail_full',
                         tour_name=tour.tour_name,
                         summary=tour.summary,
                         location=tour.location,
                         duration=tour.duration,
                         price=tour.price,
-                        style=tour.style or "Đa dạng",
-                        transport=tour.transport or "Xe du lịch đời mới",
-                        accommodation=tour.accommodation or "Khách sạn 3 sao",
-                        meals=tour.meals or "Theo chương trình",
-                        includes_formatted=includes_formatted,
-                        notes=tour.notes or "Vui lòng liên hệ để biết thêm chi tiết.",
-                        event_support=tour.event_support or "Có sẵn theo yêu cầu",
-                        category=tour.category or "general",
-                        rating=tour.rating or 4.5,
-                        additional_info=additional_formatted
+                        style=tour.style,
+                        transport=tour.transport,
+                        accommodation=tour.accommodation,
+                        meals=tour.meals,
+                        includes=tour.includes,
+                        notes=tour.notes,
+                        event_support=tour.event_support,
+                        category=tour.category or 'general',
+                        rating=tour.rating or 4.5
                     )
                     
-                    # Thêm đề xuất tour tương tự nếu có
-                    if len(tour_indices) > 1:
-                        reply += "\n\n🔍 **TOUR TƯƠNG TỰ CÓ THỂ BẠN QUAN TÂM:**\n"
-                        for idx in tour_indices[1:4]:
-                            similar_tour = tours_db.get(idx)
-                            if similar_tour:
-                                reply += f"• **{similar_tour.tour_name}** ({similar_tour.duration}, {similar_tour.location})\n"
+                    # Gợi ý các tour tương tự dựa trên style và category
+                    similar_tours = []
+                    for other_tour in resolved_tours[1:5]:
+                        if other_tour and other_tour.style == tour.style or other_tour.category == tour.category:
+                            similar_tours.append(f"• {other_tour.tour_name} ({other_tour.duration}, {other_tour.price})")
                     
-                    # Cập nhật context
-                    context.current_tour = primary_idx
-                    context.last_tours_mentioned = [primary_idx]
-                    response_metadata["current_tour"] = primary_idx
-                    response_metadata["tour_name"] = tour.tour_name
+                    if similar_tours:
+                        reply += f"\n\n🔍 **Tour tương tự cùng phong cách:**\n" + "\n".join(similar_tours)
                 else:
-                    reply = "❌ **Không tìm thấy thông tin chi tiết về tour này.**\n\nVui lòng kiểm tra lại tên tour hoặc liên hệ hotline 0332510486 để được hỗ trợ."
-                    warnings.append("Tour not found in database")
-        
-        elif question_type == QuestionType.GENERAL_INFO:
-            response_strategy = "field_specific_info"
+                    reply = "Không tìm thấy thông tin chi tiết cho tour này."
+            else:
+                reply = "Không tìm thấy tour nào. Vui lòng cung cấp tên tour hoặc mô tả chi tiết hơn."
             
-            if field_name and field_confidence > 0.5 and tour_indices:
-                # Xử lý câu hỏi về field cụ thể
-                field_responses = []
-                
-                for idx in tour_indices[:3]:  # Hiển thị cho 3 tour đầu
-                    tour = tours_db.get(idx)
+            context.current_state = ConversationState.DETAIL_VIEW
+            
+        elif question_type == QuestionType.GENERAL_INFO and field_name:
+            # Câu hỏi về field cụ thể từ knowledge.json
+            if tour_indices:
+                if len(tour_indices) == 1:
+                    # Một tour cụ thể
+                    tour = resolved_tours[0]
                     if tour:
                         field_value = EnhancedFieldDetectorV2.get_field_value(tour, field_name)
-                        
+                        if field_value:
+                            # Sử dụng template cụ thể nếu có
+                            template_name = f'field_{field_name}'
+                            if template_name in KnowledgeTemplateSystem.TEMPLATES:
+                                if field_name == 'includes':
+                                    includes_formatted = "\n".join([f"• {item}" for item in field_value])
+                                    reply = KnowledgeTemplateSystem.render(template_name,
+                                        tour_name=tour.tour_name,
+                                        includes_formatted=includes_formatted
+                                    )
+                                else:
+                                    reply = KnowledgeTemplateSystem.render(template_name,
+                                        tour_name=tour.tour_name,
+                                        **{field_name: field_value}
+                                    )
+                            else:
+                                # Format chung
+                                if isinstance(field_value, list):
+                                    field_display = "\n".join([f"• {item}" for item in field_value])
+                                else:
+                                    field_display = str(field_value)
+                                
+                                field_display_name = {
+                                    'tour_name': 'Tên tour',
+                                    'price': 'Giá',
+                                    'duration': 'Thời gian',
+                                    'location': 'Địa điểm',
+                                    'includes': 'Dịch vụ bao gồm',
+                                    'style': 'Phong cách',
+                                    'transport': 'Phương tiện',
+                                    'accommodation': 'Chỗ ở',
+                                    'meals': 'Ăn uống',
+                                    'event_support': 'Hỗ trợ sự kiện',
+                                    'summary': 'Tóm tắt',
+                                    'notes': 'Lưu ý'
+                                }.get(field_name, field_name.replace('_', ' ').upper())
+                                
+                                reply = f"**{field_display_name} của tour {tour.tour_name}:**\n{field_display}"
+                        else:
+                            reply = f"Tour {tour.tour_name} không có thông tin về {field_name.replace('_', ' ')}."
+                    else:
+                        reply = "Không tìm thấy tour."
+                else:
+                    # Nhiều tour - tổng hợp thông tin field
+                    reply = f"**THÔNG TIN {field_name.replace('_', ' ').upper()} CHO CÁC TOUR:**\n\n"
+                    for tour in resolved_tours[:5]:
+                        field_value = EnhancedFieldDetectorV2.get_field_value(tour, field_name)
                         if field_value:
                             if isinstance(field_value, list):
-                                if field_value:
-                                    # Format list thành string đẹp
-                                    if len(field_value) <= 5:
-                                        value_str = ", ".join(field_value)
-                                    else:
-                                        value_str = ", ".join(field_value[:5]) + f" và {len(field_value) - 5} mục khác"
-                                else:
-                                    value_str = "Không có thông tin"
+                                field_display = ", ".join(field_value[:3]) + ("..." if len(field_value) > 3 else "")
                             else:
-                                value_str = str(field_value)
+                                field_display = str(field_value)[:80] + ("..." if len(str(field_value)) > 80 else "")
                             
-                            field_responses.append(f"**{tour.tour_name}:** {value_str}")
-                
-                if field_responses:
-                    # Sử dụng field-specific template nếu có
-                    template_key = f'field_{field_name}'
-                    if template_key in KnowledgeTemplateSystem.TEMPLATES:
-                        primary_tour = tours_db.get(tour_indices[0])
-                        if primary_tour:
-                            field_value = EnhancedFieldDetectorV2.get_field_value(primary_tour, field_name)
-                            
-                            if isinstance(field_value, list):
-                                includes_formatted = "\n".join([f"• {item}" for item in field_value])
-                                reply = KnowledgeTemplateSystem.render(template_key,
-                                    tour_name=primary_tour.tour_name,
-                                    **{field_name: field_value},
-                                    includes_formatted=includes_formatted
-                                )
-                            else:
-                                reply = KnowledgeTemplateSystem.render(template_key,
-                                    tour_name=primary_tour.tour_name,
-                                    **{field_name: field_value}
-                                )
-                    else:
-                        # Fallback to general field response
-                        field_display_name = field_name.replace('_', ' ').title()
-                        reply = f"📋 **THÔNG TIN {field_display_name.upper()}**\n\n"
-                        reply += "\n\n".join(field_responses)
-                        
-                        # Thêm giải thích về field nếu cần
-                        field_explanations = {
-                            'includes': "Các dịch vụ đã bao gồm trong giá tour.",
-                            'price': "Giá tour đã bao gồm thuế và phí dịch vụ.",
-                            'duration': "Thời gian tính từ lúc khởi hành đến khi kết thúc.",
-                            'style': "Phong cách và loại hình của tour."
-                        }
-                        
-                        if field_name in field_explanations:
-                            reply += f"\n\n💡 **Lưu ý:** {field_explanations[field_name]}"
-                else:
-                    reply = f"Không tìm thấy thông tin về **{field_name}** cho các tour được đề cập."
+                            reply += f"• **{tour.tour_name}**: {field_display}\n"
+                        else:
+                            reply += f"• **{tour.tour_name}**: Không có thông tin\n"
+                    
+                    reply += f"\n💡 Có {len(tour_indices)} tour phù hợp. Để biết chi tiết về một tour cụ thể, vui lòng chọn tên tour."
             else:
-                # General information request
-                response_strategy = "general_info_fallback"
+                reply = f"Không tìm thấy tour nào để cung cấp thông tin về {field_name.replace('_', ' ')}."
+            
+            context.current_state = ConversationState.DETAIL_VIEW
+            
+        elif question_type == QuestionType.COMPARISON:
+            if len(tour_indices) >= 2:
+                # So sánh tối đa 3 tour từ knowledge.json
+                tours_to_compare = resolved_tours[:3]
                 
-                available_fields = [
-                    "tên tour (tour_name)",
-                    "giá (price)", 
-                    "thời gian (duration)",
-                    "địa điểm (location)",
-                    "dịch vụ bao gồm (includes)",
-                    "phong cách (style)",
-                    "phương tiện (transport)",
-                    "chỗ ở (accommodation)",
-                    "ăn uống (meals)",
-                    "ghi chú (notes)"
+                # Tạo bảng so sánh với các field quan trọng
+                comparison_rows = []
+                
+                # Các field so sánh từ knowledge.json
+                comparison_fields = [
+                    ('tour_name', 'Tên tour'),
+                    ('price', 'Giá'),
+                    ('duration', 'Thời gian'),
+                    ('location', 'Địa điểm'),
+                    ('style', 'Phong cách'),
+                    ('transport', 'Phương tiện'),
+                    ('accommodation', 'Chỗ ở'),
+                    ('includes', 'Dịch vụ chính'),
+                    ('rating', 'Đánh giá')
                 ]
                 
-                reply = KnowledgeTemplateSystem.render('general_fallback',
-                    user_message=user_message,
-                    available_fields=", ".join(available_fields[:5]) + ", ...",
-                    suggestion="Vui lòng hỏi cụ thể về một field hoặc một tour nhất định."
-                )
-        
-        elif question_type == QuestionType.COMPARISON:
-            response_strategy = "tour_comparison"
-            
-            if len(tour_indices) >= 2:
-                # So sánh 2-3 tour
-                comparison_tours = []
-                for idx in tour_indices[:3]:
-                    tour = tours_db.get(idx)
-                    if tour:
-                        comparison_tours.append(tour)
-                
-                if len(comparison_tours) >= 2:
-                    # Tạo bảng so sánh chi tiết
-                    comparison_rows = []
-                    
-                    for i, tour in enumerate(comparison_tours, 1):
-                        # Format includes cho ngắn gọn
-                        includes_preview = ", ".join(tour.includes[:2])
-                        if len(tour.includes) > 2:
-                            includes_preview += f" (+{len(tour.includes) - 2})"
-                        
-                        row = f"**{i}. {tour.tour_name}**\n"
-                        row += f"   📍 **Địa điểm:** {tour.location}\n"
-                        row += f"   ⏱ **Thời gian:** {tour.duration}\n"
-                        row += f"   💰 **Giá:** {tour.price}\n"
-                        row += f"   🎨 **Phong cách:** {tour.style or 'Đa dạng'}\n"
-                        row += f"   ✅ **Bao gồm:** {includes_preview}\n"
-                        
-                        # Thêm điểm đặc biệt nếu có
-                        special_features = []
-                        if tour.event_support and "có" in tour.event_support.lower():
-                            special_features.append("Hỗ trợ sự kiện")
-                        if tour.accommodation and "resort" in tour.accommodation.lower():
-                            special_features.append("Resort cao cấp")
-                        
-                        if special_features:
-                            row += f"   ✨ **Đặc điểm:** {', '.join(special_features)}"
-                        
-                        comparison_rows.append(row)
-                    
-                    # Phân tích điểm khác biệt
-                    differences = []
-                    
-                    if len(comparison_tours) == 2:
-                        t1, t2 = comparison_tours[0], comparison_tours[1]
-                        
-                        # So sánh giá
-                        if t1.price_numeric and t2.price_numeric:
-                            price_diff = abs(t1.price_numeric - t2.price_numeric)
-                            if price_diff > 500000:  # Chênh lệch > 500k
-                                cheaper = t1 if t1.price_numeric < t2.price_numeric else t2
-                                expensive = t2 if cheaper == t1 else t1
-                                differences.append(f"💰 **Giá cả:** {cheaper.tour_name} rẻ hơn {expensive.tour_name} khoảng {price_diff/1000000:.1f} triệu VND")
-                        
-                        # So sánh thời gian
-                        if t1.duration_numeric and t2.duration_numeric:
-                            if t1.duration_numeric != t2.duration_numeric:
-                                differences.append(f"⏱ **Thời gian:** {t1.tour_name} ({t1.duration}) vs {t2.tour_name} ({t2.duration})")
-                        
-                        # So sánh phong cách
-                        if t1.style != t2.style:
-                            differences.append(f"🎨 **Phong cách:** {t1.tour_name} ({t1.style}) vs {t2.tour_name} ({t2.style})")
-                        
-                        # So sánh địa điểm
-                        if t1.location != t2.location:
-                            differences.append(f"📍 **Địa điểm:** {t1.tour_name} ({t1.location}) vs {t2.tour_name} ({t2.location})")
-                    
-                    # Tạo đề xuất thông minh
-                    suggestion = ""
-                    if comparison_tours:
-                        # Dựa vào semantic profile nếu có
-                        if semantic_profile:
-                            if semantic_profile.get('preferred_budget') == 'low':
-                                # Tìm tour rẻ nhất
-                                cheapest_tour = min(comparison_tours, 
-                                                   key=lambda t: t.price_numeric or float('inf'))
-                                suggestion = f"Với ngân sách thấp, nên chọn **{cheapest_tour.tour_name}**."
-                            elif semantic_profile.get('preferred_duration') == 'short':
-                                # Tìm tour ngắn nhất
-                                shortest_tour = min(comparison_tours,
-                                                   key=lambda t: t.duration_numeric or float('inf'))
-                                suggestion = f"Với thời gian hạn chế, nên chọn **{shortest_tour.tour_name}**."
-                            else:
-                                suggestion = "Nên chọn tour phù hợp nhất với sở thích và điều kiện của bạn."
+                for field_key, display_name in comparison_fields:
+                    row = f"**{display_name}**: "
+                    values = []
+                    for tour in tours_to_compare:
+                        val = EnhancedFieldDetectorV2.get_field_value(tour, field_key)
+                        if val:
+                            if isinstance(val, list):
+                                val = ", ".join(val[:2]) if len(val) > 2 else ", ".join(val)
+                            elif field_key == 'price' and len(str(val)) > 40:
+                                val = str(val)[:40] + "..."
+                            values.append(str(val))
                         else:
-                            suggestion = "💡 **Gợi ý:** Chọn tour phù hợp với ngân sách, thời gian và sở thích cá nhân."
-                    
-                    reply = KnowledgeTemplateSystem.render('comparison',
-                        count=len(comparison_tours),
-                        comparison_table="\n\n".join(comparison_rows),
-                        summary="\n".join(differences) if differences else "Các tour có chất lượng dịch vụ tương đương, khác biệt chủ yếu về phong cách và địa điểm.",
-                        suggestion=suggestion
-                    )
-                    
-                    response_metadata["compared_tours"] = [tour.id for tour in comparison_tours]
-                    response_metadata["comparison_points"] = len(differences)
-                else:
-                    reply = "❌ **Cần ít nhất 2 tour để so sánh.**\n\nVui lòng chỉ định tên tour cụ thể (ví dụ: 'so sánh tour A và tour B')."
-            else:
-                reply = "❌ **Không đủ thông tin để so sánh.**\n\nVui lòng cung cấp tên ít nhất 2 tour hoặc mô tả rõ hơn về các tour bạn muốn so sánh."
-        
-        elif question_type == QuestionType.RECOMMENDATION:
-            response_strategy = "smart_recommendation"
-            
-            if not tour_indices:
-                # Thử semantic recommendation nếu không có kết quả tìm kiếm
-                if semantic_profile and UpgradeFlags.is_enabled("8_SEMANTIC_ANALYSIS"):
-                    try:
-                        semantic_recommendations = SemanticAnalyzer.match_tours_to_profile(semantic_profile, tours_db)
-                        if semantic_recommendations:
-                            tour_indices = [idx for idx, score in semantic_recommendations[:5]]
-                            logger.info(f"Semantic recommendations: {len(tour_indices)} tours")
-                            response_metadata["recommendation_source"] = "semantic_analysis"
-                    except Exception as e:
-                        logger.error(f"Semantic recommendation error: {e}")
-            
-            if tour_indices:
-                # Lấy tour được đề xuất cao nhất
-                primary_idx = tour_indices[0]
-                primary_tour = tours_db.get(primary_idx)
+                            values.append("N/A")
+                    row += " | ".join(values)
+                    comparison_rows.append(row)
                 
-                if primary_tour:
-                    # Tìm lý do đề xuất thông minh
-                    recommendation_reasons = []
+                comparison_table = "\n".join(comparison_rows)
+                
+                # Tạo summary và suggestion
+                tour_names = [t.tour_name for t in tours_to_compare]
+                summary = f"So sánh {len(tours_to_compare)} tour: {', '.join(tour_names)}"
+                
+                # Phân tích điểm mạnh của từng tour
+                strengths = []
+                for tour in tours_to_compare:
+                    if tour.style:
+                        strengths.append(f"• {tour.tour_name}: Mạnh về {tour.style}")
+                    elif tour.category:
+                        strengths.append(f"• {tour.tour_name}: Thuộc loại {tour.category}")
+                
+                suggestion = "Để chọn tour phù hợp nhất:\n"
+                if strengths:
+                    suggestion += "\n".join(strengths)
+                suggestion += "\n\n📞 Liên hệ hotline 0332510486 để được tư vấn chi tiết."
+                
+                reply = KnowledgeTemplateSystem.render('comparison',
+                    count=len(tours_to_compare),
+                    comparison_table=comparison_table,
+                    summary=summary,
+                    suggestion=suggestion
+                )
+            else:
+                reply = "Cần ít nhất 2 tour để so sánh. Vui lòng cung cấp tên các tour cần so sánh."
+            
+            context.current_state = ConversationState.COMPARISON
+            
+        elif question_type == QuestionType.RECOMMENDATION:
+            if tour_indices:
+                # Tính điểm recommendation dựa trên knowledge.json fields
+                scored_tours = []
+                for tour in resolved_tours:
+                    score = 0
+                    reasons = []
                     
-                    # Reason 1: Phù hợp với filters
-                    if filters.location and filters.location.lower() in primary_tour.location.lower():
-                        recommendation_reasons.append(f"📍 **Địa điểm phù hợp:** {primary_tour.location}")
-                    
-                    if filters.style and filters.style.lower() in primary_tour.style.lower():
-                        recommendation_reasons.append(f"🎨 **Phong cách phù hợp:** {primary_tour.style}")
-                    
-                    if filters.include_keywords:
-                        matched_includes = [inc for inc in filters.include_keywords 
-                                          if any(inc in tour_inc.lower() for tour_inc in primary_tour.includes)]
-                        if matched_includes:
-                            recommendation_reasons.append(f"✅ **Có dịch vụ bạn cần:** {', '.join(matched_includes)}")
-                    
-                    # Reason 2: Phù hợp với semantic profile
-                    if semantic_profile:
-                        if semantic_profile.get('preferred_budget') == 'low' and primary_tour.price_numeric and primary_tour.price_numeric < 2000000:
-                            recommendation_reasons.append("💰 **Ngân sách phù hợp:** Giá tour dưới 2 triệu")
-                        elif semantic_profile.get('preferred_budget') == 'high' and primary_tour.price_numeric and primary_tour.price_numeric > 3000000:
-                            recommendation_reasons.append("💰 **Dịch vụ cao cấp:** Giá tour trên 3 triệu")
-                    
-                    # Reason 3: Ưu điểm của tour
-                    if not recommendation_reasons:
-                        # Default reasons based on tour features
-                        if primary_tour.rating and primary_tour.rating >= 4.5:
-                            recommendation_reasons.append("⭐ **Đánh giá xuất sắc:** 4.5/5 từ khách hàng")
+                    # Điểm cho filter match
+                    if mandatory_filters and not mandatory_filters.is_empty():
+                        if mandatory_filters.location and mandatory_filters.location.lower() in tour.location.lower():
+                            score += 3
+                            reasons.append(f"Đúng địa điểm: {mandatory_filters.location}")
                         
-                        if primary_tour.includes and len(primary_tour.includes) >= 5:
-                            recommendation_reasons.append("✅ **Nhiều dịch vụ bao gồm:** Đầy đủ tiện nghi")
+                        if mandatory_filters.style and mandatory_filters.style.lower() in tour.style.lower():
+                            score += 3
+                            reasons.append(f"Đúng phong cách: {mandatory_filters.style}")
                         
-                        if primary_tour.duration_numeric and 2 <= primary_tour.duration_numeric <= 4:
-                            recommendation_reasons.append("⏱ **Thời gian lý tưởng:** 2-4 ngày phù hợp cho kỳ nghỉ")
+                        if mandatory_filters.include_keywords:
+                            matches = 0
+                            for keyword in mandatory_filters.include_keywords:
+                                if any(keyword in inc.lower() for inc in tour.includes):
+                                    matches += 1
+                            if matches > 0:
+                                score += matches * 2
+                                reasons.append(f"Có {matches} dịch vụ bạn cần")
                     
-                    # Tìm alternatives
-                    alternative_tours = []
-                    for idx in tour_indices[1:4]:
-                        tour = tours_db.get(idx)
-                        if tour:
-                            alt_text = f"• **{tour.tour_name}**"
-                            if tour.duration:
-                                alt_text += f" ({tour.duration})"
-                            if tour.price:
-                                price_preview = tour.price[:40] + "..." if len(tour.price) > 40 else tour.price
-                                alt_text += f" - {price_preview}"
-                            alternative_tours.append(alt_text)
+                    # Điểm cho field match
+                    if field_name:
+                        field_value = EnhancedFieldDetectorV2.get_field_value(tour, field_name)
+                        if field_value:
+                            score += 2
+                            reasons.append(f"Có thông tin về {field_name.replace('_', ' ')}")
                     
-                    # Tạo recommended tour display
-                    recommended_tour_display = KnowledgeTemplateSystem.render('tour_item',
-                        idx=1,
-                        tour_name=primary_tour.tour_name,
-                        location=primary_tour.location,
-                        duration=primary_tour.duration,
-                        price=primary_tour.price,
-                        summary=(primary_tour.summary[:100] + "...") if len(primary_tour.summary) > 100 else primary_tour.summary,
-                        includes_preview=", ".join(primary_tour.includes[:3]) if primary_tour.includes else "Nhiều dịch vụ"
-                    )
+                    # Điểm cho rating
+                    if tour.rating:
+                        score += tour.rating
+                        reasons.append(f"Đánh giá {tour.rating}/5")
+                    
+                    # Điểm cho duration phù hợp
+                    if mandatory_filters and (mandatory_filters.duration_min or mandatory_filters.duration_max):
+                        if tour.duration_numeric:
+                            if mandatory_filters.duration_min and tour.duration_numeric >= mandatory_filters.duration_min:
+                                score += 1
+                            if mandatory_filters.duration_max and tour.duration_numeric <= mandatory_filters.duration_max:
+                                score += 1
+                    
+                    scored_tours.append({
+                        'tour': tour,
+                        'score': score,
+                        'reasons': reasons[:3]
+                    })
+                
+                # Sắp xếp theo điểm
+                scored_tours.sort(key=lambda x: x['score'], reverse=True)
+                
+                if scored_tours:
+                    # Lấy tour tốt nhất
+                    best_tour = scored_tours[0]['tour']
+                    best_reasons = scored_tours[0]['reasons']
+                    
+                    # Tạo alternatives
+                    alternatives = []
+                    for item in scored_tours[1:4]:
+                        tour = item['tour']
+                        alt_text = f"• {tour.tour_name}"
+                        if tour.duration:
+                            alt_text += f" ({tour.duration})"
+                        if tour.price:
+                            price_short = tour.price[:40] + "..." if len(tour.price) > 40 else tour.price
+                            alt_text += f" - {price_short}"
+                        alternatives.append(alt_text)
+                    
+                    # Format reasons
+                    if not best_reasons:
+                        best_reasons = ["Phù hợp với yêu cầu của bạn", "Được nhiều khách hàng lựa chọn"]
+                    
+                    reasons_text = "\n".join([f"• {r}" for r in best_reasons])
+                    alternatives_text = "\n".join(alternatives) if alternatives else "Không có tour khác phù hợp"
                     
                     reply = KnowledgeTemplateSystem.render('recommendation',
-                        recommended_tour=recommended_tour_display,
-                        reasons="\n".join(recommendation_reasons),
-                        alternatives="\n".join(alternative_tours) if alternative_tours else "• Liên hệ hotline để được tư vấn thêm các lựa chọn khác",
-                        personal_note="Dựa trên phân tích nhu cầu của bạn, tôi tin rây đây là lựa chọn tốt nhất."
+                        recommended_tour=best_tour.tour_name,
+                        reasons=reasons_text,
+                        alternatives=alternatives_text
                     )
-                    
-                    # Cập nhật context
-                    context.last_recommended_tours = tour_indices[:3]
-                    response_metadata["recommendation_reasons"] = recommendation_reasons
-                    response_metadata["recommendation_score"] = "high" if len(recommendation_reasons) >= 3 else "medium"
                 else:
-                    reply = KnowledgeTemplateSystem.render('no_results')
+                    reply = "Không tìm thấy tour phù hợp để đề xuất."
             else:
                 reply = KnowledgeTemplateSystem.render('no_results')
-        
-        elif question_type == QuestionType.UNKNOWN:
-            response_strategy = "llm_fallback"
             
-            # Sử dụng LLM fallback với context phong phú
+            context.current_state = ConversationState.RECOMMENDING
+            
+        elif question_type == QuestionType.UNKNOWN:
+            # Fallback với LLM và knowledge context
             try:
-                # Chuẩn bị rich context cho LLM
-                llm_context = {
-                    "user_message": user_message,
-                    "detected_intent": "unknown",
-                    "conversation_history": context.conversation_history[-3:],
-                    "available_tours_count": len(tours_db),
-                    "relevant_tours_found": len(tour_indices),
-                    "filters_applied": filter_applied,
-                    "field_detected": field_name,
-                    "complexity_level": complexity_level,
-                    "user_preferences": context.user_preferences
+                # Chuẩn bị knowledge context
+                knowledge_context = []
+                for tour in resolved_tours[:3]:
+                    knowledge_context.append({
+                        'name': tour.tour_name,
+                        'summary': tour.summary,
+                        'location': tour.location,
+                        'price': tour.price,
+                        'style': tour.style,
+                        'includes': tour.includes[:3]
+                    })
+                
+                # Tạo prompt với knowledge context
+                prompt = _prepare_llm_prompt_with_knowledge(
+                    user_message, 
+                    knowledge_context,
+                    {
+                        'question_type': question_type.value,
+                        'filters': mandatory_filters,
+                        'field_name': field_name
+                    }
+                )
+                
+                # Gọi LLM
+                llm_request_obj = LLMRequest(
+                    prompt=prompt,
+                    model="llama2",
+                    temperature=0.7,
+                    max_tokens=500
+                )
+                
+                llm_response_text = llm_request(llm_request_obj)
+                llm_response_parsed = parse_llm_response(llm_response_text)
+                
+                reply = llm_response_parsed.get('reply', '')
+                
+                if not reply:
+                    reply = _generate_fallback_response_with_knowledge(user_message, resolved_tours)
+                
+                # Thêm thông tin tour nếu có
+                if resolved_tours and 'tour' not in reply.lower():
+                    tour_names = [t.tour_name for t in resolved_tours[:3]]
+                    reply += f"\n\n🔍 **Một số tour Ruby Wings có thể bạn quan tâm:** {', '.join(tour_names)}"
+                
+            except Exception as e:
+                logger.error(f"LLM fallback error: {e}")
+                reply = _generate_fallback_response_with_knowledge(user_message, resolved_tours)
+            
+            context.current_state = ConversationState.INITIAL
+        
+        # 5.2 AUTO-VALIDATION với knowledge.json context
+        if UpgradeFlags.is_enabled("9_AUTO_VALIDATION"):
+            try:
+                validation_context = {
+                    'tours': [t.tour_name for t in resolved_tours[:3]],
+                    'field_name': field_name,
+                    'question_type': question_type.value
                 }
                 
-                # Thêm thông tin về tours nếu có
-                if tour_indices:
-                    tours_info = []
-                    for idx in tour_indices[:3]:
-                        tour = tours_db.get(idx)
-                        if tour:
-                            tours_info.append({
-                                "name": tour.tour_name,
-                                "summary": tour.summary[:150],
-                                "price": tour.price,
-                                "duration": tour.duration
-                            })
-                    llm_context["relevant_tours"] = tours_info
-                
-                # Tạo prompt thông minh
-                prompt = _prepare_llm_prompt(user_message, [], llm_context)
-                
-                # Gọi LLM với timeout
-                llm_timeout = 10  # seconds
-                llm_response = ""
-                
-                try:
-                    llm_request_obj = LLMRequest(
-                        prompt=prompt,
-                        model="llama2",
-                        temperature=0.7,
-                        max_tokens=500,
-                        stream=False
-                    )
-                    
-                    # Trong thực tế, đây là nơi gọi LLM API
-                    # llm_response = call_llm_api(llm_request_obj, timeout=llm_timeout)
-                    
-                    # Tạm thời dùng fallback response
-                    llm_response = _generate_fallback_response(user_message, [], tour_indices)
-                    
-                except TimeoutError:
-                    logger.warning(f"LLM timeout after {llm_timeout} seconds")
-                    llm_response = _generate_fallback_response(user_message, [], tour_indices)
-                except Exception as e:
-                    logger.error(f"LLM API error: {e}")
-                    llm_response = _generate_fallback_response(user_message, [], tour_indices)
-                
-                if llm_response:
-                    # Parse và clean response
-                    parsed_response = parse_llm_response(llm_response)
-                    reply = parsed_response.get("reply", "").strip()
-                    
-                    # Auto-validation
-                    if UpgradeFlags.is_enabled("9_AUTO_VALIDATION"):
-                        validated = AutoValidator.validate_response(reply)
-                        reply = validated
-                    
-                    # Đảm bảo response có chất lượng
-                    if len(reply) < 80 or "xin chào" in reply.lower() and "tour" not in reply.lower():
-                        # Fallback nếu response quá ngắn hoặc không liên quan
-                        reply = _generate_fallback_response(user_message, [], tour_indices)
-                    
-                    response_metadata["llm_used"] = True
-                    response_metadata["llm_model"] = "llama2"
-                    response_metadata["llm_fallback"] = True
-                else:
-                    reply = _generate_fallback_response(user_message, [], tour_indices)
-                    response_metadata["llm_failed"] = True
-                    
+                validated_reply = AutoValidator.safe_validate({'reply': reply, 'context': validation_context})
+                if 'reply' in validated_reply and validated_reply['reply'] != reply:
+                    reply = validated_reply['reply']
+                    warnings.append("Phản hồi đã được tự động kiểm tra và điều chỉnh")
             except Exception as e:
-                logger.error(f"LLM fallback system error: {e}")
-                reply = _generate_fallback_response(user_message, [], tour_indices)
-                response_metadata["error"] = str(e)[:100]
+                logger.warning(f"Auto-validation error: {e}")
         
-        # 5.2 Post-process response
-        if reply:
-            # Auto-validation
-            if UpgradeFlags.is_enabled("9_AUTO_VALIDATION"):
-                try:
-                    validation_result = AutoValidator.safe_validate({
-                        "reply": reply,
-                        "tour_indices": tour_indices,
-                        "question_type": question_type.value
-                    })
-                    
-                    reply = validation_result.get("reply", reply)
-                    
-                    if validation_result.get("warnings"):
-                        warnings.extend(validation_result["warnings"])
-                    
-                    if validation_result.get("suggestions"):
-                        suggestions.extend(validation_result["suggestions"])
-                        
-                except Exception as e:
-                    logger.error(f"Auto-validation error: {e}")
-            
-            # Ensure contact information is present
-            if not any(keyword in reply.lower() for keyword in ["0332510486", "hotline", "liên hệ", "điện thoại"]):
-                reply += "\n\n📞 **Hotline tư vấn 24/7: 0332510486**"
-                response_metadata["contact_added"] = True
-            
-            if not any(keyword in reply.lower() for keyword in ["rubywings.vn", "website", "trang web"]):
-                reply += "\n🌐 **Website chính thức: www.rubywings.vn**"
-                response_metadata["website_added"] = True
-            
-            # Add filter summary if filters were applied
-            if filter_applied and filters:
-                filter_summary_parts = []
-                if filters.location:
-                    filter_summary_parts.append(f"📍 {filters.location}")
-                if filters.style:
-                    filter_summary_parts.append(f"🎨 {filters.style}")
-                if filters.min_price or filters.max_price:
-                    price_range = []
-                    if filters.min_price:
-                        price_range.append(f"từ {filters.min_price:,.0f} VND")
-                    if filters.max_price:
-                        price_range.append(f"đến {filters.max_price:,.0f} VND")
-                    if price_range:
-                        filter_summary_parts.append(f"💰 {' '.join(price_range)}")
-                
-                if filter_summary_parts:
-                    reply += f"\n\n🔍 **Bộ lọc đã áp dụng:** {', '.join(filter_summary_parts)}"
-            
-            # Add context-aware follow-up suggestions
-            if len(tour_indices) > 0 and question_type not in [QuestionType.FAREWELL, QuestionType.GREETING]:
-                # Tạo follow-up questions dựa trên context
-                follow_up_suggestions = []
-                
-                if question_type == QuestionType.LIST_TOURS:
-                    if len(tour_indices) > 1:
-                        follow_up_suggestions.append("• 'So sánh tour 1 và tour 2'")
-                    follow_up_suggestions.append("• 'Tour 1 giá bao nhiêu?'")
-                
-                elif question_type == QuestionType.TOUR_DETAIL:
-                    primary_tour = tours_db.get(tour_indices[0]) if tour_indices else None
-                    if primary_tour:
-                        follow_up_suggestions.append(f"• 'Tour {primary_tour.tour_name} có những dịch vụ gì?'")
-                        follow_up_suggestions.append("• 'Có tour tương tự nào không?'")
-                
-                if follow_up_suggestions:
-                    reply += f"\n\n💡 **Bạn cũng có thể hỏi:**\n" + "\n".join(follow_up_suggestions)
-            
-            # Format và clean up response
-            # Remove excessive empty lines
-            import re
-            reply = re.sub(r'\n{3,}', '\n\n', reply)
-            
-            # Ensure proper spacing
-            reply = reply.strip()
-            
-            # Truncate if too long (rare case)
-            max_response_length = 4000
-            if len(reply) > max_response_length:
-                logger.warning(f"Response too long: {len(reply)} chars, truncating...")
-                
-                # Try to cut at a paragraph boundary
-                last_paragraph = reply.rfind('\n\n', 0, max_response_length - 200)
-                if last_paragraph > max_response_length // 2:
-                    reply = reply[:last_paragraph] + "\n\n📞 **Thông tin còn tiếp. Vui lòng liên hệ hotline 0332510486 để biết thêm chi tiết.**"
-                else:
-                    reply = reply[:max_response_length - 200] + "...\n\n📞 **Vui lòng liên hệ hotline để biết thêm chi tiết.**"
+        # 5.3 Đảm bảo có thông tin liên hệ
+        if '0332510486' not in reply:
+            reply += "\n\n📞 **Hotline tư vấn 24/7:** 0332510486"
         
-        response_time = int((time.time() - response_start_time) * 1000)
-        response_metadata["response_generation_time_ms"] = response_time
-        response_metadata["response_strategy"] = response_strategy
+        if 'www.rubywings.vn' not in reply and 'rubywings.vn' not in reply:
+            reply += "\n🌐 **Website:** www.rubywings.vn"
         
-        logger.info(f"Response generated in {response_time}ms using strategy: {response_strategy}")
+        # 5.4 Formatting cuối cùng
+        reply = reply.strip()
         
-        # ========== PHASE 6: POST-PROCESSING & UPDATES ==========
-        processing_phase = "post_processing"
-        
-        # 6.1 Update conversation state machine
+        # ================== 6. HẬU XỬ LÝ ==================
+        # 6.1 Cập nhật conversation state
         state_machine = ConversationStateMachine(context.current_state)
-        state_machine.update(user_message, reply[:100] + "...", tour_indices)
+        state_machine.update(user_message, reply[:100], tour_indices)
         context.current_state = state_machine.current_state
         
-        # 6.2 Add assistant response to conversation history
-        assistant_entry = {
-            "role": "assistant",
-            "message": reply[:500] + "..." if len(reply) > 500 else reply,
-            "timestamp": datetime.now().isoformat(),
-            "tour_indices": tour_indices[:5],
-            "question_type": question_type.value,
-            "response_strategy": response_strategy,
-            "processing_time_ms": int((time.time() - start_time) * 1000)
-        }
-        
-        context.conversation_history.append(assistant_entry)
-        
-        # 6.3 Update last tours mentioned
+        # 6.2 Cập nhật last_tours_mentioned
         if tour_indices:
-            context.last_tours_mentioned = tour_indices[:5]
+            for tour_id in tour_indices:
+                if tour_id not in context.last_tours_mentioned:
+                    context.last_tours_mentioned.append(tour_id)
+            
+            # Giới hạn 10 tour
+            if len(context.last_tours_mentioned) > 10:
+                context.last_tours_mentioned = context.last_tours_mentioned[-10:]
         
-        # 6.4 Update user preferences based on this interaction
-        if question_type in [QuestionType.RECOMMENDATION, QuestionType.LIST_TOURS]:
-            # Ghi nhận loại tour user quan tâm
-            if tour_indices:
-                tour_categories = []
-                for idx in tour_indices[:3]:
-                    tour = tours_db.get(idx)
-                    if tour and tour.category:
-                        if tour.category not in tour_categories:
-                            tour_categories.append(tour.category)
-                
-                if tour_categories:
-                    context.user_preferences['interested_categories'] = list(set(
-                        context.user_preferences.get('interested_categories', []) + tour_categories
-                    ))[:5]
+        # 6.3 Thêm bot response vào conversation history
+        context.conversation_history.append({
+            'role': 'assistant',
+            'message': reply[:500],
+            'timestamp': datetime.utcnow().isoformat(),
+            'tour_indices': tour_indices[:5],
+            'question_type': question_type.value,
+            'field_name': field_name
+        })
         
-        # 6.5 Save to cache
-        if UpgradeFlags.is_enabled("ENABLE_CACHING") and cache_key:
-            try:
-                cache_entry = {
-                    "reply": reply,
-                    "tour_indices": tour_indices,
-                    "context": {
-                        "session_id": session_id,
-                        "current_state": context.current_state.value,
-                        "last_tours_mentioned": context.last_tours_mentioned[:3]
-                    },
-                    "metadata": response_metadata,
-                    "warnings": warnings if warnings else None,
-                    "suggestions": suggestions if suggestions else None,
-                    "processing_time_ms": int((time.time() - start_time) * 1000),
-                    "cached_at": time.time(),
-                    "expiry": time.time() + CACHE_TTL
-                }
-                
-                cache_system.set(cache_key, cache_entry, expiry=CACHE_TTL)
-                logger.info(f"Response cached with key: {cache_key[:25]}... (expires in {CACHE_TTL}s)")
-            except Exception as e:
-                logger.error(f"Caching error: {e}")
+        # 6.4 Lưu cache
+        if cache_key and UpgradeFlags.is_enabled("CACHE_SYSTEM"):
+            cache_entry = CacheEntry(
+                value={
+                    'reply': reply,
+                    'tour_indices': tour_indices,
+                    'warnings': warnings,
+                    'metadata': metadata
+                },
+                expiry=time.time() + CACHE_TTL
+            )
+            cache_system.set(cache_key, cache_entry)
+            logger.info(f"💾 Cached response for key: {cache_key[:50]}...")
         
-        # 6.6 Save session context
+        # 6.5 Lưu session context
         save_session_context(session_id, context)
         
-        # 6.7 Send CAPI event if enabled
+        # 6.6 Gửi CAPI event
         if CAPI_ENABLED:
             try:
-                capi_payload = {
-                    "session_id": session_id,
-                    "user_message": user_message[:200],
-                    "bot_response": reply[:300],
-                    "tour_count": len(tour_indices),
-                    "question_type": question_type.value,
-                    "timestamp": datetime.now().isoformat()
-                }
-                
-                send_capi_event(session_id, user_message[:200], reply[:300])
-                logger.info(f"CAPI event sent for session {session_id}")
+                send_capi_event(session_id, user_message[:100], reply[:100])
             except Exception as e:
-                logger.error(f"CAPI event error: {e}")
+                logger.error(f"CAPI error: {e}")
         
-        # 6.8 Cleanup old sessions periodically
-        if random.random() < 0.1:  # 10% chance on each request
-            cleanup_expired_sessions()
+        # ================== 7. TRẢ RESPONSE ==================
+        processing_time = time.time() - start_time
+        metadata['processing_time_ms'] = int(processing_time * 1000)
+        metadata['from_cache'] = False
         
-        # ========== PHASE 7: FINAL RESPONSE PREPARATION ==========
-        processing_phase = "final_preparation"
-        
-        total_processing_time = int((time.time() - start_time) * 1000)
-        
-        # 7.1 Prepare final response object
-        final_response = {
-            "reply": reply,
-            "tour_indices": tour_indices,
-            "action": "continue",
-            "context": {
+        # Tạo ChatResponse
+        chat_response = ChatResponse(
+            reply=reply,
+            tour_indices=tour_indices,
+            action="continue",
+            context={
                 "session_id": session_id,
-                "current_state": context.current_state.value,
                 "question_type": question_type.value,
-                "tours_found": len(tour_indices),
-                "processing_time_ms": total_processing_time,
-                "conversation_length": len(context.conversation_history)
+                "field_name": field_name,
+                "confidence": confidence,
+                "filters_applied": not mandatory_filters.is_empty() if mandatory_filters else False,
+                "state": context.current_state.value,
+                "tour_count": len(tour_indices)
             },
-            "warnings": warnings if warnings else None,
-            "suggestions": suggestions if suggestions else None,
-            "metadata": {
-                **response_metadata,
-                "total_processing_time_ms": total_processing_time,
-                "cache_hit": False,
-                "system_version": "RubyWings AI v4.2",
-                "knowledge_base_version": "knowledge.json v2.0",
-                "processing_phases": [
-                    "request_processing",
-                    "session_management", 
-                    "question_analysis",
-                    "tour_search",
-                    "response_generation",
-                    "post_processing",
-                    "final_preparation"
-                ],
-                "performance_metrics": {
-                    "question_analysis_ms": question_analysis_time,
-                    "filter_analysis_ms": filter_analysis_time,
-                    "field_analysis_ms": field_analysis_time,
-                    "semantic_analysis_ms": semantic_analysis_time,
-                    "search_total_ms": search_metadata.get("total_time_ms", 0),
-                    "response_generation_ms": response_time,
-                    "total_ms": total_processing_time
-                }
-            }
-        }
+            warnings=warnings if warnings else None,
+            metadata=metadata
+        )
         
-        # 7.2 Log completion
-        logger.info(f"""
-        ✅ CHAT ENDPOINT PROCESSING COMPLETE
-        ⏱  Total time: {total_processing_time}ms
-        👤 Session: {session_id[:12]}...
-        ❓ Question: {question_type.value} (confidence: {q_confidence:.2f})
-        🗺️  Tours found: {len(tour_indices)}
-        🔍 Search strategies: {', '.join(search_strategies)}
-        🎯 Response strategy: {response_strategy}
-        📊 Response length: {len(reply)} characters
-        ⚠️  Warnings: {len(warnings) if warnings else 0}
-        💡 Suggestions: {len(suggestions) if suggestions else 0}
-        """)
+        logger.info(f"✅ Request processed in {processing_time:.2f}s | "
+                   f"Tours: {len(tour_indices)} | "
+                   f"Type: {question_type.value} | "
+                   f"Confidence: {confidence:.2f}")
         
-        # 7.3 Return final response
-        return jsonify(final_response)
+        return jsonify(asdict(chat_response))
         
     except Exception as e:
-        # ========== PHASE 8: ERROR HANDLING ==========
-        error_time = time.time()
-        total_processing_time = int((error_time - start_time) * 1000)
+        logger.error(f"❌ Critical error in chat endpoint: {e}", exc_info=True)
         
-        logger.critical(f"""
-        ❌ CRITICAL ERROR in chat endpoint
-        Phase: {processing_phase}
-        Error: {str(e)}
-        Traceback: {traceback.format_exc()}
-        Session ID: {session_id or 'Unknown'}
-        User message: {user_message[:200] if user_message else 'Empty'}
-        Processing time: {total_processing_time}ms
-        """)
+        processing_time = time.time() - start_time
         
-        # Prepare comprehensive error response
-        error_id = hashlib.md5(f"{str(e)}{time.time()}".encode()).hexdigest()[:8]
-        
-        error_reply = f"""⚡ **XIN LỖI VÌ SỰ BẤT TIỆN**
-
-Hệ thống gặp sự cố kỹ thuật khi xử lý yêu cầu của bạn. Đội ngũ kỹ thuật đã được thông báo.
-
-**MÃ LỖI:** RW-{error_id}
-**THỜI GIAN:** {datetime.now().strftime('%H:%M:%S %d/%m/%Y')}
-**TÌNH TRẠNG:** Đang khắc phục
-
-**VUI LÒNG THỬ MỘT TRONG CÁC CÁCH SAU:**
-
-1. **📞 GỌI NGAY HOTLINE:** 0332510486
-   • Tư vấn trực tiếp, nhanh chóng
-   • Hỗ trợ 24/7, kể cả cuối tuần
-
-2. **🌐 TRUY CẬP WEBSITE:** www.rubywings.vn
-   • Xem danh sách tour đầy đủ
-   • Đặt tour trực tuyến
-   • Tìm hiểu thông tin chi tiết
-
-3. **📱 LIÊN HỆ QUA ZALO:** @rubywings
-   • Chat với nhân viên tư vấn
-   • Nhận báo giá nhanh
-
-4. **🔄 THỬ LẠI CÂU HỎI ĐƠN GIẢN HƠN:**
-   • "Tour Bạch Mã giá bao nhiêu?"
-   • "Có tour nào đi Huế 2 ngày không?"
-   • "Tour gia đình phù hợp cho trẻ em"
-
-**THÔNG TIN KỸ THUẬT (DÀNH CHO KỸ THUẬT VIÊN):**
-• Lỗi: {type(e).__name__}
-• Pha lỗi: {processing_phase}
-• Thời gian xử lý: {total_processing_time}ms
-• Session: {session_id or 'N/A'}
-
-Chúng tôi chân thành xin lỗi vì sự cố này và đang nỗ lực khắc phục trong thời gian sớm nhất."""
-
-        # Prepare error response object
-        error_response = {
-            "reply": error_reply,
-            "tour_indices": [],
-            "action": "error",
-            "context": {
-                "session_id": session_id or generate_session_id(),
-                "error": True,
-                "error_id": f"RW-{error_id}",
-                "error_type": type(e).__name__,
-                "processing_phase": processing_phase,
-                "processing_time_ms": total_processing_time
+        # Tạo error response
+        error_response = ChatResponse(
+            reply="Xin lỗi, đã xảy ra lỗi trong quá trình xử lý. Vui lòng thử lại hoặc liên hệ hotline 0332510486.",
+            tour_indices=[],
+            action="error",
+            context={
+                "error": str(e)[:100],
+                "processing_time_ms": int(processing_time * 1000)
             },
-            "warnings": ["system_error", "technical_issue", "please_contact_support"],
-            "suggestions": [
-                "Thử lại với câu hỏi đơn giản hơn",
-                "Gọi hotline 0332510486 để được hỗ trợ ngay",
-                "Truy cập website www.rubywings.vn"
-            ],
-            "metadata": {
-                "error_details": str(e)[:500],
-                "error_timestamp": datetime.now().isoformat(),
-                "system_status": "degraded",
-                "recommended_action": "contact_support",
-                "support_channels": ["hotline: 0332510486", "website: www.rubywings.vn", "zalo: @rubywings"]
-            }
-        }
-        
-        # Try to save error to error log
-        try:
-            error_log_entry = {
-                "error_id": f"RW-{error_id}",
-                "timestamp": datetime.now().isoformat(),
-                "session_id": session_id,
-                "processing_phase": processing_phase,
+            warnings=["Hệ thống gặp sự cố, vui lòng thử lại sau."],
+            metadata={
                 "error_type": type(e).__name__,
-                "error_message": str(e),
-                "user_message": user_message[:500] if user_message else "",
-                "traceback": traceback.format_exc()[:1000],
-                "processing_time_ms": total_processing_time,
-                "system_version": "RubyWings AI v4.2"
+                "processing_time_ms": int(processing_time * 1000)
             }
-            
-            # In production, this would save to a database or error tracking service
-            logger.critical(f"ERROR LOG ENTRY: {json.dumps(error_log_entry, ensure_ascii=False)}")
-        except:
-            pass
+        )
         
-        return jsonify(error_response), 500
+        return jsonify(asdict(error_response)), 500
+
+
+# ==================== KNOWLEDGE-AWARE HELPER FUNCTIONS ====================
+
+def _prepare_llm_prompt_with_knowledge(user_message: str, knowledge_context: List[Dict], extra_context: Dict) -> str:
+    """
+    Chuẩn bị prompt cho LLM với knowledge.json context
+    """
+    prompt = f"""Bạn là trợ lý AI của Ruby Wings Travel, chuyên về các tour trải nghiệm tại miền Trung Việt Nam.
+
+THÔNG TIN TOUR HIỆN CÓ (từ knowledge.json):
+{json.dumps(knowledge_context, indent=2, ensure_ascii=False)}
+
+NGỮ CẢNH CUỘC HỘI THOẠI:
+- Loại câu hỏi: {extra_context.get('question_type', 'unknown')}
+- Field được hỏi: {extra_context.get('field_name', 'none')}
+- Bộ lọc: {extra_context.get('filters', 'none')}
+
+CÂU HỎI CỦA KHÁCH HÀNG: "{user_message}"
+
+YÊU CẦU TRẢ LỜI:
+1. Sử dụng thông tin từ knowledge.json ở trên
+2. Trả lời thân thiện, chuyên nghiệp
+3. Nếu không có thông tin, đề nghị liên hệ hotline
+4. Luôn nhắc đến hotline 0332510486 và website www.rubywings.vn
+5. Trả lời bằng tiếng Việt
+
+TRẢ LỜI:"""
+    
+    return prompt
+
+
+def _generate_fallback_response_with_knowledge(user_message: str, tours: List[Tour]) -> str:
+    """
+    Tạo fallback response với knowledge context
+    """
+    if tours:
+        reply = f"Cảm ơn câu hỏi của bạn về: '{user_message}'\n\n"
+        reply += "Dựa trên thông tin hiện có, đây là các tour Ruby Wings có thể phù hợp:\n\n"
+        
+        for i, tour in enumerate(tours[:4], 1):
+            reply += f"{i}. **{tour.tour_name}**\n"
+            if tour.duration:
+                reply += f"   ⏱️ {tour.duration}\n"
+            if tour.location:
+                reply += f"   📍 {tour.location[:50]}...\n" if len(tour.location) > 50 else f"   📍 {tour.location}\n"
+            if tour.summary:
+                summary_short = tour.summary[:100] + "..." if len(tour.summary) > 100 else tour.summary
+                reply += f"   📝 {summary_short}\n"
+            reply += "\n"
+        
+        reply += "Để được tư vấn chi tiết và chính xác hơn, vui lòng:\n"
+        reply += "• Cung cấp thêm thông tin về nhu cầu của bạn\n"
+        reply += "• Gọi trực tiếp hotline 0332510486\n"
+        reply += "• Truy cập website www.rubywings.vn\n\n"
+        reply += "Ruby Wings có hơn 32 tour trải nghiệm đặc sắc tại Huế, Quảng Trị, Bạch Mã và Trường Sơn!"
+    else:
+        reply = f"Cảm ơn câu hỏi của bạn: '{user_message}'\n\n"
+        reply += "Hiện Ruby Wings có các loại tour chính:\n\n"
+        reply += "🏔️ **TOUR MẠO HIỂM & KHÁM PHÁ:**\n"
+        reply += "• Trekking Bạch Mã, khám phá rừng nguyên sinh\n"
+        reply += "• Khám phá Trường Sơn, di tích lịch sử\n\n"
+        
+        reply += "🕉️ **TOUR RETREAT & CHỮA LÀNH:**\n"
+        reply += "• Thiền định, yoga tại Bạch Mã\n"
+        reply += "• Retreat tĩnh tâm, chữa lành năng lượng\n\n"
+        
+        reply += "🏛️ **TOUR VĂN HÓA & LỊCH SỬ:**\n"
+        reply += "• Di sản Huế, ẩm thực cung đình\n"
+        reply += "• Di tích chiến tranh tại Quảng Trị\n\n"
+        
+        reply += "👥 **TOUR NHÓM & TEAM BUILDING:**\n"
+        reply += "• Team building công ty, nhóm bạn\n"
+        reply += "• Tour gia đình, đa thế hệ\n\n"
+        
+        reply += "📞 **Để biết thêm chi tiết và được tư vấn tour phù hợp nhất:**\n"
+        reply += "• Hotline: 0332510486 (24/7)\n"
+        reply += "• Website: www.rubywings.vn\n"
+        reply += "• Email: rubywingslsa@gmail.com"
+    
+    return reply
+
+
+# ==================== FLAG MANAGEMENT ====================
+
+class UpgradeFlags:
+    """Quản lý các tính năng nâng cao"""
+    
+    _flags = {
+        "1_MANDATORY_FILTER": True,
+        "2_DEDUPLICATION": True,
+        "3_FIELD_DETECTION": True,
+        "4_QUESTION_PIPELINE": True,
+        "5_COMPLEX_QUERY": False,  # Tạm tắt
+        "6_FUZZY_MATCHING": True,
+        "7_STATE_MACHINE": True,
+        "8_SEMANTIC_ANALYSIS": True,
+        "9_AUTO_VALIDATION": True,
+        "10_TEMPLATE_SYSTEM": True,
+        "CACHE_SYSTEM": True,
+        "LLM_FALLBACK": True
+    }
+    
+    @classmethod
+    def is_enabled(cls, flag_name: str) -> bool:
+        return cls._flags.get(flag_name, False)
+    
+    @classmethod
+    def enable(cls, flag_name: str):
+        cls._flags[flag_name] = True
+    
+    @classmethod
+    def disable(cls, flag_name: str):
+        cls._flags[flag_name] = False
+    
+    @classmethod
+    def get_all_flags(cls) -> Dict:
+        return cls._flags.copy()
+
+
+# ==================== BACKWARD COMPATIBILITY FUNCTIONS ====================
+
+def get_session_context(session_id: str) -> ConversationContext:
+    """Lấy context từ session - Tương thích với knowledge.json"""
+    if session_id not in sessions:
+        sessions[session_id] = ConversationContext(session_id=session_id)
+    
+    # Kiểm tra session timeout
+    context = sessions[session_id]
+    if time.time() - context.last_activity > SESSION_TIMEOUT:
+        logger.info(f"Session {session_id} expired, creating new one")
+        sessions[session_id] = ConversationContext(session_id=session_id)
+    
+    return sessions[session_id]
+
+
+def save_session_context(session_id: str, context: ConversationContext):
+    """Lưu context vào session"""
+    sessions[session_id] = context
+
+
+def extract_session_id(request_data: Dict, remote_addr: str) -> str:
+    """Extract session ID từ request"""
+    session_id = request_data.get("session_id")
+    if not session_id:
+        # Tạo session ID mới từ IP và timestamp
+        session_hash = hashlib.md5(f"{remote_addr}_{time.time()}".encode()).hexdigest()[:16]
+        session_id = f"session_{session_hash}"
+    
+    return session_id
+
+
+def llm_request(request_data: LLMRequest) -> str:
+    """Gửi request đến LLM"""
+    try:
+        response = requests.post(
+            LLM_URL,
+            json=asdict(request_data),
+            timeout=30
+        )
+        response.raise_for_status()
+        return response.text
+    except Exception as e:
+        logger.error(f"LLM request error: {e}")
+        return ""
+
+
+def parse_llm_response(llm_response: str) -> Dict:
+    """Parse LLM response"""
+    try:
+        # Đơn giản: trả về toàn bộ response
+        return {"reply": llm_response}
+    except:
+        return {"reply": "Xin lỗi, không thể xử lý phản hồi từ AI."}
+
+
+# ==================== INITIALIZATION ====================
+
+def initialize_app():
+    """Khởi tạo ứng dụng với knowledge.json"""
+    global tours_db, tour_name_index, search_index
+    
+    try:
+        # Load tours từ knowledge.json
+        tours_db = KnowledgeLoader.build_tours_database()
+        
+        # Build tour name index
+        tour_name_index = {tour.tour_name.lower(): tour_id for tour_id, tour in tours_db.items()}
+        
+        # Build search index
+        build_index(force_rebuild=False)
+        
+        logger.info(f"✅ App initialized with {len(tours_db)} tours from knowledge.json")
+        
+        # Log số lượng tour theo category
+        categories = {}
+        for tour in tours_db.values():
+            cat = tour.category or 'unknown'
+            categories[cat] = categories.get(cat, 0) + 1
+        
+        logger.info(f"📊 Tour categories: {categories}")
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to initialize app: {e}")
+        tours_db = {}
+        tour_name_index = {}
+
+
+# Chạy khởi tạo khi import
+initialize_app()
 
 # ==================== PHẦN 9: ADDITIONAL ENDPOINTS ====================
 
