@@ -1935,65 +1935,74 @@ class SemanticAnalyzer:
     def match_tours_to_profile(profile: UserProfile, tours_db: Dict[int, Tour], 
                               max_results: int = 5) -> List[Tuple[int, float, List[str]]]:
         """
-        Match tours to user profile with explanation
+
+        Match tours to user profile with explanation (FIXED: an toàn – có fallback)
         """
         matches = []
-        
+
         for tour_idx, tour in tours_db.items():
             score = 0.0
             reasons = []
-            
-            tour_tags = tour.tags or []
-            
-            if profile.age_group:
-                if profile.age_group == 'senior':
-                    if any('easy' in tag for tag in tour_tags):
-                        score += 0.3
-                        reasons.append("phù hợp người lớn tuổi")
-                    if any('nature' in tag for tag in tour_tags):
-                        score += 0.2
-                        reasons.append("thiên nhiên nhẹ nhàng")
-            
-            if profile.interests:
+
+            # ===== TAGS AN TOÀN =====
+            tour_tags = [tag.lower() for tag in (tour.tags or [])]
+            tour_summary = (tour.summary or "").lower()
+
+            # ===== AGE GROUP =====
+            if getattr(profile, "age_group", None) == "senior":
+                if any("easy" in tag for tag in tour_tags):
+                    score += 0.3
+                    reasons.append("phù hợp người lớn tuổi")
+                if any("nature" in tag for tag in tour_tags):
+                    score += 0.2
+                    reasons.append("thiên nhiên nhẹ nhàng")
+
+            # ===== INTERESTS =====
+            if getattr(profile, "interests", None):
                 for interest in profile.interests:
-                    tour_summary = (tour.summary or "").lower()
-                    if (interest in tour_summary or 
-                        any(interest in tag for tag in tour_tags)):
+                    interest = interest.lower()
+                    if interest in tour_summary or any(interest in tag for tag in tour_tags):
                         score += 0.4
                         reasons.append(f"có yếu tố {interest}")
-            
-            if profile.budget_level:
+
+            # ===== BUDGET =====
+            if getattr(profile, "budget_level", None):
                 tour_price = tour.price or ""
-                price_nums = re.findall(r'\d[\d,\.]+', tour_price)
-                
+                price_nums = re.findall(r"\d[\d,\.]+", tour_price)
                 if price_nums:
                     try:
-                        first_price = int(price_nums[0].replace(',', '').replace('.', ''))
-                        
-                        if profile.budget_level == 'budget' and first_price < 2000000:
+                        first_price = int(price_nums[0].replace(",", "").replace(".", ""))
+                        if profile.budget_level == "budget" and first_price < 2_000_000:
                             score += 0.3
                             reasons.append("giá hợp lý")
-                        elif profile.budget_level == 'premium' and first_price > 2500000:
+                        elif profile.budget_level == "premium" and first_price > 2_500_000:
                             score += 0.3
                             reasons.append("cao cấp")
-                        elif profile.budget_level == 'midrange' and 1500000 <= first_price <= 3000000:
+                        elif profile.budget_level == "midrange" and 1_500_000 <= first_price <= 3_000_000:
                             score += 0.3
                             reasons.append("giá vừa phải")
-                    except:
+                    except ValueError:
                         pass
-            
-            if profile.physical_level:
-                if profile.physical_level == 'easy':
-                    if any('easy' in tag or 'meditation' in tag for tag in tour_tags):
-                        score += 0.2
-                        reasons.append("hoạt động nhẹ nhàng")
-            
+
+            # ===== PHYSICAL LEVEL =====
+            if getattr(profile, "physical_level", None) == "easy":
+                if any("easy" in tag or "meditation" in tag for tag in tour_tags):
+                    score += 0.2
+                    reasons.append("hoạt động nhẹ nhàng")
+
             if score > 0:
                 matches.append((tour_idx, score, reasons))
-        
-        matches.sort(key=lambda x: x[1], reverse=True)
-        
-        return matches[:max_results]
+
+        # ===== SORT & SAFE FALLBACK =====
+        if matches:
+            matches.sort(key=lambda x: x[1], reverse=True)
+            return matches[:max_results]
+
+        # Fallback: không có match điểm → trả tour cơ bản
+        fallback = [(idx, 0.1, ["phù hợp cơ bản"]) for idx in tours_db.keys()]
+        return fallback[:max_results]
+
+
 
 # =========== UPGRADE 9: AUTO-VALIDATION SYSTEM (DATACLASS COMPATIBLE) ===========
 class AutoValidator:
@@ -3731,95 +3740,49 @@ Trả lời ngắn gọn, chuyên nghiệp."""
             
             # Tìm tour phù hợp
             matching_tours = []
-    
-            # Ưu tiên đặc biệt cho tour thiền/retreat khi có keyword
-            special_keywords = {
-                'thiền': 'meditation',
-                'retreat': 'retreat', 
-                'chữa lành': 'healing',
-                'yên tĩnh': 'quiet',
-                'tĩnh tâm': 'meditation',
-                'khí công': 'qigong'
-            }
-
-            for keyword, tag_value in special_keywords.items():
-                if keyword in message_lower:
-                    # Tìm trực tiếp tour có tag này
-                    for idx, tour in TOURS_DB.items():
-                        if tour.tags and any(tag_value in tag for tag in tour.tags):
-                            score = 5  # Điểm cao
-                            reasons = [f"có yếu tố {keyword}"]
-                            matching_tours.append((idx, score, reasons))
-
-
-
-
-            for idx, tour in TOURS_DB.items():
-                score = 0
-
-                # Xử lý đặc biệt cho yêu cầu địa điểm cụ thể
-                if any(word in message_lower for word in ['quảng trị', 'quang tri', 'đông hà', 'khe sanh']):
-                    if tour.location and any(loc in tour.location.lower() for loc in ['quảng trị', 'quang tri', 'đông hà', 'khe sanh']):
-                        score += 5  # Cộng điểm rất cao
-                        reasons.append("tại Quảng Trị")
-                    else:
-                        score -= 10  # Trừ điểm rất mạnh nếu không phải Quảng Trị
-                        reasons = []  # Xóa lý do cũ vì không phù hợp
-
-
-                reasons = []
-                
-                # Kiểm tra tags
-                tour_tags = [tag.lower() for tag in (tour.tags or [])]
-                
-                # Phù hợp gia đình
-                if requirements['family']:
-                    if any('family' in tag for tag in tour_tags):
-                        score += 3
-                        reasons.append("phù hợp gia đình")
-                    elif 'history' in tour_tags and not requirements['history']:
-                        score -= 1  # Trừ điểm nếu tour lịch sử nhưng không yêu cầu
-                
-                # Người lớn tuổi
-                if requirements['senior']:
-                    if any('nature' in tag for tag in tour_tags) or any('meditation' in tag for tag in tour_tags):
-                        score += 2
-                        reasons.append("nhẹ nhàng cho người lớn tuổi")
-                
-                # Thiên nhiên
-                if requirements['nature']:
-                    if any('nature' in tag for tag in tour_tags):
-                        score += 2
-                        reasons.append("trải nghiệm thiên nhiên")
-                
-                # Thiền/tĩnh tâm
-                if requirements['meditation']:
-                    if any('meditation' in tag for tag in tour_tags):
-                        score += 3
-                        reasons.append("có hoạt động thiền")
-                
-                # Nghỉ ngơi
-                if requirements['relax']:
-                    if any('nature' in tag for tag in tour_tags) or any('meditation' in tag for tag in tour_tags):
-                        score += 2
-                        reasons.append("tập trung nghỉ ngơi")
-                
-                # Budget
-                if requirements['budget']:
-                    if tour.price:
-                        # Tìm số trong price
-                        nums = re.findall(r'\d[\d,\.]+', tour.price)
-                        if nums:
-                            try:
-                                price_num = int(nums[0].replace(',', '').replace('.', ''))
-                                if price_num < 2000000:
-                                    score += 2
-                                    reasons.append("giá hợp lý")
-                            except:
-                                pass
-                
-                if score > 0:
-                    matching_tours.append((idx, score, reasons))
+            
+            # =========== XÁC ĐỊNH DANH SÁCH TOUR CẦN XÉT ===========
+            # 1. Ưu tiên cao nhất: Tour đã thỏa mãn mandatory filters
+            candidate_indices = []
+            
+            # Nếu có mandatory filters, chỉ xét các tour đã thỏa mãn
+            if not mandatory_filters.is_empty():
+                mandatory_filtered = MandatoryFilterSystem.apply_filters(TOURS_DB, mandatory_filters)
+                if mandatory_filtered:
+                    candidate_indices = mandatory_filtered
+                    logger.info(f"🚨 ÉP BUỘC RÀNG BUỘC: Xét {len(candidate_indices)} tour thỏa mandatory filters")
+                else:
+                    # Không có tour thỏa mandatory filters → trả lời ngay
+                    reply = f"❌ **KHÔNG CÓ TOUR PHÙ HỢP VỚI RÀNG BUỘC**\n\n"
+                    reply += f"Không tìm thấy tour nào thỏa mãn:\n"
+                    if mandatory_filters.duration_min or mandatory_filters.duration_max:
+                        reply += f"• Thời gian: {mandatory_filters.duration_min or ''} đến {mandatory_filters.duration_max or ''} ngày\n"
+                    if mandatory_filters.location:
+                        reply += f"• Địa điểm: {mandatory_filters.location}\n"
+                    reply += "\n📞 **Liên hệ 0332510486 để thiết kế tour riêng theo yêu cầu!**"
+                    
+                    chat_response = ChatResponse(
+                        reply=reply,
+                        sources=[],
+                        context={
+                            "session_id": session_id,
+                            "mandatory_filters": mandatory_filters.to_dict(),
+                            "processing_time_ms": int((time.time() - start_time) * 1000)
+                        },
+                        tour_indices=[],
+                        processing_time_ms=int((time.time() - start_time) * 1000),
+                        from_memory=False
+                    )
+                    return jsonify(chat_response.to_dict())
+            else:
+                # Không có mandatory filters, dùng tất cả tour
+                candidate_indices = list(TOURS_DB.keys())
+            
+            # =========== DUYỆT VÀ TÍNH ĐIỂM CHỈ TRÊN CANDIDATE_INDICES ===========
+            for idx in candidate_indices:
+                tour = TOURS_DB.get(idx)
+                if not tour:
+                    continue
             
             # Sắp xếp theo điểm
             matching_tours.sort(key=lambda x: x[1], reverse=True)
