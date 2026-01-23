@@ -3917,7 +3917,7 @@ Trả lời ngắn gọn, chuyên nghiệp."""
                         reply += "\n"
                     
                     reply += "📞 **Liên hệ 0332510486 để được tư vấn chi tiết!**"
-                    return jsonify(...)  # Trả về ngay
+                # Đã xây dựng reply, không cần return sớm, tiếp tục xử lý bên dưới
                 # Dùng AI để đề xuất thông minh
                 if client and HAS_OPENAI:
                     try:
