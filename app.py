@@ -3731,9 +3731,42 @@ Trả lời ngắn gọn, chuyên nghiệp."""
             
             # Tìm tour phù hợp
             matching_tours = []
-            
+    
+            # Ưu tiên đặc biệt cho tour thiền/retreat khi có keyword
+            special_keywords = {
+                'thiền': 'meditation',
+                'retreat': 'retreat', 
+                'chữa lành': 'healing',
+                'yên tĩnh': 'quiet',
+                'tĩnh tâm': 'meditation',
+                'khí công': 'qigong'
+            }
+
+            for keyword, tag_value in special_keywords.items():
+                if keyword in message_lower:
+                    # Tìm trực tiếp tour có tag này
+                    for idx, tour in TOURS_DB.items():
+                        if tour.tags and any(tag_value in tag for tag in tour.tags):
+                            score = 5  # Điểm cao
+                            reasons = [f"có yếu tố {keyword}"]
+                            matching_tours.append((idx, score, reasons))
+
+
+
+
             for idx, tour in TOURS_DB.items():
                 score = 0
+
+                # Xử lý đặc biệt cho yêu cầu địa điểm cụ thể
+                if any(word in message_lower for word in ['quảng trị', 'quang tri', 'đông hà', 'khe sanh']):
+                    if tour.location and any(loc in tour.location.lower() for loc in ['quảng trị', 'quang tri', 'đông hà', 'khe sanh']):
+                        score += 5  # Cộng điểm rất cao
+                        reasons.append("tại Quảng Trị")
+                    else:
+                        score -= 10  # Trừ điểm rất mạnh nếu không phải Quảng Trị
+                        reasons = []  # Xóa lý do cũ vì không phù hợp
+
+
                 reasons = []
                 
                 # Kiểm tra tags
@@ -3831,6 +3864,60 @@ Trả lời ngắn gọn, chuyên nghiệp."""
                 reply += "• Đặt tour ưu đãi\n"
             
             else:
+                    
+
+                # THÊM: Luôn đề xuất ít nhất 2-3 tour phổ biến nếu không tìm được tour phù hợp
+                popular_tours = []
+                for idx, tour in TOURS_DB.items():
+                    if tour.tags:
+                        # Ưu tiên tour có tags phù hợp
+                        score = 0
+                        if requirements.get('nature') and any('nature' in tag for tag in tour.tags):
+                            score += 1
+                        if requirements.get('meditation') and any('meditation' in tag for tag in tour.tags):
+                            score += 1
+                        if requirements.get('history') and any('history' in tag for tag in tour.tags):
+                            score += 1
+                        if requirements.get('1_ngay') and tour.duration and '1 ngày' in tour.duration.lower():
+                            score += 2
+                        if requirements.get('2_ngay_1_dem') and tour.duration and '2 ngày 1 đêm' in tour.duration.lower():
+                            score += 2
+                        
+
+                        # Thêm vào phần tính điểm (sau các conditions khác)
+                        # Trừ điểm mạnh nếu không khớp thời gian yêu cầu
+                        if requirements.get('1_ngay'):
+                            if tour.duration and '1 ngày' in tour.duration.lower():
+                                score += 3
+                                reasons.append("đúng 1 ngày như yêu cầu")
+                            elif tour.duration and ('2 ngày' in tour.duration.lower() or '3 ngày' in tour.duration.lower()):
+                                score -= 10  # Trừ điểm rất mạnh
+                                reasons.append("không phải 1 ngày")
+
+                        if requirements.get('2_ngay_1_dem'):
+                            if tour.duration and '2 ngày 1 đêm' in tour.duration.lower():
+                                score += 3
+                                reasons.append("đúng 2 ngày 1 đêm")
+                            elif tour.duration and '1 ngày' in tour.duration.lower():
+                                score -= 5  # Trừ điểm
+                        
+                        if score > 0:
+                            popular_tours.append((idx, score, tour))
+
+                if popular_tours and not matching_tours:
+                    popular_tours.sort(key=lambda x: x[1], reverse=True)
+                    reply = "🎯 **ĐỀ XUẤT TOUR PHÙ HỢP** 🎯\n\n"
+                    
+                    for idx, score, tour in popular_tours[:3]:
+                        reply += f"• **{tour.name}**\n"
+                        if tour.duration:
+                            reply += f"  ⏱️ {tour.duration}"
+                        if tour.location:
+                            reply += f" | 📍 {tour.location[:30]}\n"
+                        reply += "\n"
+                    
+                    reply += "📞 **Liên hệ 0332510486 để được tư vấn chi tiết!**"
+                    return jsonify(...)  # Trả về ngay
                 # Dùng AI để đề xuất thông minh
                 if client and HAS_OPENAI:
                     try:
