@@ -365,37 +365,61 @@ def configure_embedding_cache():
     
     logger.info(f"📊 Configured embedding cache: {cache_size} entries")
 
+def configure_embedding_cache():
+    """Configure embedding cache based on RAM profile"""
+    flags = UpgradeFlags.get_all_flags()
+    cache_size = flags["EMBEDDING_CACHE_SIZE"]
+    
+    # Reconfigure the embed_text function with new cache size
+    import functools
+    
+    # Clear existing cache if it exists
+    if hasattr(embed_text, 'cache_clear'):
+        embed_text.cache_clear()
+    
+    # Get the original function if wrapped
+    try:
+        original_func = embed_text.__wrapped__
+    except AttributeError:
+        # If not wrapped, create a simple wrapper
+        def original_func(text):
+            return embed_text(text)
+    
+    # Apply new cache
+    cached_func = functools.lru_cache(maxsize=cache_size)(original_func)
+    
+    # Update module's reference
+    import sys
+    current_module = sys.modules[__name__]
+    setattr(current_module, 'embed_text', cached_func)
+    
+    logger.info(f"📊 Configured embedding cache size: {cache_size}")
+
+
 # =========== MEMORY OPTIMIZATION FUNCTIONS ===========
 def optimize_for_memory_profile():
     """Apply memory optimizations based on RAM profile"""
     flags = UpgradeFlags.get_all_flags()
     
+    global FAISS_ENABLED
+    
     if IS_LOW_RAM:
         logger.info("🧠 Low RAM mode (512MB) - optimizing memory usage")
         # Disable heavy preloading
-        global FAISS_ENABLED
         FAISS_ENABLED = False
-        
-        # Reduce cache sizes - USE flags instead of hardcoded values
-        import functools
-        functools.lru_cache(maxsize=flags["EMBEDDING_CACHE_SIZE"])(embed_text)
-        
-        # No need for MAX_TOURS_TO_LOAD if not used elsewhere
         
     elif IS_HIGH_RAM:
         logger.info("🚀 High RAM mode (2GB) - enabling all features")
         # Enable all features based on environment variables
         FAISS_ENABLED = os.environ.get("FAISS_ENABLED", "true").lower() in ("1", "true", "yes")
-        
-        # Increase cache sizes using flags
-        import functools
-        functools.lru_cache(maxsize=flags["EMBEDDING_CACHE_SIZE"])(embed_text)
     
     else:
         # Default profile (if RAM_PROFILE is something else)
         logger.info(f"⚡ Custom RAM mode ({RAM_PROFILE}MB)")
         # Use environment variable for FAISS
         FAISS_ENABLED = os.environ.get("FAISS_ENABLED", "true").lower() in ("1", "true", "yes")
+    
+    logger.info(f"📊 FAISS_ENABLED set to: {FAISS_ENABLED}")
 
 # =========== UPGRADE 1: MANDATORY FILTER SYSTEM (DATACLASS COMPATIBLE) ===========
 
@@ -2884,9 +2908,15 @@ class NumpyIndex:
 
 def build_index(force_rebuild: bool = False) -> bool:
     """Build or load FAISS/numpy index"""
-    global INDEX, EMBEDDING_MODEL
+    global INDEX, EMBEDDING_MODEL  # ĐẶT Ở ĐẦU HÀM
     
     with INDEX_LOCK:
+        # Adjust max texts based on RAM profile
+        MAX_TEXTS_TO_INDEX = 100 if IS_LOW_RAM else 1000
+        texts_to_index = FLAT_TEXTS[:MAX_TEXTS_TO_INDEX]
+        
+        logger.info(f"🔨 Building index for {len(texts_to_index)} passages (RAM: {RAM_PROFILE}MB)...")
+        
         # Try to load existing index
         if not force_rebuild:
             if FAISS_ENABLED and HAS_FAISS and os.path.exists(FAISS_INDEX_PATH):
@@ -2908,43 +2938,15 @@ def build_index(force_rebuild: bool = False) -> bool:
                     logger.warning(f"Failed to load numpy index: {e}")
         
         # Build new index
-        if not FLAT_TEXTS:
-            def build_index(force_rebuild: bool = False) -> bool:
-                """Build or load FAISS/numpy index"""
-    global INDEX, EMBEDDING_MODEL
-
-    with INDEX_LOCK:
-        # Adjust max texts based on RAM profile
-        MAX_TEXTS_TO_INDEX = 100 if IS_LOW_RAM else 1000
-        texts_to_index = FLAT_TEXTS[:MAX_TEXTS_TO_INDEX]
-        
-        logger.info(f"🔨 Building index for {len(texts_to_index)} passages (RAM: {RAM_PROFILE}MB)...")
-        
-        # Generate embeddings
-        vectors = []
-        dims = None
-        
-        for text in texts_to_index:  # CHANGED: use texts_to_index instead of FLAT_TEXTS
-            emb, d = embed_text(text)
-            if emb:
-                if dims is None:
-                    dims = len(emb)
-                vectors.append(np.array(emb, dtype="float32"))
-        
-        if not vectors:
-            logger.error("No embeddings generated")
-            return False
-        # ... rest of the function
+        if not texts_to_index:
             logger.warning("No texts to index")
             return False
         
-        logger.info(f"🔨 Building index for {len(FLAT_TEXTS)} passages...")
-        
         # Generate embeddings
         vectors = []
         dims = None
         
-        for text in FLAT_TEXTS:
+        for text in texts_to_index:
             emb, d = embed_text(text)
             if emb:
                 if dims is None:
@@ -4693,7 +4695,7 @@ def initialize_app():
     # Apply memory optimizations
     optimize_for_memory_profile()
     
-    # Configure embedding cache based on RAM profile
+    # Configure embedding cache
     configure_embedding_cache()
     
     # Load knowledge base
