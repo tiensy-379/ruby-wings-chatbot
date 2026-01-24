@@ -51,7 +51,7 @@ def get_config():
     return {
         'pixel_id': os.environ.get("META_PIXEL_ID", "").strip(),
         'token': os.environ.get("META_CAPI_TOKEN", "").strip(),
-        'test_code': os.environ.get("META_TEST_EVENT_CODE", "").strip(),
+        # 'test_code': os.environ.get("META_TEST_EVENT_CODE", "").strip(),
         'endpoint': endpoint,
         'enable_call': os.environ.get("ENABLE_META_CAPI_CALL", "false").lower() in ("1", "true", "yes"),
         'enable_lead': os.environ.get("ENABLE_META_CAPI_LEAD", "false").lower() in ("1", "true", "yes"),
@@ -179,7 +179,7 @@ def send_meta_pageview(request):
         
         # Add test event code if in debug mode
         if config['test_code'] and config['debug']:
-            payload["test_event_code"] = config['test_code']
+           # payload["test_event_code"] = config['test_code']
             logger.info(f"Meta CAPI PageView (TEST MODE): {event_id}")
         
         # Send to Meta
@@ -261,7 +261,7 @@ def send_meta_lead(
 
         # 👉 GẮN TEST EVENT CODE (KHÔNG CẦN DEBUG MODE)
         if config.get("test_code"):
-            payload["test_event_code"] = config["test_code"]
+         #   payload["test_event_code"] = config["test_code"]
             logger.info(f"Meta CAPI Lead (TEST EVENT): {event_id}")
 
         # Send to Meta
@@ -350,7 +350,7 @@ def send_meta_call_button(
         
         # Add test event code if in debug mode
         if config['test_code'] and config['debug']:
-            payload["test_event_code"] = config['test_code']
+         #   payload["test_event_code"] = config['test_code']
             logger.info(f"Meta CAPI Call Button (TEST MODE): {event_id}")
         
         # Log event details (mask phone for privacy)
@@ -418,7 +418,7 @@ def send_meta_bulk_events(request, events: list):
         
         # Add test event code if in debug mode
         if config['test_code'] and config['debug']:
-            payload["test_event_code"] = config['test_code']
+         #   payload["test_event_code"] = config['test_code']
             logger.info(f"Meta CAPI Bulk (TEST MODE): {len(events)} events")
         
         # Send to Meta
