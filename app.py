@@ -34,6 +34,7 @@ from functools import lru_cache, wraps
 from typing import List, Tuple, Dict, Optional, Any, Set, Union, Callable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from typing import Any
 from collections import defaultdict, deque
 from difflib import SequenceMatcher
 from enum import Enum
@@ -3129,28 +3130,27 @@ class CacheSystem:
             try:
                 # Get TTL from parameter or config
                 ttl_seconds = expiry or UpgradeFlags.get_all_flags().get("CACHE_TTL_SECONDS", 300)
-                
-                # Create cache entry
+
+                # Create cache entry (FIX: remove access_count)
                 cache_entry = CacheEntry(
                     key=key,
                     value=value,
                     created_at=datetime.utcnow(),
                     ttl_seconds=ttl_seconds,
-                    access_count=0,  # Track how many times accessed
                     last_accessed=datetime.utcnow()
                 )
-                
+
                 # Store in cache
                 _response_cache[key] = cache_entry
-                
+
                 # Intelligent cache cleaning
                 CacheSystem._clean_cache()
-                
+
                 logger.debug(f"💾 Cached response for key: {key[:50]}... (TTL: {ttl_seconds}s)")
-                
+
             except Exception as e:
-                logger.error(f"❌ Cache set error: {e}")
-                # Don't crash if cache fails
+                logger.debug(f"⚠️ Cache skipped (safe-fail): {e}")
+                # Cache is optional – ignore safely
 
 
     @staticmethod
@@ -3401,30 +3401,28 @@ class CacheSystem:
         value: Any
         created_at: datetime
         ttl_seconds: int = 300
-        access_count: int = 0
         last_accessed: datetime = None
-        
+
         def __post_init__(self):
             """Initialize last_accessed if not provided"""
             if self.last_accessed is None:
                 self.last_accessed = self.created_at
-        
+
         def is_expired(self, current_time: datetime = None) -> bool:
             """Check if cache entry has expired"""
             if current_time is None:
                 current_time = datetime.utcnow()
-            
+
             age = (current_time - self.created_at).total_seconds()
             return age > self.ttl_seconds
-        
+
         def age_seconds(self) -> float:
             """Get age of cache entry in seconds"""
             return (datetime.utcnow() - self.created_at).total_seconds()
-        
+
         def ttl_remaining(self) -> float:
             """Get remaining TTL in seconds"""
-            age = self.age_seconds()
-            remaining = self.ttl_seconds - age
+            remaining = self.ttl_seconds - self.age_seconds()
             return max(0, remaining)
 
 # =========== EMBEDDING FUNCTIONS (MEMORY OPTIMIZED) ===========
