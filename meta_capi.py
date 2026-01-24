@@ -212,67 +212,73 @@ def send_meta_lead(
     """
     try:
         config = get_config()
-        
+
         # Check if lead tracking is enabled
         if not config['enable_lead']:
             logger.debug("Meta CAPI Lead: Feature disabled")
-            return
-        
+            return None
+
         if not config['pixel_id'] or not config['token']:
             logger.warning("Meta CAPI Lead: Missing PIXEL_ID or TOKEN")
-            return
-        
+            return None
+
         # Generate event ID if not provided
         if not event_id:
             event_id = str(uuid.uuid4())
-        
+
         # Build user data
         user_data = _build_user_data(request, phone=phone)
-        
+
         # Build event payload
         payload_event = {
             "event_name": event_name,
             "event_time": int(time.time()),
             "event_id": event_id,
-            "event_source_url": request.url if hasattr(request, 'url') else "",
+            "event_source_url": request.url if hasattr(request, "url") else "",
             "action_source": "website",
             "user_data": user_data
         }
-        
-        # Add custom data if provided
+
+        # Build custom data
+        custom_data = {}
         if value is not None:
-            payload_event["custom_data"] = {
-                "value": value,
-                "currency": currency
-            }
-            if content_name:
-                payload_event["custom_data"]["content_name"] = content_name
-        
-        # Add any additional kwargs to custom data
-        if kwargs and 'custom_data' in payload_event:
-            payload_event["custom_data"].update(kwargs)
-        
-        # Build final payload
-        payload = {"data": [payload_event]}
-        
-        # Add test event code if in debug mode
-        if config['test_code'] and config['debug']:
-            payload["test_event_code"] = config['test_code']
-            logger.info(f"Meta CAPI Lead (TEST MODE): {event_id} - Phone: {phone[:4]}...")
-        
+            custom_data["value"] = value
+            custom_data["currency"] = currency
+        if content_name:
+            custom_data["content_name"] = content_name
+
+        # Merge extra kwargs into custom_data
+        if kwargs:
+            custom_data.update(kwargs)
+
+        if custom_data:
+            payload_event["custom_data"] = custom_data
+
+        # Final payload
+        payload = {
+            "data": [payload_event]
+        }
+
+        # 👉 GẮN TEST EVENT CODE (KHÔNG CẦN DEBUG MODE)
+        if config.get("test_code"):
+            payload["test_event_code"] = config["test_code"]
+            logger.info(f"Meta CAPI Lead (TEST EVENT): {event_id}")
+
         # Send to Meta
         result = _send_to_meta(config['pixel_id'], payload)
-        
+
+        masked_phone = f"{phone[:4]}..." if phone else "None"
         if result:
-            logger.info(f"Meta CAPI Lead sent successfully: {event_id} - Phone: {phone[:4]}...")
+            logger.info(f"Meta CAPI Lead sent successfully: {event_id} - Phone: {masked_phone}")
         else:
             logger.warning(f"Meta CAPI Lead failed: {event_id}")
-        
+
         return result
-        
+
     except Exception as e:
         logger.error(f"Meta CAPI Lead Exception: {str(e)}")
         return None
+
 
 def send_meta_call_button(
     request,
