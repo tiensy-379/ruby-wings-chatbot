@@ -4069,7 +4069,7 @@ Câu hỏi của khách: {user_message}"""
 # API: SAVE LEAD (Website / Call / Zalo)
 # ===============================
 @app.route("/api/save-lead", methods=["POST", "OPTIONS"])
-def save_lead():
+def save_lead_api():
     if request.method == "OPTIONS":
         return jsonify({"status": "ok"}), 200
 
@@ -4093,7 +4093,7 @@ def save_lead():
 # API: CALL / ZALO CLICK
 # ===============================
 @app.route("/api/track-call", methods=["POST", "OPTIONS"])
-def track_call():
+def track_call_api():
     if request.method == "OPTIONS":
         return jsonify({"status": "ok"}), 200
 
