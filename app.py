@@ -4470,40 +4470,41 @@ def chat_endpoint_ultimate():
                 if follow_up_tours and len(tour_indices) == 0:
                     tour_indices = follow_up_tours[:3]
                     logger.info(f"🔄 Using context tour recommendations: {tour_indices}")
-        
-        # 🔹 CASE 1.1: LOCATION QUERY - Xử lý câu hỏi về địa điểm cụ thể
+
+                # 🔹 CASE 1.1: LOCATION QUERY - Xử lý câu hỏi về địa điểm cụ thể
         if 'location_query' in detected_intents:
             logger.info("📍 Processing location query")
-            
-            # Xác định địa điểm được hỏi
+
+            # Xác định địa điểm được hỏi (chuỗi nhỏ, chữ thường)
             locations = ['huế', 'quảng trị', 'bạch mã', 'trường sơn', 'đông hà', 'miền trung', 'đà nẵng']
             mentioned_location = None
-            
+
             for loc in locations:
                 if loc in message_lower:
                     mentioned_location = loc
                     break
-            
+
             if mentioned_location:
-                # Tìm tour tại địa điểm này
-                location_tours = []
-                for idx, tour in TOURS_DB.items():
-                    if tour.location and mentioned_location in tour.location.lower():
-                        location_tours.append(tour)
-                
-                # Apply filters nếu có
+                # Lấy danh sách (idx, tour) tại địa điểm này để còn giữ được idx gốc
+                location_tours = [(idx, tour) for idx, tour in TOURS_DB.items()
+                                  if tour.location and mentioned_location in (tour.location or "").lower()]
+
+                # Áp dụng mandatory filters nếu có (filtered_indices chứa các idx theo TOURS_DB)
                 if filter_applied and not mandatory_filters.is_empty():
-                    filtered_indices = MandatoryFilterSystem.apply_filters(TOURS_DB, mandatory_filters)
-                    location_tours = [tour for idx, tour in enumerate(location_tours) if idx in filtered_indices]
-                
+                    try:
+                        filtered_indices = MandatoryFilterSystem.apply_filters(TOURS_DB, mandatory_filters)
+                        # Giữ lại các (idx, tour) có idx nằm trong filtered_indices
+                        location_tours = [(idx, tour) for idx, tour in location_tours if idx in filtered_indices]
+                    except Exception as _e:
+                        logger.error(f"❌ Error applying filters to location_tours: {_e}")
+                        # Nếu lỗi filter, giữ nguyên location_tours (safer fallback)
+
                 if location_tours:
                     reply = f"📍 **TOUR TẠI {mentioned_location.upper()}** 📍\n\n"
-                    
-                    # Hiển thị thông tin tổng quan
                     reply += f"Ruby Wings có {len(location_tours)} tour tại {mentioned_location.upper()}:\n\n"
-                    
-                    # Phân loại tour tại địa điểm này
-                    for i, tour in enumerate(location_tours[:6], 1):
+
+                    # Hiển thị tối đa N tour, lấy tour từ tuple (idx,tour)
+                    for i, (idx, tour) in enumerate(location_tours[:6], 1):
                         reply += f"{i}. **{tour.name}**\n"
                         if tour.duration:
                             reply += f"   ⏱️ {tour.duration}\n"
@@ -4514,8 +4515,8 @@ def chat_endpoint_ultimate():
                             price_short = tour.price[:60] + "..." if len(tour.price) > 60 else tour.price
                             reply += f"   💰 {price_short}\n"
                         reply += "\n"
-                    
-                    # Thông tin đặc trưng của địa điểm
+
+                    # Thông tin đặc trưng cho một số địa điểm
                     if mentioned_location == 'huế':
                         reply += "🏛️ **ĐẶC TRƯNG HUẾ:**\n"
                         reply += "• Di sản UNESCO: Đại Nội, Lăng tẩm\n"
@@ -4531,18 +4532,23 @@ def chat_endpoint_ultimate():
                         reply += "• Di tích lịch sử chiến tranh\n"
                         reply += "• Đường Hồ Chí Minh huyền thoại\n"
                         reply += "• Văn hóa dân tộc Vân Kiều, Pa Kô\n\n"
-                    
+
                     reply += "📞 **Đặt tour tại địa điểm này:** 0332510486"
                 else:
-                    reply = f"Hiện Ruby Wings chưa có tour nào tại {mentioned_location.upper()}. Tuy nhiên, chúng tôi có thể thiết kế tour riêng theo yêu cầu của bạn.\n\n"
-                    reply += "📞 **Liên hệ thiết kế tour riêng:** 0332510486"
+                    reply = (
+                        f"Hiện Ruby Wings chưa có tour nào tại {mentioned_location.upper()}. "
+                        "Tuy nhiên, chúng tôi có thể thiết kế tour riêng theo yêu cầu của bạn.\n\n"
+                        "📞 **Liên hệ thiết kế tour riêng:** 0332510486"
+                    )
             else:
-                reply = "Bạn muốn tìm tour tại khu vực nào? Ruby Wings có tour tại:\n\n"
-                reply += "• Huế (di sản, ẩm thực)\n"
-                reply += "• Quảng Trị (lịch sử, di tích)\n"
-                reply += "• Bạch Mã (thiên nhiên, trekking)\n"
-                reply += "• Trường Sơn (lịch sử, văn hóa)\n\n"
-                reply += "📞 **Hotline tư vấn địa điểm:** 0332510486"
+                reply = (
+                    "Bạn muốn tìm tour tại khu vực nào? Ruby Wings có tour tại:\n\n"
+                    "• Huế (di sản, ẩm thực)\n"
+                    "• Quảng Trị (lịch sử, di tích)\n"
+                    "• Bạch Mã (thiên nhiên, trekking)\n"
+                    "• Trường Sơn (lịch sử, văn hóa)\n\n"
+                    "📞 **Hotline tư vấn địa điểm:** 0332510486"
+                )
         
         # 🔹 CASE 2.1: SERVICE INQUIRY - Xử lý câu hỏi về dịch vụ bao gồm
         elif 'service_inquiry' in detected_intents:
@@ -6529,3 +6535,18 @@ if __name__ == "__main__":
 else:
     # For WSGI
     initialize_app()
+def build_location_fallback_reply(mentioned_location):
+    if mentioned_location:
+        loc = mentioned_location.upper()
+        return (
+            "Ruby Wings thiết kế hanh trinh trai nghiem linh hoat theo nhu cau.\n\n"
+            "Voi khu vuc " + loc + ", hanh trinh co the dieu chinh theo thoi gian, "
+            "so luong khach va muc do trai nghiem mong muon. "
+            "Chi phi se duoc tu van cu the khi nam ro nhu cau."
+        )
+    else:
+        return (
+            "Ruby Wings thiet ke hanh trinh trai nghiem linh hoat theo nhu cau. "
+            "Anh/chi co the chia se them diem den, thoi gian hoac so luong "
+            "de ben em tu van phu hop."
+        )
