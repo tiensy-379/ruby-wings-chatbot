@@ -6354,6 +6354,10 @@ def save_lead():
                     logger.info("✅ Form lead saved to Google Sheets (9 fields)")
             except Exception as e:
                 logger.error(f"Google Sheets error: {e}")
+                logger.info(f"ENABLE_GOOGLE_SHEETS = {ENABLE_GOOGLE_SHEETS}")
+                logger.info(f"GOOGLE_SHEET_ID = {bool(GOOGLE_SHEET_ID)}")
+                logger.info(f"GOOGLE_SERVICE_ACCOUNT_JSON = {bool(GOOGLE_SERVICE_ACCOUNT_JSON)}")
+
         
         # Fallback storage
         if ENABLE_FALLBACK_STORAGE:
