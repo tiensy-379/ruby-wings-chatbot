@@ -6538,4 +6538,9 @@ if __name__ == "__main__":
 
 else:
     # For WSGI
-    initialize_app()
+    initialize_app()\
+    
+import os, json
+
+data = json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"])
+print("✅ SERVICE ACCOUNT EMAIL:", data["client_email"])
