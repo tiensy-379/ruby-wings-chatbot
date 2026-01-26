@@ -6340,9 +6340,15 @@ def save_lead():
                         name or '',                         # E: contact_name
                         phone_clean,                        # F: phone
                         tour_interest or '',                # G: service_interest
-                        note or email or '',                # H: note (dùng email nếu không có note)
-                        'New'                               # I: raw_status
+                        note or email or '',                # H: note
+                        'New',                              # I: raw_status
+                        '',                                 # J: Lead_ID
+                        '',                                 # K: intent
+                        '',                                 # L: Booking_ID
+                        'New lead',                         # M: stage
+                        ''                                  # N: (reserved)
                     ]
+
                     
                     ws.append_row(row)
                     logger.info("✅ Form lead saved to Google Sheets (9 fields)")
