@@ -18,7 +18,6 @@ from meta_param_builder import MetaParamService
 # app.py - Ruby Wings Chatbot v4.0 (Complete Rewrite with Dataclasses)
 # =========== IMPORTS ===========
 import logging
-from meta_capi import hash_phone
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ruby-wings")
 import os
@@ -4552,7 +4551,7 @@ def track_call():
         )
 
         # Hash phone bằng hàm của bạn (đã chạy OK)
-        hashed_phone = hash_phone(phone) if phone else None
+      
         # ====================================
 
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
@@ -4560,7 +4559,7 @@ def track_call():
                 request=request,
                 event_name="CallButtonClick",
                 event_id=event_id,
-                phone=hashed_phone,          # ✅ hashed
+                phone=phone,          # ✅ hashed
                 fbc=fbc,                     # ✅
                 fbp=fbp,                     # ✅
                 client_ip_address=client_ip, # ✅
