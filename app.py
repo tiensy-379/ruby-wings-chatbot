@@ -6544,3 +6544,4 @@ import os, json
 
 data = json.loads(os.environ["GOOGLE_SERVICE_ACCOUNT_JSON"])
 print("✅ SERVICE ACCOUNT EMAIL:", data["client_email"])
+logger.info(f"ENABLE_GOOGLE_SHEETS = {ENABLE_GOOGLE_SHEETS}")
