@@ -4470,170 +4470,79 @@ def chat_endpoint_ultimate():
                 if follow_up_tours and len(tour_indices) == 0:
                     tour_indices = follow_up_tours[:3]
                     logger.info(f"🔄 Using context tour recommendations: {tour_indices}")
-
-                        # 🔹 CASE 1.1: LOCATION QUERY - Xử lý câu hỏi về địa điểm cụ thể
+        
+        # 🔹 CASE 1.1: LOCATION QUERY - Xử lý câu hỏi về địa điểm cụ thể
         if 'location_query' in detected_intents:
             logger.info("📍 Processing location query")
-
-            # Xác định địa điểm được hỏi (chuỗi nhỏ, chữ thường)
+            
+            # Xác định địa điểm được hỏi
             locations = ['huế', 'quảng trị', 'bạch mã', 'trường sơn', 'đông hà', 'miền trung', 'đà nẵng']
             mentioned_location = None
-
+            
             for loc in locations:
                 if loc in message_lower:
                     mentioned_location = loc
                     break
-
-            if mentioned_location:
-                # Tìm tour bằng FUZZY MATCHING trước (ưu tiên tìm theo tên tour)
-                fuzzy_matches = FuzzyMatcher.find_similar_tours(user_message, TOUR_NAME_TO_INDEX)
-                
-                if fuzzy_matches:
-                    # Có tìm thấy tour cụ thể qua fuzzy matching
-                    tour_indices = [idx for idx, score in fuzzy_matches[:3] if score > 0.6]
-                    
-                    if tour_indices:
-                        # Xử lý như price inquiry với tour cụ thể
-                        logger.info(f"🎯 Found specific tour via fuzzy matching: {tour_indices}")
-                        # Chuyển sang xử lý price inquiry (sẽ xử lý ở case sau)
-                        # Reset detected_intents để không xử lý location_query
-                        detected_intents = [intent for intent in detected_intents if intent != 'location_query']
-                        detected_intents.append('price_inquiry')
-                        primary_intent = 'price_inquiry'
-                        # Bỏ qua xử lý location_query, để chuyển sang price_inquiry
-                        continue_to_next_case = True
-                    else:
-                        # Tìm tour theo location trong database
-                        location_tours = [(idx, tour) for idx, tour in TOURS_DB.items()
-                                         if tour.location and mentioned_location in (tour.location or "").lower()]
-                
-                        # Áp dụng mandatory filters nếu có
-                        if filter_applied and not mandatory_filters.is_empty():
-                            try:
-                                filtered_indices = MandatoryFilterSystem.apply_filters(TOURS_DB, mandatory_filters)
-                                location_tours = [(idx, tour) for idx, tour in location_tours if idx in filtered_indices]
-                            except Exception as e:
-                                logger.error(f"❌ Error applying filters to location_tours: {e}")
-                                # Fallback: giữ nguyên location_tours
-                        
-                        if location_tours:
-                            reply = f"📍 **TOUR TẠI {mentioned_location.upper()}** 📍\n\n"
-                            reply += f"Ruby Wings có {len(location_tours)} tour tại {mentioned_location.upper()}:\n\n"
-                            
-                            # Hiển thị tối đa 6 tour
-                            for i, (idx, tour) in enumerate(location_tours[:6], 1):
-                                reply += f"{i}. **{tour.name}**\n"
-                                if tour.duration:
-                                    reply += f"   ⏱️ {tour.duration}\n"
-                                if tour.summary:
-                                    summary_short = tour.summary[:80] + "..." if len(tour.summary) > 80 else tour.summary
-                                    reply += f"   📝 {summary_short}\n"
-                                if i == 1 and tour.price:
-                                    price_short = tour.price[:60] + "..." if len(tour.price) > 60 else tour.price
-                                    reply += f"   💰 {price_short}\n"
-                                reply += "\n"
-                            
-                            # Thông tin đặc trưng cho địa điểm
-                            if mentioned_location == 'huế':
-                                reply += "🏛️ **ĐẶC TRƯNG HUẾ:**\n"
-                                reply += "• Di sản UNESCO: Đại Nội, Lăng tẩm\n"
-                                reply += "• Ẩm thực cung đình đặc sắc\n"
-                                reply += "• Sông Hương, núi Ngự thơ mộng\n\n"
-                            elif mentioned_location == 'bạch mã':
-                                reply += "🌿 **ĐẶC TRƯNG BẠCH MÃ:**\n"
-                                reply += "• Vườn quốc gia rộng 37,000ha\n"
-                                reply += "• Khí hậu mát mẻ quanh năm\n"
-                                reply += "• Đa dạng sinh học cao\n\n"
-                            elif mentioned_location == 'trường sơn':
-                                reply += "🎖️ **ĐẶC TRƯNG TRƯỜNG SƠN:**\n"
-                                reply += "• Di tích lịch sử chiến tranh\n"
-                                reply += "• Đường Hồ Chí Minh huyền thoại\n"
-                                reply += "• Văn hóa dân tộc Vân Kiều, Pa Kô\n\n"
-                            
-                            reply += "📞 **Đặt tour tại địa điểm này:** 0332510486"
-                        else:
-                            # KHÔNG TÌM THẤY TOUR TẠI ĐỊA ĐIỂM - SỬA LẠI RESPONSE
-                            if mentioned_location == 'miền trung':
-                                reply = (
-                                    f"Ruby Wings có nhiều tour tại Miền Trung như Huế, Quảng Trị, Bạch Mã, Trường Sơn.\n\n"
-                                    f"**Một số tour tiêu biểu tại Miền Trung:**\n"
-                                    f"• Hành trình 'Mưa Đỏ và Trường Sơn'\n"
-                                    f"• Hành trình 'Bạch Mã - Tĩnh Lặng và Đại Ngàn'\n"
-                                    f"• Hành trình 'Theo Dòng Di Sản Miền Trung'\n\n"
-                                    f"Bạn muốn tìm hiểu về tour cụ thể nào? Hoặc liên hệ hotline để được tư vấn tour phù hợp nhất với nhu cầu của bạn.\n\n"
-                                    f"📞 **Hotline tư vấn Miền Trung:** 0332510486"
-                                )
-                            else:
-                                reply = (
-                                    f"Hiện Ruby Wings có các tour tại khu vực lân cận {mentioned_location.upper()}:\n\n"
-                                    f"• Huế: Tour di sản, ẩm thực\n"
-                                    f"• Quảng Trị: Tour lịch sử, di tích\n"
-                                    f"• Bạch Mã: Tour thiên nhiên, trekking\n\n"
-                                    f"Hoặc chúng tôi có thể thiết kế tour riêng theo yêu cầu của bạn.\n\n"
-                                    f"📞 **Liên hệ thiết kế tour riêng:** 0332510486"
-                                )
-                else:
-                    # Không tìm thấy tour nào - đưa ra response thân thiện hơn
-                    reply = build_location_fallback_reply(mentioned_location)
-            else:
-                reply = (
-                    "Bạn muốn tìm tour tại khu vực nào? Ruby Wings có tour tại:\n\n"
-                    "• Huế (di sản, ẩm thực)\n"
-                    "• Quảng Trị (lịch sử, di tích)\n"
-                    "• Bạch Mã (thiên nhiên, trekking)\n"
-                    "• Trường Sơn (lịch sử, văn hóa)\n\n"
-                    "📞 **Hotline tư vấn địa điểm:** 0332510486"
-                )
             
-            # Nếu đã có reply từ location query, tiếp tục xử lý
-            if 'continue_to_next_case' in locals() and continue_to_next_case:
-                # Reset flag và tiếp tục vòng lặp logic (sẽ xử lý price_inquiry)
-                del continue_to_next_case
-                # Tiếp tục xử lý các case khác
-                pass
+            if mentioned_location:
+                # Tìm tour tại địa điểm này
+                location_tours = []
+                for idx, tour in TOURS_DB.items():
+                    if tour.location and mentioned_location in tour.location.lower():
+                        location_tours.append(tour)
+                
+                # Apply filters nếu có
+                if filter_applied and not mandatory_filters.is_empty():
+                    filtered_indices = MandatoryFilterSystem.apply_filters(TOURS_DB, mandatory_filters)
+                    location_tours = [tour for idx, tour in enumerate(location_tours) if idx in filtered_indices]
+                
+                if location_tours:
+                    reply = f"📍 **TOUR TẠI {mentioned_location.upper()}** 📍\n\n"
+                    
+                    # Hiển thị thông tin tổng quan
+                    reply += f"Ruby Wings có {len(location_tours)} tour tại {mentioned_location.upper()}:\n\n"
+                    
+                    # Phân loại tour tại địa điểm này
+                    for i, tour in enumerate(location_tours[:6], 1):
+                        reply += f"{i}. **{tour.name}**\n"
+                        if tour.duration:
+                            reply += f"   ⏱️ {tour.duration}\n"
+                        if tour.summary:
+                            summary_short = tour.summary[:80] + "..." if len(tour.summary) > 80 else tour.summary
+                            reply += f"   📝 {summary_short}\n"
+                        if i == 1 and tour.price:
+                            price_short = tour.price[:60] + "..." if len(tour.price) > 60 else tour.price
+                            reply += f"   💰 {price_short}\n"
+                        reply += "\n"
+                    
+                    # Thông tin đặc trưng của địa điểm
+                    if mentioned_location == 'huế':
+                        reply += "🏛️ **ĐẶC TRƯNG HUẾ:**\n"
+                        reply += "• Di sản UNESCO: Đại Nội, Lăng tẩm\n"
+                        reply += "• Ẩm thực cung đình đặc sắc\n"
+                        reply += "• Sông Hương, núi Ngự thơ mộng\n\n"
+                    elif mentioned_location == 'bạch mã':
+                        reply += "🌿 **ĐẶC TRƯNG BẠCH MÃ:**\n"
+                        reply += "• Vườn quốc gia rộng 37,000ha\n"
+                        reply += "• Khí hậu mát mẻ quanh năm\n"
+                        reply += "• Đa dạng sinh học cao\n\n"
+                    elif mentioned_location == 'trường sơn':
+                        reply += "🎖️ **ĐẶC TRƯNG TRƯỜNG SƠN:**\n"
+                        reply += "• Di tích lịch sử chiến tranh\n"
+                        reply += "• Đường Hồ Chí Minh huyền thoại\n"
+                        reply += "• Văn hóa dân tộc Vân Kiều, Pa Kô\n\n"
+                    
+                    reply += "📞 **Đặt tour tại địa điểm này:** 0332510486"
+                else:
+                    reply = f"Hiện Ruby Wings chưa có tour nào tại {mentioned_location.upper()}. Tuy nhiên, chúng tôi có thể thiết kế tour riêng theo yêu cầu của bạn.\n\n"
+                    reply += "📞 **Liên hệ thiết kế tour riêng:** 0332510486"
             else:
-                # Lưu context và trả về response
-                if tour_indices and len(tour_indices) > 0:
-                    context.current_tour = tour_indices[0]
-                    tour = TOURS_DB.get(tour_indices[0])
-                    if tour:
-                        context.last_tour_name = tour.name
-                
-                context.conversation_history.append({
-                    'role': 'assistant',
-                    'message': reply,
-                    'timestamp': datetime.utcnow().isoformat(),
-                    'tour_indices': tour_indices,
-                    'detected_intents': detected_intents,
-                    'primary_intent': primary_intent,
-                    'complexity_score': complexity_score
-                })
-                
-                save_session_context(session_id, context)
-                
-                processing_time = time.time() - start_time
-                
-                chat_response = ChatResponse(
-                    reply=reply,
-                    sources=[],
-                    context={
-                        "session_id": session_id,
-                        "current_tour": getattr(context, 'current_tour', None),
-                        "last_tour_name": getattr(context, 'last_tour_name', None),
-                        "user_preferences": getattr(context, 'user_profile', {}),
-                        "detected_intents": detected_intents,
-                        "primary_intent": primary_intent,
-                        "processing_time_ms": int(processing_time * 1000),
-                        "tours_found": len(tour_indices),
-                        "complexity_score": complexity_score,
-                        "filter_applied": filter_applied
-                    },
-                    tour_indices=tour_indices,
-                    processing_time_ms=int(processing_time * 1000),
-                    from_memory=False
-                )
-                
-                return jsonify(chat_response.to_dict())
+                reply = "Bạn muốn tìm tour tại khu vực nào? Ruby Wings có tour tại:\n\n"
+                reply += "• Huế (di sản, ẩm thực)\n"
+                reply += "• Quảng Trị (lịch sử, di tích)\n"
+                reply += "• Bạch Mã (thiên nhiên, trekking)\n"
+                reply += "• Trường Sơn (lịch sử, văn hóa)\n\n"
+                reply += "📞 **Hotline tư vấn địa điểm:** 0332510486"
         
         # 🔹 CASE 2.1: SERVICE INQUIRY - Xử lý câu hỏi về dịch vụ bao gồm
         elif 'service_inquiry' in detected_intents:
@@ -6620,42 +6529,3 @@ if __name__ == "__main__":
 else:
     # For WSGI
     initialize_app()
-def build_location_fallback_reply(mentioned_location):
-    if mentioned_location:
-        loc = mentioned_location.upper()
-        return (
-            "Ruby Wings thiết kế hanh trinh trai nghiem linh hoat theo nhu cau.\n\n"
-            "Voi khu vuc " + loc + ", hanh trinh co the dieu chinh theo thoi gian, "
-            "so luong khach va muc do trai nghiem mong muon. "
-            "Chi phi se duoc tu van cu the khi nam ro nhu cau."
-        )
-    else:
-        return (
-            "Ruby Wings thiet ke hanh trinh trai nghiem linh hoat theo nhu cau. "
-            "Anh/chi co the chia se them diem den, thoi gian hoac so luong "
-            "de ben em tu van phu hop."
-        )
-def build_location_fallback_reply(mentioned_location):
-    """Xây dựng reply thông minh khi không tìm thấy tour tại location"""
-    if mentioned_location:
-        loc = mentioned_location.upper()
-        return (
-            f"Ruby Wings có nhiều tour trải nghiệm đa dạng. Đối với khu vực {loc}, "
-            f"chúng tôi có thể thiết kế tour riêng theo nhu cầu của bạn.\n\n"
-            f"Vui lòng cho biết thêm thông tin:\n"
-            f"• Số lượng người: Bao nhiêu người tham gia?\n"
-            f"• Thời gian: Bạn muốn đi trong bao lâu?\n"
-            f"• Sở thích: Thiên nhiên, lịch sử, ẩm thực hay trải nghiệm văn hóa?\n\n"
-            f"📞 **Liên hệ tư vấn tour {loc}:** 0332510486"
-        )
-    else:
-        return (
-            "Ruby Wings thiết kế hành trình trải nghiệm linh hoạt theo nhu cầu.\n\n"
-            "Vui lòng cung cấp thêm thông tin về:\n"
-            "• Địa điểm mong muốn\n"
-            "• Số lượng người tham gia\n"
-            "• Thời gian dự kiến\n"
-            "• Ngân sách ước tính\n\n"
-            "Hoặc liên hệ trực tiếp để được tư vấn nhanh nhất:\n"
-            "📞 **Hotline:** 0332510486"
-        )
