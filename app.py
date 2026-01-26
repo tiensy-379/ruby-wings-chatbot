@@ -4523,7 +4523,7 @@ def save_lead():
 
 
 # ===============================
-# API: CALL / ZALO CLICK (Meta CAPI only)
+# API: CALL / ZALO CLICK (Meta CAPI - CallButtonClick)
 # ===============================
 @app.route('/api/track-call', methods=['POST', 'OPTIONS'])
 def track_call():
@@ -4533,22 +4533,29 @@ def track_call():
     try:
         data = request.get_json() or {}
 
+        event_id = data.get('event_id')
+        phone = data.get('phone')
+        action = data.get('action', 'Call/Zalo Click')
+
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             send_meta_lead(
                 request=request,
-                event_id=data.get('event_id'),
-                phone=data.get('phone'),
-                content_name=data.get('action', 'Call/Zalo Click')
+                event_name="CallButtonClick",   # ✅ override event name
+                event_id=event_id,
+                phone=phone,
+                content_name=action
             )
+
             increment_stat('meta_capi_calls')
-            logger.info('📞 Call/Zalo Meta CAPI sent')
+            logger.info("📞 CallButtonClick Meta CAPI sent")
 
         return jsonify({'success': True})
 
     except Exception as e:
         increment_stat('meta_capi_errors')
-        logger.error(f'Track call error: {e}')
+        logger.error(f'❌ Track call error: {e}')
         return jsonify({'error': str(e)}), 500
+
 
 
 
