@@ -18,6 +18,7 @@ from meta_param_builder import MetaParamService
 # app.py - Ruby Wings Chatbot v4.0 (Complete Rewrite with Dataclasses)
 # =========== IMPORTS ===========
 import logging
+from meta_capi import hash_phone
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ruby-wings")
 import os
@@ -4537,22 +4538,29 @@ def track_call():
         phone = data.get('phone')
         action = data.get('action', 'Call/Zalo Click')
 
-        # ===== META PARAM BUILDER PATCH =====
+        # ===== META PARAM BUILDER (SAFE) =====
         meta = MetaParamService()
         meta.process_request(request)
 
         fbc = meta.get_fbc()
         fbp = meta.get_fbp()
-        client_ip = meta.get_client_ip(request)
-        hashed_phone = meta.hash_pii(phone, "phone")
-        # ===================================
+
+        # ⚠️ KHÔNG dùng hàm không tồn tại
+        client_ip = request.headers.get(
+            "X-Forwarded-For",
+            request.remote_addr
+        )
+
+        # Hash phone bằng hàm của bạn (đã chạy OK)
+        hashed_phone = hash_phone(phone) if phone else None
+        # ====================================
 
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             send_meta_lead(
                 request=request,
                 event_name="CallButtonClick",
                 event_id=event_id,
-                phone=hashed_phone,          # ✅ HASHED
+                phone=hashed_phone,          # ✅ hashed
                 fbc=fbc,                     # ✅
                 fbp=fbp,                     # ✅
                 client_ip_address=client_ip, # ✅
@@ -4560,7 +4568,7 @@ def track_call():
             )
 
             increment_stat('meta_capi_calls')
-            logger.info("📞 CallButtonClick Meta CAPI sent (patched)")
+            logger.info("📞 CallButtonClick Meta CAPI sent (stable)")
 
         return jsonify({'success': True})
 
@@ -4568,6 +4576,7 @@ def track_call():
         increment_stat('meta_capi_errors')
         logger.error(f'❌ Track call error: {e}')
         return jsonify({'error': str(e)}), 500
+
 
 
 

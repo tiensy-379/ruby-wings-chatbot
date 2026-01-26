@@ -1,6 +1,6 @@
 # meta_param_builder.py
 from capi_param_builder import ParamBuilder
-
+import hashlib
 
 class MetaParamService:
     def __init__(self):
@@ -11,19 +11,13 @@ class MetaParamService:
 
     def process_request(self, request):
         """
-        BẮT BUỘC gọi ở mỗi request có event Meta CAPI
+        Chỉ dùng để xử lý fbc / fbp từ request
         """
-        host = request.host
-        query_params = request.args.to_dict(flat=False)
-        cookies = request.cookies
-        referer = request.headers.get("Referer")
-
-        # ✅ SDK Python CHỈ NHẬN 4 THAM SỐ
         self.builder.process_request(
-            host,
-            query_params,
-            cookies,
-            referer
+            request.host,
+            request.args.to_dict(flat=False),
+            request.cookies,
+            request.headers.get("Referer"),
         )
 
         return self.builder.get_cookies_to_set()
@@ -36,17 +30,18 @@ class MetaParamService:
 
     def get_client_ip(self, request):
         """
-        ✅ IP LẤY TỪ FLASK (ĐÚNG SOP META)
+        IP phải tự lấy – SDK KHÔNG cung cấp
         """
         return (
             request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
             or request.remote_addr
         )
 
-    def hash_pii(self, value, data_type):
+    def hash_pii(self, value: str):
         """
-        data_type: phone | email | external_id | first_name | last_name ...
+        Hash SHA256 chuẩn Meta
         """
         if not value:
             return None
-        return self.builder.get_normalized_and_hashed_pii(value, data_type)
+        v = value.strip().lower().encode("utf-8")
+        return hashlib.sha256(v).hexdigest()
