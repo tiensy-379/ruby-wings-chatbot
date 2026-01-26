@@ -2002,7 +2002,8 @@ class AutoValidator:
                         constraints = AutoValidator.VALIDATION_RULES['duration']['constraints']
                         
                         valid_combos = constraints['valid_day_night_combos']
-                        is_valid_combo = any(d == d2 and n == n2 for d2, n2 in valid_combos)
+                        is_valid_combo = any(days == d2 and nights == n2 for d2, n2 in valid_combos)
+
                         
                         if days > constraints['max_days'] or nights > constraints['max_nights']:
                             replacement = random.choice(constraints['common_durations'])
@@ -4323,6 +4324,57 @@ Trả lời ngắn gọn, lịch sự, chuyên nghiệp."""
         )
         
         return jsonify(error_response.to_dict()), 500
+
+
+
+# ===============================
+# API: SAVE LEAD (Website / Call / Zalo)
+# ===============================
+@app.route("/api/save-lead", methods=["POST", "OPTIONS"])
+def save_lead_api():
+    if request.method == "OPTIONS":
+        return jsonify({"status": "ok"}), 200
+
+    data = request.json or {}
+
+    # TODO: lưu lead (sheet / db)
+    # TODO: gửi Meta CAPI Lead
+    try:
+        send_meta_lead(
+            request=request,
+            event_id=data.get("event_id"),
+            phone=data.get("phone"),
+            content_name=data.get("content_name", "Website Lead")
+        )
+    except Exception as e:
+        print("Meta CAPI error:", e)
+
+    return jsonify({"success": True})
+
+# ===============================
+# API: CALL / ZALO CLICK
+# ===============================
+@app.route("/api/track-call", methods=["POST", "OPTIONS"])
+def track_call_api():
+    if request.method == "OPTIONS":
+        return jsonify({"status": "ok"}), 200
+
+    data = request.json or {}
+
+    try:
+        send_meta_lead(
+            request=request,
+            event_id=data.get("event_id"),
+            phone=data.get("phone"),
+            content_name=data.get("action", "Call/Zalo Click")
+        )
+    except Exception as e:
+        print("Meta CAPI Call/Zalo error:", e)
+
+    return jsonify({"success": True})
+
+
+
 
 # =========== OTHER ENDPOINTS ===========
 @app.route("/")
