@@ -12,6 +12,7 @@ def safe_validate(reply):
         except:
             pass
         return reply
+from meta_param_builder import MetaParamService
 
 
 # app.py - Ruby Wings Chatbot v4.0 (Complete Rewrite with Dataclasses)
@@ -38,7 +39,6 @@ from difflib import SequenceMatcher
 from enum import Enum
 # Try to import numpy with detailed error handling
 try:
-    
     import numpy as np
     NUMPY_AVAILABLE = True
     logger.info("✅ NumPy available")
@@ -4537,17 +4537,30 @@ def track_call():
         phone = data.get('phone')
         action = data.get('action', 'Call/Zalo Click')
 
+        # ===== META PARAM BUILDER PATCH =====
+        meta = MetaParamService()
+        meta.process_request(request)
+
+        fbc = meta.get_fbc()
+        fbp = meta.get_fbp()
+        client_ip = meta.get_client_ip()
+        hashed_phone = meta.hash_pii(phone, "phone")
+        # ===================================
+
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             send_meta_lead(
                 request=request,
-                event_name="CallButtonClick",   # ✅ override event name
+                event_name="CallButtonClick",
                 event_id=event_id,
-                phone=phone,
+                phone=hashed_phone,          # ✅ HASHED
+                fbc=fbc,                     # ✅
+                fbp=fbp,                     # ✅
+                client_ip_address=client_ip, # ✅
                 content_name=action
             )
 
             increment_stat('meta_capi_calls')
-            logger.info("📞 CallButtonClick Meta CAPI sent")
+            logger.info("📞 CallButtonClick Meta CAPI sent (patched)")
 
         return jsonify({'success': True})
 
@@ -4555,6 +4568,7 @@ def track_call():
         increment_stat('meta_capi_errors')
         logger.error(f'❌ Track call error: {e}')
         return jsonify({'error': str(e)}), 500
+
 
 
 
