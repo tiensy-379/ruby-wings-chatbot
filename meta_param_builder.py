@@ -4,7 +4,6 @@ from capi_param_builder import ParamBuilder
 
 class MetaParamService:
     def __init__(self):
-        # ETLD+1 domains PHẢI đúng domain thực tế
         self.builder = ParamBuilder([
             "rubywings.vn",
             "ruby-wings-chatbot.onrender.com"
@@ -19,7 +18,7 @@ class MetaParamService:
         cookies = request.cookies
         referer = request.headers.get("Referer")
 
-        # ✅ GỌI ĐÚNG API (CHỈ 4 THAM SỐ)
+        # ✅ SDK Python CHỈ NHẬN 4 THAM SỐ
         self.builder.process_request(
             host,
             query_params,
@@ -27,7 +26,6 @@ class MetaParamService:
             referer
         )
 
-        # Trả về danh sách cookie cần set (_fbc, _fbp)
         return self.builder.get_cookies_to_set()
 
     def get_fbc(self):
@@ -36,13 +34,18 @@ class MetaParamService:
     def get_fbp(self):
         return self.builder.get_fbp()
 
-    def get_client_ip(self):
-        # IP được builder tự chọn tốt nhất từ request
-        return self.builder.get_client_ip_address()
+    def get_client_ip(self, request):
+        """
+        ✅ IP LẤY TỪ FLASK (ĐÚNG SOP META)
+        """
+        return (
+            request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+            or request.remote_addr
+        )
 
     def hash_pii(self, value, data_type):
         """
-        data_type: phone | email | external_id | first_name | last_name | ...
+        data_type: phone | email | external_id | first_name | last_name ...
         """
         if not value:
             return None

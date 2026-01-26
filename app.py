@@ -4543,7 +4543,7 @@ def track_call():
 
         fbc = meta.get_fbc()
         fbp = meta.get_fbp()
-        client_ip = meta.get_client_ip()
+        client_ip = meta.get_client_ip(request)
         hashed_phone = meta.hash_pii(phone, "phone")
         # ===================================
 
