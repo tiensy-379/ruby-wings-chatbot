@@ -209,26 +209,26 @@ CHAT_MODEL = os.environ.get("CHAT_MODEL", "gpt-4o-mini")
 TOP_K = int(os.environ.get("TOP_K", "10"))
 
 # FAISS
-FAISS_ENABLED = os.environ.get("FAISS_ENABLED", "true").lower() in ("1", "true", "yes") and not IS_LOW_RAM
+FAISS_ENABLED = os.environ.get("FAISS_ENABLED", "True").lower() in ("1", "True", "yes") and not IS_LOW_RAM
 
 # Google Sheets
 GOOGLE_SHEET_ID = os.environ.get("GOOGLE_SHEET_ID", "1SdVbwkuxb8l1meEW--ddyfh4WmUvSXXMOPQ5bCyPkdk")
 GOOGLE_SHEET_NAME = os.environ.get("GOOGLE_SHEET_NAME", "RBW_Lead_Raw_Inbox")
-ENABLE_GOOGLE_SHEETS = os.environ.get("ENABLE_GOOGLE_SHEETS", "true").lower() in ("1", "true", "yes")
+ENABLE_GOOGLE_SHEETS = os.environ.get("ENABLE_GOOGLE_SHEETS", "True").lower() in ("1", "True", "yes")
 
 # Storage
-ENABLE_FALLBACK_STORAGE = os.environ.get("ENABLE_FALLBACK_STORAGE", "true").lower() in ("1", "true", "yes")
+ENABLE_FALLBACK_STORAGE = os.environ.get("ENABLE_FALLBACK_STORAGE", "True").lower() in ("1", "True", "yes")
 FALLBACK_STORAGE_PATH = os.environ.get("FALLBACK_STORAGE_PATH", "leads_fallback.json")
 
 # Meta CAPI
 META_CAPI_TOKEN = os.environ.get("META_CAPI_TOKEN", "").strip()
 META_PIXEL_ID = os.environ.get("META_PIXEL_ID", "").strip()
 META_CAPI_ENDPOINT = os.environ.get("META_CAPI_ENDPOINT", "https://graph.facebook.com/v17.0/")
-ENABLE_META_CAPI_CALL = os.environ.get("ENABLE_META_CAPI_CALL", "true").lower() in ("1", "true", "yes")
+ENABLE_META_CAPI_CALL = os.environ.get("ENABLE_META_CAPI_CALL", "True").lower() in ("1", "True", "yes")
 
 # Server
 FLASK_ENV = os.environ.get("FLASK_ENV", "production")
-DEBUG = os.environ.get("DEBUG", "false").lower() in ("1", "true", "yes")
+DEBUG = os.environ.get("DEBUG", "False").lower() in ("1", "True", "yes")
 SECRET_KEY = os.environ.get("SECRET_KEY", "ruby-wings-secret-key-2024")
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "https://www.rubywings.vn,http://localhost:3000").split(",")
 HOST = os.environ.get("HOST", "0.0.0.0")
@@ -266,23 +266,23 @@ class UpgradeFlags:
     def get_all_flags():
         return {
             # CORE UPGRADES (Essential fixes)
-            "UPGRADE_1_MANDATORY_FILTER": os.environ.get("UPGRADE_1_MANDATORY_FILTER", "true").lower() == "true",
-            "UPGRADE_2_DEDUPLICATION": os.environ.get("UPGRADE_2_DEDUPLICATION", "true").lower() == "true",
-            "UPGRADE_3_ENHANCED_FIELDS": os.environ.get("UPGRADE_3_ENHANCED_FIELDS", "true").lower() == "true",
-            "UPGRADE_4_QUESTION_PIPELINE": os.environ.get("UPGRADE_4_QUESTION_PIPELINE", "true").lower() == "true",
+            "UPGRADE_1_MANDATORY_FILTER": os.environ.get("UPGRADE_1_MANDATORY_FILTER", "True").lower() == "True",
+            "UPGRADE_2_DEDUPLICATION": os.environ.get("UPGRADE_2_DEDUPLICATION", "True").lower() == "True",
+            "UPGRADE_3_ENHANCED_FIELDS": os.environ.get("UPGRADE_3_ENHANCED_FIELDS", "True").lower() == "True",
+            "UPGRADE_4_QUESTION_PIPELINE": os.environ.get("UPGRADE_4_QUESTION_PIPELINE", "True").lower() == "True",
             
             # ADVANCED UPGRADES
-            "UPGRADE_5_QUERY_SPLITTER": os.environ.get("UPGRADE_5_QUERY_SPLITTER", "true").lower() == "true",
-            "UPGRADE_6_FUZZY_MATCHING": os.environ.get("UPGRADE_6_FUZZY_MATCHING", "true").lower() == "true",
-            "UPGRADE_7_STATE_MACHINE": os.environ.get("UPGRADE_7_STATE_MACHINE", "true").lower() == "true",
-            "UPGRADE_8_SEMANTIC_ANALYSIS": os.environ.get("UPGRADE_8_SEMANTIC_ANALYSIS", "true").lower() == "true",
-            "UPGRADE_9_AUTO_VALIDATION": os.environ.get("UPGRADE_9_AUTO_VALIDATION", "true").lower() == "true",
-            "UPGRADE_10_TEMPLATE_SYSTEM": os.environ.get("UPGRADE_10_TEMPLATE_SYSTEM", "true").lower() == "true",
+            "UPGRADE_5_QUERY_SPLITTER": os.environ.get("UPGRADE_5_QUERY_SPLITTER", "True").lower() == "True",
+            "UPGRADE_6_FUZZY_MATCHING": os.environ.get("UPGRADE_6_FUZZY_MATCHING", "True").lower() == "True",
+            "UPGRADE_7_STATE_MACHINE": os.environ.get("UPGRADE_7_STATE_MACHINE", "True").lower() == "True",
+            "UPGRADE_8_SEMANTIC_ANALYSIS": os.environ.get("UPGRADE_8_SEMANTIC_ANALYSIS", "True").lower() == "True",
+            "UPGRADE_9_AUTO_VALIDATION": os.environ.get("UPGRADE_9_AUTO_VALIDATION", "True").lower() == "True",
+            "UPGRADE_10_TEMPLATE_SYSTEM": os.environ.get("UPGRADE_10_TEMPLATE_SYSTEM", "True").lower() == "True",
             
             # PERFORMANCE OPTIONS
-            "ENABLE_CACHING": os.environ.get("ENABLE_CACHING", "true").lower() == "true",
+            "ENABLE_CACHING": os.environ.get("ENABLE_CACHING", "True").lower() == "True",
             "CACHE_TTL_SECONDS": int(os.environ.get("CACHE_TTL_SECONDS", "300")),
-            "ENABLE_QUERY_LOGGING": os.environ.get("ENABLE_QUERY_LOGGING", "true").lower() == "true",
+            "ENABLE_QUERY_LOGGING": os.environ.get("ENABLE_QUERY_LOGGING", "True").lower() == "True",
             
             # MEMORY OPTIMIZATION
             "EMBEDDING_CACHE_SIZE": 100 if IS_LOW_RAM else 1000,
