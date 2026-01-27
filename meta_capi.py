@@ -169,7 +169,7 @@ def send_meta_lead(
         if not config['enable_lead']:
             logger.debug("Meta CAPI Lead: Feature disabled")
             return None
-                # 🚫 CHỐT: KHÔNG gửi Lead CAPI nếu event_name là "Lead"
+        # 🚫 CHỐT: KHÔNG gửi Lead CAPI nếu event_name là "Lead"
         # (Lead đang được track bằng Pixel để tránh duplicate)
         if event_name == "Lead":
             logger.info("Meta CAPI Lead skipped (Pixel-only Lead policy)")
@@ -318,11 +318,12 @@ def check_meta_capi_health() -> Dict[str, Any]:
 # =========================
 # EXPORTS
 # =========================
-___all__ = [
+__all__ = [
     'send_meta_lead',
     'send_meta_bulk_events',
     'check_meta_capi_health'
 ]
+
 
 
 # =========================
