@@ -146,55 +146,7 @@ def _build_meta_url(config: Dict, pixel_id: str) -> str:
         # Standard Meta Graph API
         return f"{config['endpoint'].rstrip('/')}/{pixel_id}/events"
 # =========================
-# MAIN CAPI FUNCTIONS
-# =========================
-def send_meta_pageview(request):
-    """
-    Send PageView event to Meta CAPI
-    Automatically called on page load
-    """
-    try:
-        config = get_config()
-        
-        if not config['pixel_id'] or not config['token']:
-            logger.warning("Meta CAPI: Missing PIXEL_ID or TOKEN")
-            return
-        
-        # Generate event ID
-        event_id = str(uuid.uuid4())
-        
-        # Build payload
-        payload = {
-            "data": [
-                {
-                    "event_name": "PageView",
-                    "event_time": int(time.time()),
-                    "event_id": event_id,
-                    "event_source_url": request.url if hasattr(request, 'url') else "",
-                    "action_source": "website",
-                    "user_data": _build_user_data(request)
-                }
-            ]
-        }
-        
-        # Add test event code if in debug mode
-        if config['test_code'] and config['debug']:
-           # payload["test_event_code"] = config['test_code']
-            logger.info(f"Meta CAPI PageView (TEST MODE): {event_id}")
-        
-        # Send to Meta
-        result = _send_to_meta(config['pixel_id'], payload)
-        
-        if result:
-            logger.info(f"Meta CAPI PageView sent successfully: {event_id}")
-        else:
-            logger.warning(f"Meta CAPI PageView failed: {event_id}")
-        
-        return result
-        
-    except Exception as e:
-        logger.error(f"Meta CAPI PageView Exception: {str(e)}")
-        return None
+
 
 def send_meta_lead(
     request,
@@ -217,6 +169,12 @@ def send_meta_lead(
         if not config['enable_lead']:
             logger.debug("Meta CAPI Lead: Feature disabled")
             return None
+                # 🚫 CHỐT: KHÔNG gửi Lead CAPI nếu event_name là "Lead"
+        # (Lead đang được track bằng Pixel để tránh duplicate)
+        if event_name == "Lead":
+            logger.info("Meta CAPI Lead skipped (Pixel-only Lead policy)")
+            return None
+
 
         if not config['pixel_id'] or not config['token']:
             logger.warning("Meta CAPI Lead: Missing PIXEL_ID or TOKEN")
@@ -280,107 +238,6 @@ def send_meta_lead(
         return None
 
 
-def send_meta_call_button(
-    request,
-    page_url: Optional[str] = None,
-    phone: Optional[str] = None,
-    call_type: str = "regular",
-    **kwargs
-):
-    """
-    Enhanced Call Button event for Meta CAPI
-    Compatible with both current and future tracking scripts
-    
-    Parameters from app.py:
-    - page_url: URL where call button was clicked
-    - phone: Phone number (0332510486)
-    - call_type: "regular" or "zalo"
-    
-    Returns: Meta API response or None
-    """
-    try:
-        config = get_config()
-        
-        # Check if call tracking is enabled
-        if not config['enable_call']:
-            logger.debug("Meta CAPI Call Button: Feature disabled")
-            return None
-        
-        # Get target pixel ID (prefer provided, fallback to env)
-        target_pixel_id = config['pixel_id']
-        if not target_pixel_id or not config['token']:
-            logger.warning("Meta CAPI Call Button: Missing PIXEL_ID or TOKEN")
-            return None
-        
-        # Generate event ID
-        event_id = str(uuid.uuid4())
-        
-        # Prepare data with priority: client > request
-        final_page_url = page_url or (request.url if hasattr(request, 'url') else "")
-        
-        # Build user data
-        user_data = _build_user_data(request, phone=phone)
-        
-        # Build event payload
-        payload_event = {
-            "event_name": "CallButtonClick",
-            "event_time": int(time.time()),
-            "event_id": event_id,
-            "event_source_url": final_page_url,
-            "action_source": "website",
-            "user_data": user_data,
-            "custom_data": {
-                "value": 150000,
-                "currency": "VND",
-                "call_type": call_type,
-                "content_name": "Ruby Wings Hotline Call",
-                "button_location": "fixed_bottom_left",
-                "content_category": "Zalo Call" if call_type == "zalo" else "Phone Call",
-                "business_name": "Ruby Wings Travel",
-                "hotline_number": "0332510486"
-            }
-        }
-        
-        # Add any additional kwargs to custom data
-        if kwargs and 'custom_data' in payload_event:
-            payload_event["custom_data"].update(kwargs)
-        
-        # Build final payload
-        payload = {"data": [payload_event]}
-        
-        # Add test event code if in debug mode
-        if config['test_code'] and config['debug']:
-         #   payload["test_event_code"] = config['test_code']
-            logger.info(f"Meta CAPI Call Button (TEST MODE): {event_id}")
-        
-        # Log event details (mask phone for privacy)
-        masked_phone = f"{phone[:4]}..." if phone else "None"
-        logger.info(
-            f"Meta CAPI Call Button Tracking: "
-            f"Event=CallButtonClick, "
-            f"Pixel={target_pixel_id[:6]}..., "
-            f"Phone={masked_phone}, "
-            f"Type={call_type}, "
-            f"URL={final_page_url[:50]}..."
-        )
-        
-        # Send to Meta
-        result = _send_to_meta(target_pixel_id, payload)
-        
-        if result:
-            received = result.get('events_received', 0)
-            if received > 0:
-                logger.info(f"✅ Meta CAPI Call Button successful: {received} event(s) received")
-            else:
-                logger.warning(f"⚠️ Meta CAPI Call Button: No events received in response")
-        else:
-            logger.warning(f"❌ Meta CAPI Call Button failed")
-        
-        return result
-        
-    except Exception as e:
-        logger.error(f"Meta CAPI Call Button Exception: {str(e)}")
-        return None
 
 # =========================
 # BULK EVENT SEND (FOR FUTURE USE)
@@ -461,13 +318,12 @@ def check_meta_capi_health() -> Dict[str, Any]:
 # =========================
 # EXPORTS
 # =========================
-__all__ = [
-    'send_meta_pageview',
-    'send_meta_lead', 
-    'send_meta_call_button',
+___all__ = [
+    'send_meta_lead',
     'send_meta_bulk_events',
     'check_meta_capi_health'
 ]
+
 
 # =========================
 # INITIALIZATION LOG
