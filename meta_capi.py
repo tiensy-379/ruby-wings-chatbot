@@ -49,15 +49,20 @@ def get_config():
         endpoint = endpoint or "https://graph.facebook.com/v18.0/"
     
     return {
-        'pixel_id': os.environ.get("META_PIXEL_ID", "").strip(),
-        'token': os.environ.get("META_CAPI_TOKEN", "").strip(),
-        # 'test_code': os.environ.get("META_TEST_EVENT_CODE", "").strip(),
-        'endpoint': endpoint,
-        'enable_call': os.environ.get("ENABLE_META_CAPI_CALL", "false").lower() in ("1", "true", "yes"),
-        'enable_lead': os.environ.get("ENABLE_META_CAPI_LEAD", "false").lower() in ("1", "true", "yes"),
-        'debug': os.environ.get("DEBUG_META_CAPI", "false").lower() in ("1", "true", "yes"),
-        'is_custom_gateway': 'graph.facebook.com' not in endpoint,
-    }
+    'pixel_id': os.environ.get("META_PIXEL_ID", "").strip(),
+    'token': os.environ.get("META_CAPI_TOKEN", "").strip(),
+    # 'test_code': os.environ.get("META_TEST_EVENT_CODE", "").strip(),
+    'endpoint': endpoint,
+
+    # Feature flags
+    'enable_call': os.environ.get("ENABLE_META_CAPI_CALL", "false").lower() in ("1", "true", "yes"),
+    'enable_lead': os.environ.get("ENABLE_META_CAPI_LEAD", "false").lower() in ("1", "true", "yes"),
+    'enable_offline': os.environ.get("ENABLE_META_CAPI_OFFLINE", "false").lower() in ("1", "true", "yes"),
+
+    'debug': os.environ.get("DEBUG_META_CAPI", "false").lower() in ("1", "true", "yes"),
+    'is_custom_gateway': 'graph.facebook.com' not in endpoint,
+}
+
 
 # =========================
 # HELPER FUNCTIONS
@@ -237,6 +242,72 @@ def send_meta_lead(
         logger.error(f"Meta CAPI Lead Exception: {str(e)}")
         return None
 
+def send_meta_offline_purchase(
+    request,
+    event_id: Optional[str],
+    phone: Optional[str],
+    value: float,
+    currency: str = "VND",
+    content_name: Optional[str] = None,
+    **kwargs
+):
+    """
+    Server-side Meta CAPI OFFLINE PURCHASE
+    Trigger when lead is CONFIRMED / CLOSED offline
+    """
+    try:
+        config = get_config()
+
+        # Check if offline conversion is enabled
+        if not config.get('enable_offline'):
+            logger.debug("Meta CAPI Offline: Feature disabled")
+            return None
+
+        if not config['pixel_id'] or not config['token']:
+            logger.warning("Meta CAPI Offline: Missing PIXEL_ID or TOKEN")
+            return None
+
+        if not event_id:
+            event_id = str(uuid.uuid4())
+
+        # Build user data (phone is REQUIRED for offline match)
+        user_data = _build_user_data(request, phone=phone)
+
+        payload_event = {
+            "event_name": "Purchase",
+            "event_time": int(time.time()),
+            "event_id": event_id,
+            "action_source": "offline",
+            "user_data": user_data,
+            "custom_data": {
+                "value": value,
+                "currency": currency
+            }
+        }
+
+        if content_name:
+            payload_event["custom_data"]["content_name"] = content_name
+
+        if kwargs:
+            payload_event["custom_data"].update(kwargs)
+
+        payload = {
+            "data": [payload_event]
+        }
+
+        result = _send_to_meta(config['pixel_id'], payload)
+
+        masked_phone = f"{phone[:4]}..." if phone else "None"
+        if result:
+            logger.info(f"Meta CAPI OFFLINE Purchase sent: {event_id} - Phone: {masked_phone}")
+        else:
+            logger.warning(f"Meta CAPI OFFLINE Purchase failed: {event_id}")
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Meta CAPI Offline Purchase Exception: {str(e)}")
+        return None
 
 
 # =========================
@@ -306,23 +377,28 @@ def check_meta_capi_health() -> Dict[str, Any]:
         'config': {
             'pixel_id_set': bool(config['pixel_id']),
             'token_set': bool(config['token']),
+
             'enable_call': config['enable_call'],
             'enable_lead': config['enable_lead'],
+            'enable_offline': config.get('enable_offline', False),
+
             'debug_mode': config['debug'],
             'test_code_set': bool(config['test_code']),
         },
+
         'timestamp': time.time(),
         'version': '3.1'
     }
 
 # =========================
 # EXPORTS
-# =========================
 __all__ = [
     'send_meta_lead',
+    'send_meta_offline_purchase',
     'send_meta_bulk_events',
     'check_meta_capi_health'
 ]
+
 
 
 
