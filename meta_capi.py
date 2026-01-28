@@ -406,3 +406,38 @@ __all__ = [
 # INITIALIZATION LOG
 # =========================
 logger.info("✅ Meta CAPI v3.1 initialized - Optimized for Ruby Wings v4.0 on Render")
+
+def send_meta_pageview(request):
+    """
+    Server-side Meta CAPI PageView
+    Dedup with Pixel using RW_EVENT_ID from client
+    """
+    try:
+        config = get_config()
+
+        if not config['pixel_id'] or not config['token']:
+            return None
+
+        # 🔑 LẤY EVENT_ID TỪ CLIENT
+        event_id = request.headers.get("X-RW-EVENT-ID")
+        if not event_id:
+            return None  # Không gửi nếu thiếu event_id (tránh lệch dedup)
+
+        payload = {
+            "data": [
+                {
+                    "event_name": "PageView",
+                    "event_time": int(time.time()),
+                    "event_id": event_id,
+                    "event_source_url": request.url if hasattr(request, "url") else "",
+                    "action_source": "website",
+                    "user_data": _build_user_data(request)
+                }
+            ]
+        }
+
+        return _send_to_meta(config['pixel_id'], payload)
+
+    except Exception as e:
+        logger.error(f"Meta CAPI PageView Exception: {str(e)}")
+        return None

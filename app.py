@@ -290,6 +290,22 @@ class UpgradeFlags:
 app = Flask(__name__)
 app.json_encoder = EnhancedJSONEncoder  # Use custom JSON encoder
 CORS(app, origins=CORS_ORIGINS, supports_credentials=True)
+from meta_capi import send_meta_pageview
+
+@app.before_request
+def track_pageview_once():
+    try:
+        if request.method != "GET":
+            return
+        if not request.accept_mimetypes.accept_html:
+            return
+        if not request.headers.get("X-RW-EVENT-ID"):
+            return
+
+        send_meta_pageview(request)
+
+    except Exception:
+        pass
 
 # =========== GLOBAL STATE (USING DATACLASSES) ===========
 # Initialize OpenAI client
