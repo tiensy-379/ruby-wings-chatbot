@@ -13,6 +13,7 @@ def safe_validate(reply):
             pass
         return reply
 from meta_param_builder import MetaParamService
+from meta_capi import send_meta_contact
 
 
 # app.py - Ruby Wings Chatbot v4.0 (Complete Rewrite with Dataclasses)
@@ -226,6 +227,9 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "ruby-wings-secret-key-2024")
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "https://www.rubywings.vn,http://localhost:3000").split(",")
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "10000"))
+ENABLE_META_CAPI_CALL = os.environ.get("ENABLE_META_CAPI_CALL", "true").lower() in ("1", "true", "yes")
+HAS_META_CAPI = bool(os.environ.get("META_PIXEL_ID")) and bool(os.environ.get("META_CAPI_TOKEN"))
+
 
 # =========== STATS TRACKING (FIX LỖI STATE) ===========
 # Thêm global stats tracking system
