@@ -175,39 +175,35 @@ def send_meta_event(
     **kwargs
 ):
     if not event_id:
+    # Không gửi event thiếu event_id để tránh duplicate
         return None
+
 
     config = get_config()
     if not config['pixel_id'] or not config['token']:
         return None
 
     payload = {
-    "data": [
-        {
-            "event_name": event_name,
-            "event_time": int(time.time()),
-            "event_id": event_id,
-            "event_source_url": request.url if hasattr(request, "url") else "",
-            "action_source": action_source,
-            "user_data": {
-                **_build_user_data(request, phone=phone),
-                "client_ip_address": request.headers.get(
-                    "X-Forwarded-For",
-                    request.remote_addr
+        "data": [
+            {
+                "event_name": event_name,
+                "event_time": int(time.time()),
+                "event_id": event_id,
+                "event_source_url": request.url if hasattr(request, "url") else "",
+                "action_source": action_source,
+                "user_data": _build_user_data(
+                    request=request,
+                    phone=phone
                 ),
-                "client_user_agent": request.headers.get(
-                    "User-Agent", ""
-                )
-            },
-            "custom_data": {
-                "content_name": content_name
-            } if content_name else {}
-        }
-    ]
-}
-
+                "custom_data": {
+                    "content_name": content_name
+                } if content_name else {}
+            }
+        ]
+    }
 
     return _send_to_meta(config['pixel_id'], payload)
+
 
 
 def send_meta_lead(
