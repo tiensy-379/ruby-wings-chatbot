@@ -99,7 +99,8 @@ def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Di
     """Send event to Meta CAPI"""
     try:
         config = get_config()
-        
+        payload["test_event_code"] = "TEST78698"
+
         # Build URL
         url = _build_meta_url(config, pixel_id)
         
