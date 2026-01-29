@@ -4510,23 +4510,20 @@ def track_contact():
         return jsonify({'error': str(e)}), 500
 
 
-        # ===== SEND META CAPI (CONTACT – EVENT RIÊNG) =====
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
-            send_meta_lead(
-                request=request,
-                event_name="Contact",          # ✅ event RIÊNG, không trùng Lead / Call
-                event_id=event_id,             # ✅ DEDUP nếu sau này có Pixel
-                phone=phone,                   # ✅ hashed
-                fbc=fbc,
-                fbp=fbp,
-                client_ip_address=client_ip,
-                content_name=source
-            )
+                send_meta_call_button(
+                    request=request,
+                    event_id=event_id,
+                    phone=phone,
+                    fbc=fbc,
+                    fbp=fbp,
+                    client_ip_address=client_ip,
+                    content_name=action
+                )
 
-            increment_stat('meta_capi_calls')
-            logger.info("💬 Contact Meta CAPI sent (dedup-safe)")
+                increment_stat('meta_capi_calls')
+                logger.info("📞 CallButtonClick Meta CAPI (server) sent")
 
-        return jsonify({'success': True})
 
     except Exception as e:
         increment_stat('meta_capi_errors')
@@ -4561,21 +4558,17 @@ def track_call():
         )
 
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
-            send_meta_lead(
+            send_meta_event(
                 request=request,
                 event_name="CallButtonClick",
                 event_id=event_id,             # ✅ dedup chuẩn
                 phone=phone,
-                fbc=fbc,
-                fbp=fbp,
-                client_ip_address=client_ip,
                 content_name=action
             )
 
             increment_stat('meta_capi_calls')
-            logger.info("📞 CallButtonClick Meta CAPI sent")
+            logger.info("📞 CallButtonClick Meta CAPI sent (clean)")
 
-        return jsonify({'success': True})
 
     except Exception as e:
         increment_stat('meta_capi_errors')

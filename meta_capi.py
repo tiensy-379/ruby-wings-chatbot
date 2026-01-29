@@ -77,23 +77,42 @@ def _hash(value: str) -> str:
         return ""
 
 def _build_user_data(request, phone: str = None, fbp: str = None, fbc: str = None) -> Dict[str, Any]:
-    """Build user data for Meta CAPI"""
+    """Build user data for Meta CAPI (FIX IP – chuẩn Meta, không lỗi 2804007)"""
+
+    def _get_valid_client_ip(req):
+        ip = req.headers.get("X-Forwarded-For", "")
+        if ip:
+            ip = ip.split(",")[0].strip()
+        else:
+            ip = req.remote_addr or ""
+
+        # Loại bỏ IP private / loopback (Meta reject)
+        if not ip or ip.startswith((
+            "10.", "172.", "192.168.", "127.", "::1"
+        )):
+            return None
+        return ip
+
     user_data = {
-        "client_ip_address": request.remote_addr if hasattr(request, 'remote_addr') else "",
         "client_user_agent": request.headers.get("User-Agent", "") if hasattr(request, 'headers') else "",
     }
-    
-    # Add phone if provided
+
+    client_ip = _get_valid_client_ip(request)
+    if client_ip:
+        user_data["client_ip_address"] = client_ip
+
+    # Phone (hashed)
     if phone:
         user_data["ph"] = _hash(str(phone))
-    
-    # Add Facebook cookies if provided
+
+    # Facebook cookies
     if fbp:
         user_data["fbp"] = fbp
     if fbc:
         user_data["fbc"] = fbc
-    
+
     return user_data
+
 
 def _build_meta_url(config: Dict, pixel_id: str) -> str:
     """Build Meta CAPI URL based on configuration"""
@@ -226,11 +245,13 @@ def send_meta_lead(
         if not config['enable_lead']:
             logger.debug("Meta CAPI Lead: Feature disabled")
             return None
-        # 🚫 CHỐT: KHÔNG gửi Lead CAPI nếu event_name là "Lead"
-        # (Lead đang được track bằng Pixel để tránh duplicate)
-        if event_name != "Lead":
-            logger.warning(f"send_meta_lead called with non-Lead event: {event_name}")
+        # 🚫 CHỐT: send_meta_lead CHỈ dùng cho LEAD / CONTACT
+        if event_name not in ("Lead", "Contact"):
+            logger.warning(
+                f"send_meta_lead called with non-lead event: {event_name} (auto-skip)"
+            )
             return None
+
 
 
         if not config['pixel_id'] or not config['token']:
