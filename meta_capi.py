@@ -95,45 +95,60 @@ def _build_user_data(request, phone: str = None, fbp: str = None, fbc: str = Non
     
     return user_data
 
+def _build_meta_url(config: Dict, pixel_id: str) -> str:
+    """Build Meta CAPI URL based on configuration"""
+    if config['is_custom_gateway']:
+        # Custom CAPI gateway (e.g., capig.xxx.com)
+        return config['endpoint']
+    else:
+        # Standard Meta Graph API
+        return f"{config['endpoint'].rstrip('/')}/{pixel_id}/events"
+
+
 def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Dict]:
     """Send event to Meta CAPI"""
     try:
         config = get_config()
+
+        # ===== TEST EVENT CODE (CHỈ DÙNG KHI TEST) =====
         payload["test_event_code"] = "TEST70229"
 
         # Build URL
         url = _build_meta_url(config, pixel_id)
-        
-        # Add access token based on endpoint type
+
+        # Add access token (Graph API only)
         if not config['is_custom_gateway']:
             url = f"{url}?access_token={config['token']}"
-        
+
         headers = {
             "Content-Type": "application/json",
             "User-Agent": "RubyWings-Chatbot/4.0"
         }
-        
-        # Add Authorization header for custom gateways
+
+        # Custom gateway auth
         if config['is_custom_gateway'] and config['token']:
             headers["Authorization"] = f"Bearer {config['token']}"
-        
-        # Send request
+
         response = requests.post(
             url,
             json=payload,
             timeout=timeout,
             headers=headers
         )
-        
+
         if response.status_code == 200:
             result = response.json()
-            if config['debug']:
-                logger.info(f"Meta CAPI Success: {result.get('events_received', 0)} events received")
+            if config.get('debug'):
+                logger.info(
+                    f"Meta CAPI Success: {result.get('events_received', 0)} events received"
+                )
             return result
         else:
-            logger.error(f"Meta CAPI Error {response.status_code}: {response.text}")
+            logger.error(
+                f"Meta CAPI Error {response.status_code}: {response.text}"
+            )
             return None
-            
+
     except requests.exceptions.Timeout:
         logger.warning("Meta CAPI Timeout")
         return None
@@ -143,14 +158,7 @@ def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Di
     except Exception as e:
         logger.error(f"Meta CAPI Unexpected Error: {str(e)}")
         return None
-def _build_meta_url(config: Dict, pixel_id: str) -> str:
-    """Build Meta CAPI URL based on configuration"""
-    if config['is_custom_gateway']:
-        # Custom CAPI gateway (e.g., capig.datah04.com)
-        return config['endpoint']
-    else:
-        # Standard Meta Graph API
-        return f"{config['endpoint'].rstrip('/')}/{pixel_id}/events"
+
 # =========================
 
 
@@ -175,11 +183,11 @@ def send_meta_lead(
         if not config['enable_lead']:
             logger.debug("Meta CAPI Lead: Feature disabled")
             return None
-        # 🚫 CHỈ chặn Lead thuần, KHÔNG chặn Contact / Call / Chat
+        # 🚫 CHỐT: KHÔNG gửi Lead CAPI nếu event_name là "Lead"
+        # (Lead đang được track bằng Pixel để tránh duplicate)
         if event_name == "Lead":
             logger.info("Meta CAPI Lead skipped (Pixel-only Lead policy)")
             return None
-
 
 
         if not config['pixel_id'] or not config['token']:
@@ -242,51 +250,6 @@ def send_meta_lead(
     except Exception as e:
         logger.error(f"Meta CAPI Lead Exception: {str(e)}")
         return None
-
-def send_meta_contact(
-    request,
-    event_id: Optional[str] = None,
-    phone: Optional[str] = None,
-    content_name: Optional[str] = None
-):
-    """
-    Server-side Meta CAPI Contact Event
-    """
-    try:
-        config = get_config()
-
-        if not config['pixel_id'] or not config['token']:
-            logger.warning("Meta CAPI Contact: Missing PIXEL_ID or TOKEN")
-            return None
-
-        if not event_id:
-            event_id = str(uuid.uuid4())
-
-        user_data = _build_user_data(request, phone=phone)
-
-        payload = {
-            "data": [
-                {
-                    "event_name": "Contact",
-                    "event_time": int(time.time()),
-                    "event_id": event_id,
-                    "event_source_url": request.url if hasattr(request, "url") else "",
-                    "action_source": "website",
-                    "user_data": user_data,
-                    "custom_data": {
-                        "content_name": content_name or "Website Contact"
-                    }
-                }
-            ]
-        }
-
-        return _send_to_meta(config['pixel_id'], payload)
-
-    except Exception as e:
-        logger.error(f"Meta CAPI Contact Exception: {str(e)}")
-        return None
-
-
 
 def send_meta_offline_purchase(
     request,

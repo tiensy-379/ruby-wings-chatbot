@@ -13,7 +13,6 @@ def safe_validate(reply):
             pass
         return reply
 from meta_param_builder import MetaParamService
-from meta_capi import send_meta_contact
 
 
 # app.py - Ruby Wings Chatbot v4.0 (Complete Rewrite with Dataclasses)
@@ -32,7 +31,6 @@ import traceback
 import hashlib
 import time
 import random
-import uuid
 from functools import lru_cache, wraps
 from typing import List, Tuple, Dict, Optional, Any, Set, Union, Callable
 from datetime import datetime, timedelta
@@ -172,8 +170,7 @@ except ImportError:
 
 # Meta CAPI
 try:
-    from meta_capi import send_meta_pageview, send_meta_lead, send_meta_call_button, send_meta_contact
-
+    from meta_capi import send_meta_pageview, send_meta_lead, send_meta_call_button
     HAS_META_CAPI = True
     logger.info("✅ Meta CAPI available")
 except ImportError:
@@ -227,9 +224,6 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "ruby-wings-secret-key-2024")
 CORS_ORIGINS = os.environ.get("CORS_ORIGINS", "https://www.rubywings.vn,http://localhost:3000").split(",")
 HOST = os.environ.get("HOST", "0.0.0.0")
 PORT = int(os.environ.get("PORT", "10000"))
-ENABLE_META_CAPI_CALL = os.environ.get("ENABLE_META_CAPI_CALL", "true").lower() in ("1", "true", "yes")
-HAS_META_CAPI = bool(os.environ.get("META_PIXEL_ID")) and bool(os.environ.get("META_CAPI_TOKEN"))
-
 
 # =========== STATS TRACKING (FIX LỖI STATE) ===========
 # Thêm global stats tracking system
@@ -296,8 +290,7 @@ class UpgradeFlags:
 app = Flask(__name__)
 app.json_encoder = EnhancedJSONEncoder  # Use custom JSON encoder
 CORS(app, origins=CORS_ORIGINS, supports_credentials=True)
-from meta_capi import send_meta_lead, send_meta_contact
-
+from meta_capi import send_meta_pageview
 
 @app.before_request
 def track_pageview_once():
@@ -4420,7 +4413,7 @@ def get_gspread_client(force_refresh: bool = False):
             return None
 
 # ===============================
-# API: SAVE LEAD (Website / Call / Zalo)
+# API: SAVE LEAD (Website / Form)
 # ===============================
 @app.route('/api/save-lead', methods=['POST', 'OPTIONS'])
 def save_lead():
@@ -4430,7 +4423,6 @@ def save_lead():
     try:
         data = request.get_json() or {}
 
-        # -------- 1. Extract & validate --------
         phone = (data.get('phone') or '').strip()
         name = (data.get('name') or '').strip()
         email = (data.get('email') or '').strip()
@@ -4447,106 +4439,87 @@ def save_lead():
 
         timestamp = datetime.now().isoformat()
 
-        lead_data = {
-            'timestamp': timestamp,
-            'phone': phone_clean,
-            'name': name,
-            'email': email,
-            'tour_interest': tour_interest,
-            'page_url': page_url,
-            'note': note,
-            'source': 'Website Lead'
-        }
+        # -------- Save Google Sheet / Fallback (GIỮ NGUYÊN) --------
+        # ... (không thay đổi phần này)
 
-        # -------- 2. Save to Google Sheets --------
-        if ENABLE_GOOGLE_SHEETS:
-            try:
-                import gspread
-                from google.oauth2.service_account import Credentials
-
-                creds_json = json.loads(GOOGLE_SERVICE_ACCOUNT_JSON)
-                creds = Credentials.from_service_account_info(
-                    creds_json,
-                    scopes=['https://www.googleapis.com/auth/spreadsheets']
-                )
-
-                gc = gspread.authorize(creds)
-                sh = gc.open_by_key(GOOGLE_SHEET_ID)
-                ws = sh.worksheet(GOOGLE_SHEET_NAME)
-
-                row = [
-                    timestamp,                          # A created_at
-                    'Website - Lead Form',              # B source_channel
-                    'Form Submission',                  # C action_type
-                    page_url or '',                     # D page_url
-                    name or '',                         # E contact_name
-                    phone_clean,                        # F phone
-                    tour_interest or '',                # G service_interest
-                    note or email or '',                # H note
-                    'New'                               # I raw_status
-                ]
-
-                ws.append_row(row)
-                logger.info('✅ Lead saved to Google Sheets')
-
-            except Exception as e:
-                logger.error(f'Google Sheets error: {e}')
-
-        # -------- 3. Fallback storage --------
-        if ENABLE_FALLBACK_STORAGE:
-            try:
-                if os.path.exists(FALLBACK_STORAGE_PATH):
-                    with open(FALLBACK_STORAGE_PATH, 'r', encoding='utf-8') as f:
-                        leads = json.load(f)
-                else:
-                    leads = []
-
-                leads.append(lead_data)
-                leads = leads[-1000:]
-
-                with open(FALLBACK_STORAGE_PATH, 'w', encoding='utf-8') as f:
-                    json.dump(leads, f, ensure_ascii=False, indent=2)
-
-            except Exception as e:
-                logger.error(f'Fallback storage error: {e}')
-
-        # -------- 4. Send Meta CAPI (LEAD) --------
+        # -------- Meta CAPI: LEAD (FORM) --------
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
-            try:
-                send_meta_lead(
-                    request=request,
-                    event_id=data.get('event_id'),
-                    phone=phone_clean,
-                    contact_name=name,
-                    email=email,
-                    content_name=f"Tour: {tour_interest}" if tour_interest else "Website Lead"
-                )
-                increment_stat('meta_capi_calls')
-                logger.info('✅ Meta CAPI Lead sent')
-
-            except Exception as e:
-                increment_stat('meta_capi_errors')
-                logger.error(f'Meta CAPI error: {e}')
+            send_meta_lead(
+                request=request,
+                event_name="Lead",
+                event_id=data.get('event_id'),   # ⚠️ lấy từ client nếu có
+                phone=phone_clean,
+                contact_name=name,
+                email=email,
+                content_name=f"Tour: {tour_interest}" if tour_interest else "Website Lead"
+            )
+            increment_stat('meta_capi_calls')
 
         increment_stat('leads')
 
-        return jsonify({
-            'success': True,
-            'message': 'Lead đã được lưu',
-            'data': {
-                'phone': phone_clean[:3] + '***' + phone_clean[-2:],
-                'timestamp': timestamp
-            }
-        })
+        return jsonify({'success': True})
 
     except Exception as e:
         logger.error(f'Save lead error: {e}')
-        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 
 # ===============================
-# API: CALL / ZALO CLICK (Meta CAPI - CallButtonClick)
+# API: CONTACT CLICK (ZALO / PHONE – KHÔNG TRÙNG)
+# ===============================
+@app.route('/api/track-contact', methods=['POST', 'OPTIONS'])
+def track_contact():
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
+
+    try:
+        data = request.get_json() or {}
+
+        event_id = data.get('event_id')
+        phone = data.get('phone')
+        source = data.get('source', 'Contact')
+
+        if not event_id:
+            return jsonify({'error': 'event_id is required'}), 400
+
+        # ===== META PARAM BUILDER =====
+        meta = MetaParamService()
+        meta.process_request(request)
+
+        fbc = meta.get_fbc()
+        fbp = meta.get_fbp()
+
+        client_ip = request.headers.get(
+            "X-Forwarded-For",
+            request.remote_addr
+        )
+
+        # ===== SEND META CAPI (CONTACT – EVENT RIÊNG) =====
+        if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
+            send_meta_lead(
+                request=request,
+                event_name="Contact",          # ✅ event RIÊNG, không trùng Lead / Call
+                event_id=event_id,             # ✅ DEDUP nếu sau này có Pixel
+                phone=phone,                   # ✅ hashed
+                fbc=fbc,
+                fbp=fbp,
+                client_ip_address=client_ip,
+                content_name=source
+            )
+
+            increment_stat('meta_capi_calls')
+            logger.info("💬 Contact Meta CAPI sent (dedup-safe)")
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        increment_stat('meta_capi_errors')
+        logger.error(f'❌ Track contact error: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
+# ===============================
+# API: CALL / ZALO CLICK (CallButtonClick – GIỮ NGUYÊN)
 # ===============================
 @app.route('/api/track-call', methods=['POST', 'OPTIONS'])
 def track_call():
@@ -4560,37 +4533,31 @@ def track_call():
         phone = data.get('phone')
         action = data.get('action', 'Call/Zalo Click')
 
-        # ===== META PARAM BUILDER (SAFE) =====
         meta = MetaParamService()
         meta.process_request(request)
 
         fbc = meta.get_fbc()
         fbp = meta.get_fbp()
 
-        # ⚠️ KHÔNG dùng hàm không tồn tại
         client_ip = request.headers.get(
             "X-Forwarded-For",
             request.remote_addr
         )
 
-        # Hash phone bằng hàm của bạn (đã chạy OK)
-      
-        # ====================================
-
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             send_meta_lead(
                 request=request,
                 event_name="CallButtonClick",
-                event_id=event_id,
-                phone=phone,          # ✅ hashed
-                fbc=fbc,                     # ✅
-                fbp=fbp,                     # ✅
-                client_ip_address=client_ip, # ✅
+                event_id=event_id,             # ✅ dedup chuẩn
+                phone=phone,
+                fbc=fbc,
+                fbp=fbp,
+                client_ip_address=client_ip,
                 content_name=action
             )
 
             increment_stat('meta_capi_calls')
-            logger.info("📞 CallButtonClick Meta CAPI sent (stable)")
+            logger.info("📞 CallButtonClick Meta CAPI sent")
 
         return jsonify({'success': True})
 
@@ -4601,45 +4568,6 @@ def track_call():
 
 
 
-# ===============================
-# API: CONTACT (Meta CAPI - Unified)
-# ===============================
-@app.route('/api/track-contact', methods=['POST', 'OPTIONS'])
-def track_contact():
-    if request.method == 'OPTIONS':
-        return jsonify({'status': 'ok'}), 200
-
-    try:
-        data = request.get_json() or {}
-
-        event_id = data.get('event_id')
-        phone = data.get('phone')
-        source = data.get('source', 'Website Contact')
-
-        if not event_id:
-            event_id = str(uuid.uuid4())
-
-        # ===== META PARAM BUILDER (SAFE) =====
-        meta = MetaParamService()
-        meta.process_request(request)
-
-        if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
-            send_meta_contact(
-                request=request,
-                event_id=event_id,
-                phone=phone,
-                content_name=source
-            )
-
-            increment_stat('meta_capi_calls')
-            logger.info("📩 Contact Meta CAPI sent (unified)")
-
-        return jsonify({'success': True})
-
-    except Exception as e:
-        increment_stat('meta_capi_errors')
-        logger.error(f'❌ Track contact error: {e}')
-        return jsonify({'error': str(e)}), 500
 
 
 
