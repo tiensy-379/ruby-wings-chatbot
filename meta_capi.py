@@ -243,6 +243,51 @@ def send_meta_lead(
         logger.error(f"Meta CAPI Lead Exception: {str(e)}")
         return None
 
+def send_meta_contact(
+    request,
+    event_id: Optional[str] = None,
+    phone: Optional[str] = None,
+    content_name: Optional[str] = None
+):
+    """
+    Server-side Meta CAPI Contact Event
+    """
+    try:
+        config = get_config()
+
+        if not config['pixel_id'] or not config['token']:
+            logger.warning("Meta CAPI Contact: Missing PIXEL_ID or TOKEN")
+            return None
+
+        if not event_id:
+            event_id = str(uuid.uuid4())
+
+        user_data = _build_user_data(request, phone=phone)
+
+        payload = {
+            "data": [
+                {
+                    "event_name": "Contact",
+                    "event_time": int(time.time()),
+                    "event_id": event_id,
+                    "event_source_url": request.url if hasattr(request, "url") else "",
+                    "action_source": "website",
+                    "user_data": user_data,
+                    "custom_data": {
+                        "content_name": content_name or "Website Contact"
+                    }
+                }
+            ]
+        }
+
+        return _send_to_meta(config['pixel_id'], payload)
+
+    except Exception as e:
+        logger.error(f"Meta CAPI Contact Exception: {str(e)}")
+        return None
+
+
+
 def send_meta_offline_purchase(
     request,
     event_id: Optional[str],

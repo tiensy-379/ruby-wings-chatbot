@@ -171,7 +171,8 @@ except ImportError:
 
 # Meta CAPI
 try:
-    from meta_capi import send_meta_pageview, send_meta_lead, send_meta_call_button
+    from meta_capi import send_meta_pageview, send_meta_lead, send_meta_call_button, send_meta_contact
+
     HAS_META_CAPI = True
     logger.info("✅ Meta CAPI available")
 except ImportError:
@@ -291,7 +292,8 @@ class UpgradeFlags:
 app = Flask(__name__)
 app.json_encoder = EnhancedJSONEncoder  # Use custom JSON encoder
 CORS(app, origins=CORS_ORIGINS, supports_credentials=True)
-from meta_capi import send_meta_pageview
+from meta_capi import send_meta_lead, send_meta_contact
+
 
 @app.before_request
 def track_pageview_once():
@@ -4620,15 +4622,13 @@ def track_contact():
         fbp = meta.get_fbp()
 
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
-            send_meta_lead(
+            send_meta_contact(
                 request=request,
-                event_name="Contact",
                 event_id=event_id,
                 phone=phone,
-                fbc=fbc,
-                fbp=fbp,
                 content_name=source
             )
+
 
             increment_stat('meta_capi_calls')
             logger.info("📩 Contact Meta CAPI sent (unified)")
