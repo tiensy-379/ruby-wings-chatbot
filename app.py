@@ -4483,20 +4483,13 @@ def track_contact():
         if not event_id:
             return jsonify({'error': 'event_id is required'}), 400
 
-        # ===== META PARAM BUILDER =====
-        meta = MetaParamService()
-        meta.process_request(request)
-
-        # ⚠️ KHÔNG dùng fbc / fbp / client_ip ở Contact (tránh nhiễu & trùng)
-        # Chỉ dùng user_data cơ bản + event_id để dedup
-
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             send_meta_event(
                 request=request,
-                event_name="Contact",      # ✅ EVENT RIÊNG
-                event_id=event_id,         # ✅ DEDUP SAFE
-                phone=phone,               # ✅ HASHED
-                content_name=source        # "Zalo Contact" | "Phone Contact"
+                event_name="Contact",
+                event_id=event_id,
+                phone=phone,
+                content_name=source
             )
 
             increment_stat('meta_capi_calls')
@@ -4509,26 +4502,6 @@ def track_contact():
         logger.error(f'❌ Track contact error: {e}')
         return jsonify({'error': str(e)}), 500
 
-
-        if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
-                send_meta_call_button(
-                    request=request,
-                    event_id=event_id,
-                    phone=phone,
-                    fbc=fbc,
-                    fbp=fbp,
-                    client_ip_address=client_ip,
-                    content_name=action
-                )
-
-                increment_stat('meta_capi_calls')
-                logger.info("📞 CallButtonClick Meta CAPI (server) sent")
-
-
-    except Exception as e:
-        increment_stat('meta_capi_errors')
-        logger.error(f'❌ Track contact error: {e}')
-        return jsonify({'error': str(e)}), 500
 
 
 # ===============================
@@ -4552,28 +4525,29 @@ def track_call():
         fbc = meta.get_fbc()
         fbp = meta.get_fbp()
 
-        client_ip = request.headers.get(
-            "X-Forwarded-For",
-            request.remote_addr
-        )
-
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             send_meta_event(
                 request=request,
                 event_name="CallButtonClick",
-                event_id=event_id,             # ✅ dedup chuẩn
+                event_id=event_id,
                 phone=phone,
+                fbc=fbc,
+                fbp=fbp,
                 content_name=action
             )
 
             increment_stat('meta_capi_calls')
             logger.info("📞 CallButtonClick Meta CAPI sent (clean)")
 
+        return jsonify({'success': True})
 
     except Exception as e:
         increment_stat('meta_capi_errors')
         logger.error(f'❌ Track call error: {e}')
         return jsonify({'error': str(e)}), 500
+
+
+
 
 
 
