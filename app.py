@@ -170,7 +170,8 @@ except ImportError:
 
 # Meta CAPI
 try:
-    from meta_capi import send_meta_pageview, send_meta_lead, send_meta_call_button
+    from meta_capi import send_meta_pageview, send_meta_lead, send_meta_event
+
     HAS_META_CAPI = True
     logger.info("✅ Meta CAPI available")
 except ImportError:
@@ -4486,13 +4487,28 @@ def track_contact():
         meta = MetaParamService()
         meta.process_request(request)
 
-        fbc = meta.get_fbc()
-        fbp = meta.get_fbp()
+        # ⚠️ KHÔNG dùng fbc / fbp / client_ip ở Contact (tránh nhiễu & trùng)
+        # Chỉ dùng user_data cơ bản + event_id để dedup
 
-        client_ip = request.headers.get(
-            "X-Forwarded-For",
-            request.remote_addr
-        )
+        if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
+            send_meta_event(
+                request=request,
+                event_name="Contact",      # ✅ EVENT RIÊNG
+                event_id=event_id,         # ✅ DEDUP SAFE
+                phone=phone,               # ✅ HASHED
+                content_name=source        # "Zalo Contact" | "Phone Contact"
+            )
+
+            increment_stat('meta_capi_calls')
+            logger.info("💬 Contact Meta CAPI sent (clean & dedup-safe)")
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        increment_stat('meta_capi_errors')
+        logger.error(f'❌ Track contact error: {e}')
+        return jsonify({'error': str(e)}), 500
+
 
         # ===== SEND META CAPI (CONTACT – EVENT RIÊNG) =====
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:

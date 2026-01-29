@@ -160,6 +160,39 @@ def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Di
         return None
 
 # =========================
+def send_meta_event(
+    request,
+    event_name: str,
+    event_id: Optional[str],
+    phone: Optional[str] = None,
+    content_name: Optional[str] = None,
+    action_source: str = "website",
+    **kwargs
+):
+    if not event_id:
+        return None
+
+    config = get_config()
+    if not config['pixel_id'] or not config['token']:
+        return None
+
+    payload = {
+        "data": [
+            {
+                "event_name": event_name,
+                "event_time": int(time.time()),
+                "event_id": event_id,
+                "event_source_url": request.url if hasattr(request, "url") else "",
+                "action_source": action_source,
+                "user_data": _build_user_data(request, phone=phone),
+                "custom_data": {
+                    "content_name": content_name
+                } if content_name else {}
+            }
+        ]
+    }
+
+    return _send_to_meta(config['pixel_id'], payload)
 
 
 def send_meta_lead(
@@ -185,8 +218,8 @@ def send_meta_lead(
             return None
         # 🚫 CHỐT: KHÔNG gửi Lead CAPI nếu event_name là "Lead"
         # (Lead đang được track bằng Pixel để tránh duplicate)
-        if event_name == "Lead":
-            logger.info("Meta CAPI Lead skipped (Pixel-only Lead policy)")
+        if event_name != "Lead":
+            logger.warning(f"send_meta_lead called with non-Lead event: {event_name}")
             return None
 
 
