@@ -175,11 +175,11 @@ def send_meta_lead(
         if not config['enable_lead']:
             logger.debug("Meta CAPI Lead: Feature disabled")
             return None
-        # 🚫 CHỐT: KHÔNG gửi Lead CAPI nếu event_name là "Lead"
-        # (Lead đang được track bằng Pixel để tránh duplicate)
+        # 🚫 CHỈ chặn Lead thuần, KHÔNG chặn Contact / Call / Chat
         if event_name == "Lead":
             logger.info("Meta CAPI Lead skipped (Pixel-only Lead policy)")
             return None
+
 
 
         if not config['pixel_id'] or not config['token']:
