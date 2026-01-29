@@ -4618,8 +4618,6 @@ def track_contact():
         # ===== META PARAM BUILDER (SAFE) =====
         meta = MetaParamService()
         meta.process_request(request)
-        fbc = meta.get_fbc()
-        fbp = meta.get_fbp()
 
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             send_meta_contact(
@@ -4628,7 +4626,6 @@ def track_contact():
                 phone=phone,
                 content_name=source
             )
-
 
             increment_stat('meta_capi_calls')
             logger.info("📩 Contact Meta CAPI sent (unified)")
