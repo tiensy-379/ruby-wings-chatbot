@@ -76,27 +76,34 @@ def _hash(value: str) -> str:
     except Exception:
         return ""
 
-def _build_user_data(request, phone: str = None, fbp: str = None, fbc: str = None):
-    """
-    Build user_data for Meta CAPI
-    FIX TRIỆT ĐỂ lỗi 2804007: KHÔNG gửi client_ip_address
-    """
+def _build_user_data(request, phone: str = None) -> dict:
+    user_data = {}
 
-    user_data = {
-        "client_user_agent": request.headers.get("User-Agent", "")
-    }
-
-    # Phone (hashed) – đủ cho match
+    # Phone (bắt buộc cho Lead / Call / Contact)
     if phone:
         user_data["ph"] = _hash(str(phone))
 
-    # Facebook cookies (nếu có)
-    if fbp:
-        user_data["fbp"] = fbp
-    if fbc:
-        user_data["fbc"] = fbc
+    # FBP (nếu có – lấy từ cookie)
+    try:
+        fbp = request.cookies.get("_fbp")
+        if fbp:
+            user_data["fbp"] = fbp
+    except:
+        pass
+
+    # FBC (nếu có – từ URL)
+    try:
+        fbc = request.args.get("fbclid")
+        if fbc:
+            user_data["fbc"] = fbc
+    except:
+        pass
+
+    # User agent (AN TOÀN – KHÔNG GÂY LỖI)
+    user_data["client_user_agent"] = request.headers.get("User-Agent", "")
 
     return user_data
+
 
 
 
