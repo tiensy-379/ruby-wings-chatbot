@@ -77,37 +77,27 @@ def _hash(value: str) -> str:
         return ""
 
 def _build_user_data(request, phone: str = None, fbp: str = None, fbc: str = None):
+    """
+    Build user_data for Meta CAPI
+    FIX TRIỆT ĐỂ lỗi 2804007: KHÔNG gửi client_ip_address
+    """
+
     user_data = {
         "client_user_agent": request.headers.get("User-Agent", "")
     }
 
-    # ---- FIX IP INVALID (META 2804007) ----
-    ip = request.headers.get("X-Forwarded-For", "")
-    if ip:
-        ip = ip.split(",")[0].strip()
-    else:
-        ip = request.remote_addr or ""
-
-    # Chỉ gửi IP PUBLIC
-    if ip and not (
-        ip.startswith("10.")
-        or ip.startswith("172.")
-        or ip.startswith("192.168.")
-        or ip.startswith("127.")
-        or ip == "::1"
-    ):
-        user_data["client_ip_address"] = ip
-    # --------------------------------------
-
+    # Phone (hashed) – đủ cho match
     if phone:
         user_data["ph"] = _hash(str(phone))
 
+    # Facebook cookies (nếu có)
     if fbp:
         user_data["fbp"] = fbp
     if fbc:
         user_data["fbc"] = fbc
 
     return user_data
+
 
 
 def _build_meta_url(config: Dict, pixel_id: str) -> str:
