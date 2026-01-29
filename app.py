@@ -31,6 +31,7 @@ import traceback
 import hashlib
 import time
 import random
+import uuid
 from functools import lru_cache, wraps
 from typing import List, Tuple, Dict, Optional, Any, Set, Union, Callable
 from datetime import datetime, timedelta
@@ -4594,6 +4595,50 @@ def track_call():
 
 
 
+# ===============================
+# API: CONTACT (Meta CAPI - Unified)
+# ===============================
+@app.route('/api/track-contact', methods=['POST', 'OPTIONS'])
+def track_contact():
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
+
+    try:
+        data = request.get_json() or {}
+
+        event_id = data.get('event_id')
+        phone = data.get('phone')
+        source = data.get('source', 'Website Contact')
+
+        if not event_id:
+            event_id = str(uuid.uuid4())
+
+        # ===== META PARAM BUILDER (SAFE) =====
+        meta = MetaParamService()
+        meta.process_request(request)
+        fbc = meta.get_fbc()
+        fbp = meta.get_fbp()
+
+        if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
+            send_meta_lead(
+                request=request,
+                event_name="Contact",
+                event_id=event_id,
+                phone=phone,
+                fbc=fbc,
+                fbp=fbp,
+                content_name=source
+            )
+
+            increment_stat('meta_capi_calls')
+            logger.info("📩 Contact Meta CAPI sent (unified)")
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        increment_stat('meta_capi_errors')
+        logger.error(f'❌ Track contact error: {e}')
+        return jsonify({'error': str(e)}), 500
 
 
 
