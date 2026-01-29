@@ -76,36 +76,32 @@ def _hash(value: str) -> str:
     except Exception:
         return ""
 
-def _build_user_data(request, phone: str = None, fbp: str = None, fbc: str = None) -> Dict[str, Any]:
-    """Build user data for Meta CAPI (FIX IP – chuẩn Meta, không lỗi 2804007)"""
-
-    def _get_valid_client_ip(req):
-        ip = req.headers.get("X-Forwarded-For", "")
-        if ip:
-            ip = ip.split(",")[0].strip()
-        else:
-            ip = req.remote_addr or ""
-
-        # Loại bỏ IP private / loopback (Meta reject)
-        if not ip or ip.startswith((
-            "10.", "172.", "192.168.", "127.", "::1"
-        )):
-            return None
-        return ip
-
+def _build_user_data(request, phone: str = None, fbp: str = None, fbc: str = None):
     user_data = {
-        "client_user_agent": request.headers.get("User-Agent", "") if hasattr(request, 'headers') else "",
+        "client_user_agent": request.headers.get("User-Agent", "")
     }
 
-    client_ip = _get_valid_client_ip(request)
-    if client_ip:
-        user_data["client_ip_address"] = client_ip
+    # ---- FIX IP INVALID (META 2804007) ----
+    ip = request.headers.get("X-Forwarded-For", "")
+    if ip:
+        ip = ip.split(",")[0].strip()
+    else:
+        ip = request.remote_addr or ""
 
-    # Phone (hashed)
+    # Chỉ gửi IP PUBLIC
+    if ip and not (
+        ip.startswith("10.")
+        or ip.startswith("172.")
+        or ip.startswith("192.168.")
+        or ip.startswith("127.")
+        or ip == "::1"
+    ):
+        user_data["client_ip_address"] = ip
+    # --------------------------------------
+
     if phone:
         user_data["ph"] = _hash(str(phone))
 
-    # Facebook cookies
     if fbp:
         user_data["fbp"] = fbp
     if fbc:
