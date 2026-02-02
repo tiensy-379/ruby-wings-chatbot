@@ -77,64 +77,72 @@ def _hash(value: str) -> str:
         return ""
 
 def _build_user_data(request, phone: str = None, fbp: str = None, fbc: str = None) -> Dict[str, Any]:
-    """Build user data for Meta CAPI"""
     user_data = {
-        "client_ip_address": request.remote_addr if hasattr(request, 'remote_addr') else "",
-        "client_user_agent": request.headers.get("User-Agent", "") if hasattr(request, 'headers') else "",
+        "client_ip_address": (
+            request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+            or request.remote_addr
+            or ""
+        ),
+        "client_user_agent": request.headers.get("User-Agent", "") or "",
     }
-    
-    # Add phone if provided
+
     if phone:
         user_data["ph"] = _hash(str(phone))
-    
-    # Add Facebook cookies if provided
+
     if fbp:
         user_data["fbp"] = fbp
     if fbc:
         user_data["fbc"] = fbc
-    
+
     return user_data
 
+
 def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Dict]:
-    """Send event to Meta CAPI"""
+    """Send event to Meta CAPI (Safe for Production)"""
     try:
         config = get_config()
-        # ===== TEST EVENT CODE (CHỈ DÙNG KHI TEST) =====
-        payload["test_event_code"] = "TEST70229"
-        
+
+        # ===== TEST EVENT CODE (CHỈ KHI TEST) =====
+        test_code = os.environ.get("META_TEST_EVENT_CODE", "").strip()
+        if test_code and config.get("debug"):
+            payload["test_event_code"] = test_code
+
         # Build URL
         url = _build_meta_url(config, pixel_id)
-        
-        # Add access token based on endpoint type
+
+        # Add access token for standard Meta endpoint
         if not config['is_custom_gateway']:
             url = f"{url}?access_token={config['token']}"
-        
+
         headers = {
             "Content-Type": "application/json",
             "User-Agent": "RubyWings-Chatbot/4.0"
         }
-        
-        # Add Authorization header for custom gateways
+
+        # Authorization header for custom gateways
         if config['is_custom_gateway'] and config['token']:
             headers["Authorization"] = f"Bearer {config['token']}"
-        
-        # Send request
+
         response = requests.post(
             url,
             json=payload,
             timeout=timeout,
             headers=headers
         )
-        
+
         if response.status_code == 200:
             result = response.json()
-            if config['debug']:
-                logger.info(f"Meta CAPI Success: {result.get('events_received', 0)} events received")
+            if config.get('debug'):
+                logger.info(
+                    f"Meta CAPI Success: {result.get('events_received', 0)} events received"
+                )
             return result
         else:
-            logger.error(f"Meta CAPI Error {response.status_code}: {response.text}")
+            logger.error(
+                f"Meta CAPI Error {response.status_code}: {response.text}"
+            )
             return None
-            
+
     except requests.exceptions.Timeout:
         logger.warning("Meta CAPI Timeout")
         return None
@@ -144,14 +152,17 @@ def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Di
     except Exception as e:
         logger.error(f"Meta CAPI Unexpected Error: {str(e)}")
         return None
+
+
 def _build_meta_url(config: Dict, pixel_id: str) -> str:
     """Build Meta CAPI URL based on configuration"""
     if config['is_custom_gateway']:
-        # Custom CAPI gateway (e.g., capig.datah04.com)
+        # Custom CAPI gateway (ví dụ: capig.xxx.com)
         return config['endpoint']
     else:
         # Standard Meta Graph API
         return f"{config['endpoint'].rstrip('/')}/{pixel_id}/events"
+
 # =========================
 
 
@@ -176,11 +187,7 @@ def send_meta_lead(
         if not config['enable_lead']:
             logger.debug("Meta CAPI Lead: Feature disabled")
             return None
-        # 🚫 CHỐT: KHÔNG gửi Lead CAPI nếu event_name là "Lead"
-        # (Lead đang được track bằng Pixel để tránh duplicate)
-        if event_name == "Lead":
-            logger.info("Meta CAPI Lead skipped (Pixel-only Lead policy)")
-            return None
+        
 
 
         if not config['pixel_id'] or not config['token']:

@@ -4541,6 +4541,49 @@ def save_lead():
 # ===============================
 # API: CALL / ZALO CLICK (Meta CAPI - CallButtonClick)
 # ===============================
+# =========================================================
+# API: CONTACT CLICK (ALIAS – FIX 404, SAFE)
+# =========================================================
+@app.route('/api/track-contact', methods=['POST', 'OPTIONS'])
+def track_contact():
+    if request.method == 'OPTIONS':
+        return jsonify({'status': 'ok'}), 200
+
+    try:
+        data = request.get_json() or {}
+
+        event_id = data.get('event_id')
+        phone = data.get('phone')
+        source = data.get('source', 'Contact')
+
+        # ===== META PARAM BUILDER =====
+        meta = MetaParamService()
+        meta.process_request(request)
+
+        fbp = meta.get_fbp()
+        fbc = meta.get_fbc()
+
+        if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
+            send_meta_lead(
+                request=request,
+                event_name="Contact",      # KHÔNG đổi
+                event_id=event_id,         # từ FE
+                phone=phone,
+                fbp=fbp,                   # fallback dedup
+                fbc=fbc,                   # fallback dedup
+                content_name=source
+            )
+            increment_stat('meta_capi_calls')
+            logger.info("📩 Contact Meta CAPI sent")
+
+        return jsonify({'success': True})
+
+    except Exception as e:
+        increment_stat('meta_capi_errors')
+        logger.error(f'❌ Track contact error: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
 @app.route('/api/track-call', methods=['POST', 'OPTIONS'])
 def track_call():
     if request.method == 'OPTIONS':
@@ -4553,37 +4596,25 @@ def track_call():
         phone = data.get('phone')
         action = data.get('action', 'Call/Zalo Click')
 
-        # ===== META PARAM BUILDER (SAFE) =====
+        # ===== META PARAM BUILDER =====
         meta = MetaParamService()
         meta.process_request(request)
 
-        fbc = meta.get_fbc()
         fbp = meta.get_fbp()
-
-        # ⚠️ KHÔNG dùng hàm không tồn tại
-        client_ip = request.headers.get(
-            "X-Forwarded-For",
-            request.remote_addr
-        )
-
-        # Hash phone bằng hàm của bạn (đã chạy OK)
-      
-        # ====================================
+        fbc = meta.get_fbc()
 
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             send_meta_lead(
                 request=request,
-                event_name="CallButtonClick",
-                event_id=event_id,
-                phone=phone,          # ✅ hashed
-                fbc=fbc,                     # ✅
-                fbp=fbp,                     # ✅
-                client_ip_address=client_ip, # ✅
+                event_name="CallButtonClick",  # KHÔNG đổi
+                event_id=event_id,             # từ FE
+                phone=phone,
+                fbp=fbp,                       # fallback dedup
+                fbc=fbc,                       # fallback dedup
                 content_name=action
             )
-
             increment_stat('meta_capi_calls')
-            logger.info("📞 CallButtonClick Meta CAPI sent (stable)")
+            logger.info("📞 CallButtonClick Meta CAPI sent")
 
         return jsonify({'success': True})
 
@@ -4591,6 +4622,7 @@ def track_call():
         increment_stat('meta_capi_errors')
         logger.error(f'❌ Track call error: {e}')
         return jsonify({'error': str(e)}), 500
+
 
 
 
