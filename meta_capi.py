@@ -101,17 +101,19 @@ def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Di
     """Send event to Meta CAPI (Production-safe, Test Events via ENV)"""
     try:
         config = get_config()
-        logger.warning(f"[META DEBUG] Sending CAPI to pixel_id = {pixel_id}")
 
-        # ===== TEST EVENT CODE (CHỈ DÙNG KHI TEST) =====
-        payload["test_event_code"] = "TEST8605"
+        # Log đúng pixel đang gửi (để đối chiếu Test Events)
+        logger.info(f"[META CAPI] Sending to pixel_id={pixel_id}")
 
-        
+        # ===== TEST EVENT CODE (CHỈ KHI TEST, QUA ENV) =====
+        test_code = os.environ.get("META_TEST_EVENT_CODE", "").strip()
+        if test_code:
+            payload["test_event_code"] = test_code
 
         # ===== BUILD META ENDPOINT =====
         url = _build_meta_url(config, pixel_id)
 
-        # Access token for standard Meta Graph API
+        # Access token cho Graph API chuẩn
         if not config.get("is_custom_gateway"):
             url = f"{url}?access_token={config['token']}"
 
@@ -120,7 +122,7 @@ def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Di
             "User-Agent": "RubyWings-Chatbot/4.0"
         }
 
-        # Authorization for custom gateway
+        # Authorization cho custom gateway (nếu có)
         if config.get("is_custom_gateway") and config.get("token"):
             headers["Authorization"] = f"Bearer {config['token']}"
 
@@ -133,26 +135,26 @@ def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Di
 
         if response.status_code == 200:
             result = response.json()
-            if config.get("debug"):
-                logger.info(
-                    f"Meta CAPI Success: {result.get('events_received', 0)} events received"
-                )
+            logger.info(
+                f"[META CAPI] OK | events_received={result.get('events_received', 0)}"
+            )
             return result
         else:
             logger.error(
-                f"Meta CAPI Error {response.status_code}: {response.text}"
+                f"[META CAPI] ERROR {response.status_code}: {response.text}"
             )
             return None
 
     except requests.exceptions.Timeout:
-        logger.warning("Meta CAPI Timeout")
+        logger.warning("[META CAPI] Timeout")
         return None
     except requests.exceptions.RequestException as e:
-        logger.error(f"Meta CAPI Request Exception: {str(e)}")
+        logger.error(f"[META CAPI] Request Exception: {str(e)}")
         return None
     except Exception as e:
-        logger.error(f"Meta CAPI Unexpected Error: {str(e)}")
+        logger.error(f"[META CAPI] Unexpected Error: {str(e)}")
         return None
+
 
 
 
