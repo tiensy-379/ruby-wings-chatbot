@@ -123,7 +123,7 @@ def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Di
         config = get_config()
 
         # ===== TEST EVENT CODE (CHỈ DÙNG KHI TEST) =====
-        payload["test_event_code"] = "TEST8605"
+        payload["test_event_code"] = "TEST70229"
 
         # Build URL
         url = _build_meta_url(config, pixel_id)

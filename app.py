@@ -4517,13 +4517,10 @@ def track_call():
 
         event_id = data.get('event_id')
         phone = data.get('phone')
-        action = data.get('action', 'Call/Zalo Click')
+        action = data.get('action', 'Phone Call')
 
-        meta = MetaParamService()
-        meta.process_request(request)
-
-        fbc = meta.get_fbc()
-        fbp = meta.get_fbp()
+        if not event_id:
+            return jsonify({'error': 'event_id required'}), 400
 
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             send_meta_event(
@@ -4531,11 +4528,8 @@ def track_call():
                 event_name="CallButtonClick",
                 event_id=event_id,
                 phone=phone,
-                fbc=fbc,
-                fbp=fbp,
                 content_name=action
             )
-
             increment_stat('meta_capi_calls')
             logger.info("📞 CallButtonClick Meta CAPI sent (clean)")
 
@@ -4545,6 +4539,7 @@ def track_call():
         increment_stat('meta_capi_errors')
         logger.error(f'❌ Track call error: {e}')
         return jsonify({'error': str(e)}), 500
+
 
 
 
