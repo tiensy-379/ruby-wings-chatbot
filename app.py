@@ -293,41 +293,6 @@ app.json_encoder = EnhancedJSONEncoder  # Use custom JSON encoder
 CORS(app, origins=CORS_ORIGINS, supports_credentials=True)
 from meta_capi import send_meta_pageview
 
-def track_pageview_capi_dedup():
-    try:
-        if request.method != "GET":
-            return
-
-        if not request.accept_mimetypes.accept_html:
-            return
-
-        path = request.path.lower()
-        if (
-            path.startswith("/api/")
-            or path.startswith("/static/")
-            or path.endswith(".js")
-            or path.endswith(".css")
-            or path.endswith(".png")
-            or path.endswith(".jpg")
-            or path.endswith(".jpeg")
-            or path.endswith(".svg")
-            or path.endswith(".ico")
-            or path.endswith(".json")
-        ):
-            return
-
-        if not request.headers.get("X-RW-EVENT-ID"):
-            return
-
-        send_meta_pageview(request)
-
-    except Exception:
-        pass
-
-app.before_request(track_pageview_capi_dedup)
-
-from meta_capi import send_meta_pageview
-
 @app.before_request
 def track_pageview_once():
     try:
@@ -4475,25 +4440,21 @@ def save_lead():
 
         timestamp = datetime.now().isoformat()
 
-        # -------- Save Google Sheet / Fallback (GIỮ NGUYÊN PHẦN NÀY) --------
-        # (phần lưu Google Sheet / fallback của bạn để nguyên, không dán lại ở đây)
+        # -------- Save Google Sheet / Fallback (GIỮ NGUYÊN) --------
+        # ... (không thay đổi phần này)
 
         # -------- Meta CAPI: LEAD (FORM) --------
-        event_id = data.get("event_id")  # chỉ có với website (JS)
-
-        if ENABLE_META_CAPI_CALL and HAS_META_CAPI and event_id:
+        if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             send_meta_lead(
                 request=request,
                 event_name="Lead",
-                event_id=event_id,        # ✅ dedup-safe
+                event_id=data.get('event_id'),   # ⚠️ lấy từ client nếu có
                 phone=phone_clean,
                 contact_name=name,
                 email=email,
                 content_name=f"Tour: {tour_interest}" if tour_interest else "Website Lead"
             )
             increment_stat('meta_capi_calls')
-        else:
-            logger.info("ℹ️ Lead không có event_id – bỏ qua Meta CAPI (nguồn không JS)")
 
         increment_stat('leads')
 
@@ -4502,8 +4463,6 @@ def save_lead():
     except Exception as e:
         logger.error(f'Save lead error: {e}')
         return jsonify({'error': str(e)}), 500
-
-
 
 
 # ===============================
@@ -4527,19 +4486,21 @@ def track_contact():
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             send_meta_event(
                 request=request,
-                event_name="Contact",   # ⚠️ TRÙNG PIXEL
+                event_name="Contact",
                 event_id=event_id,
                 phone=phone,
                 content_name=source
             )
+
             increment_stat('meta_capi_calls')
+            logger.info("💬 Contact Meta CAPI sent (clean & dedup-safe)")
 
         return jsonify({'success': True})
 
     except Exception as e:
         increment_stat('meta_capi_errors')
+        logger.error(f'❌ Track contact error: {e}')
         return jsonify({'error': str(e)}), 500
-
 
 
 
@@ -4556,28 +4517,34 @@ def track_call():
 
         event_id = data.get('event_id')
         phone = data.get('phone')
-        action = data.get('action', 'Phone Call')
+        action = data.get('action', 'Call/Zalo Click')
 
-        if not event_id:
-            return jsonify({'error': 'event_id required'}), 400
+        meta = MetaParamService()
+        meta.process_request(request)
+
+        fbc = meta.get_fbc()
+        fbp = meta.get_fbp()
 
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             send_meta_event(
                 request=request,
-                event_name="CallButtonClick",  # ⚠️ TRÙNG PIXEL
+                event_name="CallButtonClick",
                 event_id=event_id,
                 phone=phone,
+                fbc=fbc,
+                fbp=fbp,
                 content_name=action
             )
+
             increment_stat('meta_capi_calls')
+            logger.info("📞 CallButtonClick Meta CAPI sent (clean)")
 
         return jsonify({'success': True})
 
     except Exception as e:
         increment_stat('meta_capi_errors')
+        logger.error(f'❌ Track call error: {e}')
         return jsonify({'error': str(e)}), 500
-
-
 
 
 

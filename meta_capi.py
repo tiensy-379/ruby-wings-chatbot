@@ -181,26 +181,14 @@ def send_meta_event(
     action_source: str = "website",
     **kwargs
 ):
-    # 🚫 Chỉ cho phép event chuẩn
-    if event_name not in ("Contact", "CallButtonClick"):
+    if not event_id:
+    # Không gửi event thiếu event_id để tránh duplicate
         return None
+
 
     config = get_config()
-    if not config.get("pixel_id") or not config.get("token"):
+    if not config['pixel_id'] or not config['token']:
         return None
-
-    # 🚫 BẮT BUỘC phải có dữ liệu match
-    if not phone:
-        return None
-
-    user_data = _build_user_data(request=request, phone=phone)
-
-    # 🚫 Meta yêu cầu thêm IP + UA
-    user_data["client_ip_address"] = (
-        request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
-        or request.remote_addr
-    )
-    user_data["client_user_agent"] = request.headers.get("User-Agent", "")
 
     payload = {
         "data": [
@@ -210,7 +198,10 @@ def send_meta_event(
                 "event_id": event_id,
                 "event_source_url": request.url if hasattr(request, "url") else "",
                 "action_source": action_source,
-                "user_data": user_data,
+                "user_data": _build_user_data(
+                    request=request,
+                    phone=phone
+                ),
                 "custom_data": {
                     "content_name": content_name
                 } if content_name else {}
@@ -218,9 +209,7 @@ def send_meta_event(
         ]
     }
 
-    return _send_to_meta(config["pixel_id"], payload)
-
-
+    return _send_to_meta(config['pixel_id'], payload)
 
 
 
@@ -260,8 +249,7 @@ def send_meta_lead(
 
         # Generate event ID if not provided
         if not event_id:
-            logger.warning("Meta CAPI skipped: missing event_id from client")
-            return None
+            event_id = str(uuid.uuid4())
 
         # Build user data
         user_data = _build_user_data(request, phone=phone)
