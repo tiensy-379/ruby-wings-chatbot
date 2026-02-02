@@ -98,22 +98,21 @@ def _build_user_data(request, phone: str = None, fbp: str = None, fbc: str = Non
 
 
 def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Dict]:
-    """Send event to Meta CAPI (Production-safe, Test Events via ENV)"""
     try:
         config = get_config()
 
-        # Log đúng pixel đang gửi (để đối chiếu Test Events)
-        logger.info(f"[META CAPI] Sending to pixel_id={pixel_id}")
+        # 🔒 HARD LOCK PIXEL ID = DATASET ĐANG TEST
+        pixel_id = "862531473384426"
 
-        # ===== TEST EVENT CODE (CHỈ KHI TEST, QUA ENV) =====
+        logger.warning(f"[META CAPI] LOCKED pixel_id = {pixel_id}")
+
+        # ===== TEST EVENT CODE (THEO ENV) =====
         test_code = os.environ.get("META_TEST_EVENT_CODE", "").strip()
         if test_code:
             payload["test_event_code"] = test_code
 
-        # ===== BUILD META ENDPOINT =====
         url = _build_meta_url(config, pixel_id)
 
-        # Access token cho Graph API chuẩn
         if not config.get("is_custom_gateway"):
             url = f"{url}?access_token={config['token']}"
 
@@ -122,38 +121,14 @@ def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Di
             "User-Agent": "RubyWings-Chatbot/4.0"
         }
 
-        # Authorization cho custom gateway (nếu có)
-        if config.get("is_custom_gateway") and config.get("token"):
-            headers["Authorization"] = f"Bearer {config['token']}"
+        response = requests.post(url, json=payload, timeout=timeout, headers=headers)
 
-        response = requests.post(
-            url,
-            json=payload,
-            timeout=timeout,
-            headers=headers
-        )
+        return response.json() if response.status_code == 200 else None
 
-        if response.status_code == 200:
-            result = response.json()
-            logger.info(
-                f"[META CAPI] OK | events_received={result.get('events_received', 0)}"
-            )
-            return result
-        else:
-            logger.error(
-                f"[META CAPI] ERROR {response.status_code}: {response.text}"
-            )
-            return None
-
-    except requests.exceptions.Timeout:
-        logger.warning("[META CAPI] Timeout")
-        return None
-    except requests.exceptions.RequestException as e:
-        logger.error(f"[META CAPI] Request Exception: {str(e)}")
-        return None
     except Exception as e:
-        logger.error(f"[META CAPI] Unexpected Error: {str(e)}")
+        logger.error(f"Meta CAPI error: {e}")
         return None
+
 
 
 
