@@ -179,29 +179,42 @@ def send_meta_lead(
     """
     Server-side Meta CAPI Lead Event
     Called on form submit, lead generation
+    SAFE: dedup-first, no side effects
     """
     try:
         config = get_config()
 
-        # Check if lead tracking is enabled
-        if not config['enable_lead']:
+        # Feature gate
+        if not config.get('enable_lead'):
             logger.debug("Meta CAPI Lead: Feature disabled")
             return None
-        
 
-
-        if not config['pixel_id'] or not config['token']:
+        # Hard requirement
+        if not config.get('pixel_id') or not config.get('token'):
             logger.warning("Meta CAPI Lead: Missing PIXEL_ID or TOKEN")
             return None
 
-        # Generate event ID if not provided
+        # 🔒 DEDUP SAFETY: không tự sinh event_id
         if not event_id:
-            event_id = str(uuid.uuid4())
+            logger.warning(
+                "Meta CAPI Lead skipped: missing event_id "
+                "(Pixel-only Lead, no server dedup)"
+            )
+            return None
 
-        # Build user data
-        user_data = _build_user_data(request, phone=phone)
+        # Optional fallback identifiers
+        fbp = kwargs.get("fbp")
+        fbc = kwargs.get("fbc")
 
-        # Build event payload
+        # Build user data (Meta-compliant)
+        user_data = _build_user_data(
+            request,
+            phone=phone,
+            fbp=fbp,
+            fbc=fbc
+        )
+
+        # Build event payload (Web CAPI standard)
         payload_event = {
             "event_name": event_name,
             "event_time": int(time.time()),
@@ -211,7 +224,7 @@ def send_meta_lead(
             "user_data": user_data
         }
 
-        # Build custom data
+        # Custom data
         custom_data = {}
         if value is not None:
             custom_data["value"] = value
@@ -219,37 +232,29 @@ def send_meta_lead(
         if content_name:
             custom_data["content_name"] = content_name
 
-        # Merge extra kwargs into custom_data
-        if kwargs:
-            custom_data.update(kwargs)
-
         if custom_data:
             payload_event["custom_data"] = custom_data
 
-        # Final payload
-        payload = {
-            "data": [payload_event]
-        }
-
-        # 👉 GẮN TEST EVENT CODE (KHÔNG CẦN DEBUG MODE)
-        if config.get("test_code"):
-         #   payload["test_event_code"] = config["test_code"]
-            logger.info(f"Meta CAPI Lead (TEST EVENT): {event_id}")
+        payload = {"data": [payload_event]}
 
         # Send to Meta
         result = _send_to_meta(config['pixel_id'], payload)
 
         masked_phone = f"{phone[:4]}..." if phone else "None"
         if result:
-            logger.info(f"Meta CAPI Lead sent successfully: {event_id} - Phone: {masked_phone}")
+            logger.info(
+                f"Meta CAPI Lead sent: {event_name} | "
+                f"event_id={event_id} | phone={masked_phone}"
+            )
         else:
-            logger.warning(f"Meta CAPI Lead failed: {event_id}")
+            logger.warning(f"Meta CAPI Lead failed: event_id={event_id}")
 
         return result
 
     except Exception as e:
         logger.error(f"Meta CAPI Lead Exception: {str(e)}")
         return None
+
 
 def send_meta_offline_purchase(
     request,

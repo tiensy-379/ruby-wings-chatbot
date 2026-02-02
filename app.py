@@ -168,7 +168,10 @@ except ImportError:
     HAS_GOOGLE_SHEETS = False
     logger.warning("⚠️ Google Sheets not available")
 
-# Meta CAPI
+# ===== META CAPI FLAGS =====
+ENABLE_META_CAPI_LEAD = os.getenv("ENABLE_META_CAPI_LEAD", "false").lower() == "true"
+
+# ===== META CAPI IMPORT =====
 try:
     from meta_capi import send_meta_pageview, send_meta_lead, send_meta_call_button
     HAS_META_CAPI = True
@@ -176,6 +179,9 @@ try:
 except ImportError:
     HAS_META_CAPI = False
     logger.warning("⚠️ Meta CAPI not available")
+
+
+
 
 # =========== ENVIRONMENT VARIABLES ===========
 # Memory Profile
@@ -4423,13 +4429,18 @@ def save_lead():
     try:
         data = request.get_json() or {}
 
-        # -------- 1. Extract & validate --------
+        # =====================================================
+        # 1. EXTRACT & VALIDATE (GIỮ NGUYÊN LOGIC CŨ)
+        # =====================================================
         phone = (data.get('phone') or '').strip()
         name = (data.get('name') or '').strip()
         email = (data.get('email') or '').strip()
         tour_interest = (data.get('tour_interest') or '').strip()
         page_url = (data.get('page_url') or '').strip()
         note = (data.get('note') or '').strip()
+
+        # 🔑 FE → BE event_id (KHÔNG tự sinh)
+        event_id = data.get('event_id')
 
         if not phone:
             return jsonify({'error': 'Phone number is required'}), 400
@@ -4438,7 +4449,7 @@ def save_lead():
         if not re.match(r'^(0|\+?84)\d{9,10}$', phone_clean):
             return jsonify({'error': 'Invalid phone number format'}), 400
 
-        timestamp = datetime.now().isoformat()
+        timestamp = datetime.utcnow().isoformat()
 
         lead_data = {
             'timestamp': timestamp,
@@ -4448,10 +4459,12 @@ def save_lead():
             'tour_interest': tour_interest,
             'page_url': page_url,
             'note': note,
-            'source': 'Website Lead'
+            'source': 'Website Lead Form'
         }
 
-        # -------- 2. Save to Google Sheets --------
+        # =====================================================
+        # 2. SAVE GOOGLE SHEETS (KHÔNG ĐỤNG LOGIC CŨ)
+        # =====================================================
         if ENABLE_GOOGLE_SHEETS:
             try:
                 import gspread
@@ -4467,25 +4480,26 @@ def save_lead():
                 sh = gc.open_by_key(GOOGLE_SHEET_ID)
                 ws = sh.worksheet(GOOGLE_SHEET_NAME)
 
-                row = [
-                    timestamp,                          # A created_at
-                    'Website - Lead Form',              # B source_channel
-                    'Form Submission',                  # C action_type
-                    page_url or '',                     # D page_url
-                    name or '',                         # E contact_name
-                    phone_clean,                        # F phone
-                    tour_interest or '',                # G service_interest
-                    note or email or '',                # H note
-                    'New'                               # I raw_status
-                ]
+                ws.append_row([
+                    timestamp,
+                    'Website - Lead Form',
+                    'Form Submission',
+                    page_url or '',
+                    name or '',
+                    phone_clean,
+                    tour_interest or '',
+                    note or email or '',
+                    'New'
+                ])
 
-                ws.append_row(row)
                 logger.info('✅ Lead saved to Google Sheets')
 
             except Exception as e:
-                logger.error(f'Google Sheets error: {e}')
+                logger.error(f'❌ Google Sheets error: {e}')
 
-        # -------- 3. Fallback storage --------
+        # =====================================================
+        # 3. FALLBACK STORAGE (KHÔNG ĐỤNG)
+        # =====================================================
         if ENABLE_FALLBACK_STORAGE:
             try:
                 if os.path.exists(FALLBACK_STORAGE_PATH):
@@ -4501,28 +4515,65 @@ def save_lead():
                     json.dump(leads, f, ensure_ascii=False, indent=2)
 
             except Exception as e:
-                logger.error(f'Fallback storage error: {e}')
+                logger.error(f'❌ Fallback storage error: {e}')
 
-        # -------- 4. Send Meta CAPI (LEAD) --------
-        if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
-            try:
-                send_meta_lead(
-                    request=request,
-                    event_id=data.get('event_id'),
-                    phone=phone_clean,
-                    contact_name=name,
-                    email=email,
-                    content_name=f"Tour: {tour_interest}" if tour_interest else "Website Lead"
+        # =====================================================
+        # 4. META PARAM BUILDER (FBP / FBC – FALLBACK DEDUP)
+        # =====================================================
+        meta = MetaParamService()
+        meta.process_request(request)
+
+        fbp = meta.get_fbp()
+        fbc = meta.get_fbc()
+
+        # Chuẩn Meta: event_source_url
+        event_source_url = (
+            page_url
+            or request.headers.get("Referer")
+            or request.url
+        )
+
+        # =====================================================
+        # 5. META CAPI – LEAD (CHUẨN META, DEDUP 100%)
+        # =====================================================
+        if ENABLE_META_CAPI_LEAD and HAS_META_CAPI:
+
+            if not event_id:
+                # Fail-safe: KHÔNG sinh event_id mới
+                logger.warning(
+                    "⚠️ Lead submitted without event_id "
+                    "(Pixel-only Lead, CAPI skipped)"
                 )
-                increment_stat('meta_capi_calls')
-                logger.info('✅ Meta CAPI Lead sent')
+            else:
+                try:
+                    send_meta_lead(
+                        request=request,
+                        event_name="Lead",
+                        event_id=event_id,                 # 🔑 FE ↔ BE
+                        phone=phone_clean,
+                        fbp=fbp,                           # fallback dedup
+                        fbc=fbc,                           # fallback dedup
+                        event_source_url=event_source_url, # ✅ Meta chuẩn
+                        content_name=(
+                            f"Tour: {tour_interest}"
+                            if tour_interest else "Website Lead Form"
+                        )
+                    )
 
-            except Exception as e:
-                increment_stat('meta_capi_errors')
-                logger.error(f'Meta CAPI error: {e}')
+                    increment_stat('meta_capi_leads')
+                    logger.info(
+                        f'📩 Meta CAPI Lead sent | event_id={event_id}'
+                    )
+
+                except Exception as e:
+                    increment_stat('meta_capi_errors')
+                    logger.error(f'❌ Meta CAPI Lead error: {e}')
 
         increment_stat('leads')
 
+        # =====================================================
+        # 6. RESPONSE
+        # =====================================================
         return jsonify({
             'success': True,
             'message': 'Lead đã được lưu',
@@ -4533,9 +4584,10 @@ def save_lead():
         })
 
     except Exception as e:
-        logger.error(f'Save lead error: {e}')
+        logger.error(f'❌ Save lead fatal error: {e}')
         traceback.print_exc()
         return jsonify({'error': str(e)}), 500
+
 
 
 # ===============================
