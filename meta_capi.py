@@ -101,6 +101,8 @@ def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Di
     """Send event to Meta CAPI (Production-safe, Test Events via ENV)"""
     try:
         config = get_config()
+        logger.warning(f"[META DEBUG] Sending CAPI to pixel_id = {pixel_id}")
+
 
         # ===== TEST EVENT CODE (CHỈ KHI TEST, KHÔNG PHỤ THUỘC DEBUG) =====
         test_code = os.environ.get("META_TEST_EVENT_CODE", "").strip()

@@ -4442,7 +4442,9 @@ def save_lead():
 
         # 🔑 FE → BE event_id (KHÔNG tự sinh)
         event_id = data.get('event_id')
-
+        # 🔒 HARD DEDUP: CAPI chỉ chạy khi có event_id từ FE
+        if not event_id:
+            logger.info("ℹ️ Lead without event_id → Pixel only, skip CAPI")
         if not phone and not data.get('event_id'):
             return jsonify({'error': 'Phone number is required'}), 400
 
@@ -4464,7 +4466,7 @@ def save_lead():
         }
 
         # =====================================================
-        # 2. SAVE GOOGLE SHEETS (KHÔNG ĐỤNG LOGIC CŨ)
+        # 2. SAVE GOOGLE SHEETS (CHỈ GHI KHI CÓ LEAD THẬT)
         # =====================================================
         if ENABLE_GOOGLE_SHEETS and phone_clean:
             try:
