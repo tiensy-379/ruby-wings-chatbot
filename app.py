@@ -173,7 +173,7 @@ ENABLE_META_CAPI_LEAD = os.getenv("ENABLE_META_CAPI_LEAD", "false").lower() == "
 
 # ===== META CAPI IMPORT =====
 try:
-    from meta_capi import send_meta_pageview, send_meta_lead, send_meta_call_button
+    from meta_capi import send_meta_pageview, send_meta_lead
     HAS_META_CAPI = True
     logger.info("✅ Meta CAPI available")
 except Exception as e:
