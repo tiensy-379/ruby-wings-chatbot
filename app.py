@@ -4447,7 +4447,7 @@ def save_lead():
             return jsonify({'error': 'Phone number is required'}), 400
 
         phone_clean = re.sub(r'[^\d+]', '', phone)
-        if not re.match(r'^(0|\+?84)\d{9,10}$', phone_clean):
+        if phone_clean and not re.match(r'^(0|\+?84)\d{9,10}$', phone_clean):
             return jsonify({'error': 'Invalid phone number format'}), 400
 
         timestamp = datetime.utcnow().isoformat()
