@@ -4541,8 +4541,11 @@ def save_lead():
         # =====================================================
         if ENABLE_META_CAPI_LEAD and HAS_META_CAPI:
 
-            if not event_id:
-                # Fail-safe: KHÔNG sinh event_id mới
+            # ===== TEST EVENT CODE (CHO PHÉP CAPI CHẠY KHI TEST) =====
+            test_code = os.environ.get("META_TEST_EVENT_CODE", "").strip()
+
+            # Chỉ skip CAPI khi: KHÔNG event_id VÀ KHÔNG test_code
+            if not event_id and not test_code:
                 logger.warning(
                     "⚠️ Lead submitted without event_id "
                     "(Pixel-only Lead, CAPI skipped)"
@@ -4552,11 +4555,12 @@ def save_lead():
                     send_meta_lead(
                         request=request,
                         event_name="Lead",
-                        event_id=event_id,                 # 🔑 FE ↔ BE
+                        # TEST: cho phép fake event_id, PROD: dùng event_id FE
+                        event_id=event_id or f"test_{int(time.time())}",
                         phone=phone_clean,
-                        fbp=fbp,                           # fallback dedup
-                        fbc=fbc,                           # fallback dedup
-                        event_source_url=event_source_url, # ✅ Meta chuẩn
+                        fbp=fbp,
+                        fbc=fbc,
+                        event_source_url=event_source_url,
                         content_name=(
                             f"Tour: {tour_interest}"
                             if tour_interest else "Website Lead Form"
@@ -4565,7 +4569,7 @@ def save_lead():
 
                     increment_stat('meta_capi_leads')
                     logger.info(
-                        f'📩 Meta CAPI Lead sent | event_id={event_id}'
+                        f'📩 Meta CAPI Lead sent | event_id={event_id or "TEST"}'
                     )
 
                 except Exception as e:
@@ -4573,6 +4577,7 @@ def save_lead():
                     logger.error(f'❌ Meta CAPI Lead error: {e}')
 
         increment_stat('leads')
+
 
         # =====================================================
         # 6. RESPONSE
