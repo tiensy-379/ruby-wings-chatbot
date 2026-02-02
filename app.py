@@ -4443,7 +4443,7 @@ def save_lead():
         # 🔑 FE → BE event_id (KHÔNG tự sinh)
         event_id = data.get('event_id')
 
-        if not phone:
+        if not phone and not data.get('event_id'):
             return jsonify({'error': 'Phone number is required'}), 400
 
         phone_clean = re.sub(r'[^\d+]', '', phone)
