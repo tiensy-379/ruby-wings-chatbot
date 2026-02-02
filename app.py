@@ -4541,22 +4541,22 @@ def save_lead():
         # =====================================================
         if ENABLE_META_CAPI_LEAD and HAS_META_CAPI:
 
-            # ===== TEST EVENT CODE (CHO PHÉP CAPI CHẠY KHI TEST) =====
             test_code = os.environ.get("META_TEST_EVENT_CODE", "").strip()
+            is_test_mode = bool(test_code)
 
-            # Chỉ skip CAPI khi: KHÔNG event_id VÀ KHÔNG test_code
-            if not event_id and not test_code:
+            # ===== PROD: bắt buộc có event_id để dedup =====
+            if not event_id and not is_test_mode:
                 logger.warning(
                     "⚠️ Lead submitted without event_id "
-                    "(Pixel-only Lead, CAPI skipped)"
+                    "(PROD mode → Pixel only, CAPI skipped)"
                 )
             else:
                 try:
                     send_meta_lead(
                         request=request,
                         event_name="Lead",
-                        # TEST: cho phép fake event_id, PROD: dùng event_id FE
-                        event_id=event_id or f"test_{int(time.time())}",
+                        # TEST cho phép fake event_id, PROD chỉ dùng event_id FE
+                        event_id=event_id if event_id else f"test_{int(time.time())}",
                         phone=phone_clean,
                         fbp=fbp,
                         fbc=fbc,
@@ -4567,16 +4567,18 @@ def save_lead():
                         )
                     )
 
-                    increment_stat('meta_capi_leads')
+                    increment_stat("meta_capi_leads")
                     logger.info(
-                        f'📩 Meta CAPI Lead sent | event_id={event_id or "TEST"}'
+                        f"📩 Meta CAPI Lead sent | "
+                        f"mode={'TEST' if is_test_mode else 'PROD'} | "
+                        f"event_id={event_id or 'TEST'}"
                     )
 
                 except Exception as e:
-                    increment_stat('meta_capi_errors')
-                    logger.error(f'❌ Meta CAPI Lead error: {e}')
+                    increment_stat("meta_capi_errors")
+                    logger.error(f"❌ Meta CAPI Lead error: {e}")
 
-        increment_stat('leads')
+        increment_stat("leads")
 
 
         # =====================================================
