@@ -4466,7 +4466,7 @@ def save_lead():
         # =====================================================
         # 2. SAVE GOOGLE SHEETS (KHÔNG ĐỤNG LOGIC CŨ)
         # =====================================================
-        if ENABLE_GOOGLE_SHEETS:
+        if ENABLE_GOOGLE_SHEETS and phone_clean:
             try:
                 import gspread
                 from google.oauth2.service_account import Credentials
