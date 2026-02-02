@@ -293,6 +293,41 @@ app.json_encoder = EnhancedJSONEncoder  # Use custom JSON encoder
 CORS(app, origins=CORS_ORIGINS, supports_credentials=True)
 from meta_capi import send_meta_pageview
 
+def track_pageview_capi_dedup():
+    try:
+        if request.method != "GET":
+            return
+
+        if not request.accept_mimetypes.accept_html:
+            return
+
+        path = request.path.lower()
+        if (
+            path.startswith("/api/")
+            or path.startswith("/static/")
+            or path.endswith(".js")
+            or path.endswith(".css")
+            or path.endswith(".png")
+            or path.endswith(".jpg")
+            or path.endswith(".jpeg")
+            or path.endswith(".svg")
+            or path.endswith(".ico")
+            or path.endswith(".json")
+        ):
+            return
+
+        if not request.headers.get("X-RW-EVENT-ID"):
+            return
+
+        send_meta_pageview(request)
+
+    except Exception:
+        pass
+
+app.before_request(track_pageview_capi_dedup)
+
+from meta_capi import send_meta_pageview
+
 @app.before_request
 def track_pageview_once():
     try:
@@ -4486,21 +4521,19 @@ def track_contact():
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             send_meta_event(
                 request=request,
-                event_name="Contact",
+                event_name="Contact",   # ⚠️ TRÙNG PIXEL
                 event_id=event_id,
                 phone=phone,
                 content_name=source
             )
-
             increment_stat('meta_capi_calls')
-            logger.info("💬 Contact Meta CAPI sent (clean & dedup-safe)")
 
         return jsonify({'success': True})
 
     except Exception as e:
         increment_stat('meta_capi_errors')
-        logger.error(f'❌ Track contact error: {e}')
         return jsonify({'error': str(e)}), 500
+
 
 
 
@@ -4525,20 +4558,19 @@ def track_call():
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             send_meta_event(
                 request=request,
-                event_name="CallButtonClick",
+                event_name="CallButtonClick",  # ⚠️ TRÙNG PIXEL
                 event_id=event_id,
                 phone=phone,
                 content_name=action
             )
             increment_stat('meta_capi_calls')
-            logger.info("📞 CallButtonClick Meta CAPI sent (clean)")
 
         return jsonify({'success': True})
 
     except Exception as e:
         increment_stat('meta_capi_errors')
-        logger.error(f'❌ Track call error: {e}')
         return jsonify({'error': str(e)}), 500
+
 
 
 

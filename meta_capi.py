@@ -181,13 +181,16 @@ def send_meta_event(
     action_source: str = "website",
     **kwargs
 ):
+    # 🚫 KHÔNG gửi event nếu thiếu event_id (dedup-safe)
     if not event_id:
-    # Không gửi event thiếu event_id để tránh duplicate
         return None
 
+    # 🚫 CHỈ CHO PHÉP CÁC EVENT CHUẨN
+    if event_name not in ("Contact", "CallButtonClick", "Lead"):
+        return None
 
     config = get_config()
-    if not config['pixel_id'] or not config['token']:
+    if not config.get("pixel_id") or not config.get("token"):
         return None
 
     payload = {
@@ -209,7 +212,8 @@ def send_meta_event(
         ]
     }
 
-    return _send_to_meta(config['pixel_id'], payload)
+    return _send_to_meta(config["pixel_id"], payload)
+
 
 
 
@@ -249,7 +253,8 @@ def send_meta_lead(
 
         # Generate event ID if not provided
         if not event_id:
-            event_id = str(uuid.uuid4())
+            logger.warning("Meta CAPI skipped: missing event_id from client")
+            return None
 
         # Build user data
         user_data = _build_user_data(request, phone=phone)
