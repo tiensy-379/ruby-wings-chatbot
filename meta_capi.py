@@ -98,20 +98,20 @@ def _build_user_data(request, phone: str = None, fbp: str = None, fbc: str = Non
 
 
 def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Dict]:
-    """Send event to Meta CAPI (Safe for Production)"""
+    """Send event to Meta CAPI (Production-safe, Test Events via ENV)"""
     try:
         config = get_config()
 
-        # ===== TEST EVENT CODE (CHỈ KHI TEST) =====
+        # ===== TEST EVENT CODE (CHỈ KHI TEST, KHÔNG PHỤ THUỘC DEBUG) =====
         test_code = os.environ.get("META_TEST_EVENT_CODE", "").strip()
-        if test_code and config.get("debug"):
+        if test_code:
             payload["test_event_code"] = test_code
 
-        # Build URL
+        # ===== BUILD META ENDPOINT =====
         url = _build_meta_url(config, pixel_id)
 
-        # Add access token for standard Meta endpoint
-        if not config['is_custom_gateway']:
+        # Access token for standard Meta Graph API
+        if not config.get("is_custom_gateway"):
             url = f"{url}?access_token={config['token']}"
 
         headers = {
@@ -119,8 +119,8 @@ def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Di
             "User-Agent": "RubyWings-Chatbot/4.0"
         }
 
-        # Authorization header for custom gateways
-        if config['is_custom_gateway'] and config['token']:
+        # Authorization for custom gateway
+        if config.get("is_custom_gateway") and config.get("token"):
             headers["Authorization"] = f"Bearer {config['token']}"
 
         response = requests.post(
@@ -132,7 +132,7 @@ def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Di
 
         if response.status_code == 200:
             result = response.json()
-            if config.get('debug'):
+            if config.get("debug"):
                 logger.info(
                     f"Meta CAPI Success: {result.get('events_received', 0)} events received"
                 )
@@ -152,6 +152,7 @@ def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Di
     except Exception as e:
         logger.error(f"Meta CAPI Unexpected Error: {str(e)}")
         return None
+
 
 
 def _build_meta_url(config: Dict, pixel_id: str) -> str:

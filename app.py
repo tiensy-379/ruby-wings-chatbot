@@ -176,9 +176,10 @@ try:
     from meta_capi import send_meta_pageview, send_meta_lead, send_meta_call_button
     HAS_META_CAPI = True
     logger.info("✅ Meta CAPI available")
-except ImportError:
+except Exception as e:
     HAS_META_CAPI = False
-    logger.warning("⚠️ Meta CAPI not available")
+    logger.error(f"❌ Meta CAPI init failed: {e}")
+
 
 
 
