@@ -4475,21 +4475,25 @@ def save_lead():
 
         timestamp = datetime.now().isoformat()
 
-        # -------- Save Google Sheet / Fallback (GIỮ NGUYÊN) --------
-        # ... (không thay đổi phần này)
+        # -------- Save Google Sheet / Fallback (GIỮ NGUYÊN PHẦN NÀY) --------
+        # (phần lưu Google Sheet / fallback của bạn để nguyên, không dán lại ở đây)
 
         # -------- Meta CAPI: LEAD (FORM) --------
-        if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
+        event_id = data.get("event_id")  # chỉ có với website (JS)
+
+        if ENABLE_META_CAPI_CALL and HAS_META_CAPI and event_id:
             send_meta_lead(
                 request=request,
                 event_name="Lead",
-                event_id=data.get('event_id'),   # ⚠️ lấy từ client nếu có
+                event_id=event_id,        # ✅ dedup-safe
                 phone=phone_clean,
                 contact_name=name,
                 email=email,
                 content_name=f"Tour: {tour_interest}" if tour_interest else "Website Lead"
             )
             increment_stat('meta_capi_calls')
+        else:
+            logger.info("ℹ️ Lead không có event_id – bỏ qua Meta CAPI (nguồn không JS)")
 
         increment_stat('leads')
 
@@ -4498,6 +4502,8 @@ def save_lead():
     except Exception as e:
         logger.error(f'Save lead error: {e}')
         return jsonify({'error': str(e)}), 500
+
+
 
 
 # ===============================
