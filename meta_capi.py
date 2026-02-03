@@ -103,7 +103,7 @@ def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Di
 
         # 🔒 HARD LOCK PIXEL ID = DATASET PRODUCTION
         pixel_id = "862531473384426"
-        logger.warning(f"[META CAPI] LOCKED pixel_id = {pixel_id}")
+        # logger.debug(f"[META CAPI] LOCKED pixel_id = {pixel_id}")
 
         # ❌ KHÔNG TEST EVENT CODE – PRODUCTION ONLY
 
