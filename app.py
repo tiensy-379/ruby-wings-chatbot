@@ -4442,25 +4442,15 @@ def save_lead():
 
         # 🔑 FE → BE event_id (KHÔNG tự sinh)
         event_id = data.get('event_id')
-        # 🔒 HARD DEDUP: bắt buộc có event_id cho CAPI
+        # 🔒 HARD DEDUP: CAPI chỉ chạy khi có event_id từ FE
         if not event_id:
             logger.info("ℹ️ Lead without event_id → Pixel only, skip CAPI")
-
-        # ❌ Chỉ chặn Google Sheets, KHÔNG chặn CAPI
-        if not phone:
-            logger.info("ℹ️ Lead without phone → skip Google Sheets, still allow CAPI")
-
+        if not phone and not data.get('event_id'):
+            return jsonify({'error': 'Phone number is required'}), 400
 
         phone_clean = re.sub(r'\D', '', phone)
         if phone_clean and not re.match(r'^0\d{9,10}$', phone_clean):
             return jsonify({'error': 'Invalid phone number format'}), 400
-        # CHỈ CAPI KHI:
-        # - Có phone hợp lệ
-        # - Có event_id
-        if phone_clean and event_id:
-            send_meta_lead(...)
-        else:
-            logger.info("ℹ️ Skip CAPI Lead: chưa phải lead thật")
 
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
@@ -4551,44 +4541,55 @@ def save_lead():
         )
 
         # =====================================================
-        # 5. META CAPI – LEAD (CHUẨN META, DEDUP 100% – PROD ONLY)
+        # 5. META CAPI – LEAD (CHUẨN META, DEDUP 100%)
         # =====================================================
         if ENABLE_META_CAPI_LEAD and HAS_META_CAPI:
 
-            # ===== PROD: bắt buộc có event_id từ FE =====
-            if not event_id:
+            test_code = os.environ.get("META_TEST_EVENT_CODE", "").strip()
+            is_test_mode = bool(test_code)
+
+            # ===== PROD: bắt buộc có event_id để dedup =====
+            if not event_id and not is_test_mode:
                 logger.warning(
                     "⚠️ Lead submitted without event_id "
-                    "(PROD → Pixel only, CAPI skipped)"
+                    "(PROD mode → Pixel only, CAPI skipped)"
                 )
             else:
                 try:
-                    send_meta_lead(
-                        request=request,
-                        event_name="Lead",
-                        event_id=event_id,              # 🔑 CHỈ dùng event_id từ FE
-                        phone=phone_clean,
-                        fbp=fbp,
-                        fbc=fbc,
-                        event_source_url=event_source_url,
-                        content_name=(
-                            f"Tour: {tour_interest}"
-                            if tour_interest else "Website Lead Form"
-                        )
-                    )
+                    # ================= LEAD – META CAPI (CHỈ FORM THẬT) =================
+                    phone_clean = re.sub(r'\D', '', phone or '')
 
-                    increment_stat("meta_capi_leads")
-                    logger.info(
-                        f"📩 Meta CAPI Lead sent | "
-                        f"mode=PROD | event_id={event_id}"
-                    )
+                    if phone_clean and re.match(r'^0\d{9,10}$', phone_clean) and event_id:
+                        send_meta_lead(
+                            request=request,
+                            event_name="Lead",
+                            event_id=event_id,          # 🔒 BẮT BUỘC từ FE
+                            phone=phone_clean,
+                            fbp=fbp,
+                            fbc=fbc,
+                            event_source_url=event_source_url,
+                            content_name=(
+                                f"Tour: {tour_interest}"
+                                if tour_interest else "Website Lead Form"
+                            )
+                        )
+
+                        increment_stat("meta_capi_leads")
+                        logger.info(
+                            f"📩 Meta CAPI Lead sent | "
+                            f"mode=PROD | event_id={event_id}"
+                        )
+                    else:
+                        logger.warning(
+                            "⚠️ Meta CAPI Lead bị bỏ qua: thiếu event_id hoặc chưa phải lead thật"
+                        )
+
 
                 except Exception as e:
                     increment_stat("meta_capi_errors")
                     logger.error(f"❌ Meta CAPI Lead error: {e}")
 
         increment_stat("leads")
-
 
 
         # =====================================================
