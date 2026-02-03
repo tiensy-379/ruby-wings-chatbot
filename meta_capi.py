@@ -101,15 +101,11 @@ def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Di
     try:
         config = get_config()
 
-        # 🔒 HARD LOCK PIXEL ID = DATASET ĐANG TEST
+        # 🔒 HARD LOCK PIXEL ID = DATASET PRODUCTION
         pixel_id = "862531473384426"
-
         logger.warning(f"[META CAPI] LOCKED pixel_id = {pixel_id}")
 
-        # ===== TEST EVENT CODE (THEO ENV) =====
-        test_code = os.environ.get("META_TEST_EVENT_CODE", "").strip()
-        if test_code:
-            payload["test_event_code"] = test_code
+        # ❌ KHÔNG TEST EVENT CODE – PRODUCTION ONLY
 
         url = _build_meta_url(config, pixel_id)
 
@@ -121,13 +117,19 @@ def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Di
             "User-Agent": "RubyWings-Chatbot/4.0"
         }
 
-        response = requests.post(url, json=payload, timeout=timeout, headers=headers)
+        response = requests.post(
+            url,
+            json=payload,
+            timeout=timeout,
+            headers=headers
+        )
 
         return response.json() if response.status_code == 200 else None
 
     except Exception as e:
         logger.error(f"Meta CAPI error: {e}")
         return None
+
 
 
 
