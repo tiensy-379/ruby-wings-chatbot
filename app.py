@@ -4484,17 +4484,20 @@ def save_lead():
                 sh = gc.open_by_key(GOOGLE_SHEET_ID)
                 ws = sh.worksheet(GOOGLE_SHEET_NAME)
 
-                ws.append_row([
-                    timestamp,
-                    'Website - Lead Form',
-                    'Form Submission',
-                    page_url or '',
-                    name or '',
-                    phone_clean,
-                    tour_interest or '',
-                    note or email or '',
-                    'New'
-                ])
+                ws.append_row(
+                    [
+                        timestamp,
+                        'Website - Lead Form',
+                        'Form Submission',
+                        page_url or '',
+                        name or '',
+                        int(phone_clean) if phone_clean else '',
+                        tour_interest or '',
+                        note or email or '',
+                        'New'
+                    ],
+                    value_input_option='USER_ENTERED'
+                )
 
                 logger.info('✅ Lead saved to Google Sheets')
 
