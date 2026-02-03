@@ -4454,6 +4454,13 @@ def save_lead():
         phone_clean = re.sub(r'\D', '', phone)
         if phone_clean and not re.match(r'^0\d{9,10}$', phone_clean):
             return jsonify({'error': 'Invalid phone number format'}), 400
+        # CHỈ CAPI KHI:
+        # - Có phone hợp lệ
+        # - Có event_id
+        if phone_clean and event_id:
+            send_meta_lead(...)
+        else:
+            logger.info("ℹ️ Skip CAPI Lead: chưa phải lead thật")
 
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
