@@ -4448,11 +4448,12 @@ def save_lead():
         if not phone and not data.get('event_id'):
             return jsonify({'error': 'Phone number is required'}), 400
 
-        phone_clean = re.sub(r'[^\d+]', '', phone)
-        if phone_clean and not re.match(r'^(0|\+?84)\d{9,10}$', phone_clean):
+        phone_clean = re.sub(r'\D', '', phone)
+        if phone_clean and not re.match(r'^0\d{9,10}$', phone_clean):
             return jsonify({'error': 'Invalid phone number format'}), 400
 
-        timestamp = datetime.utcnow().isoformat()
+        timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
 
         lead_data = {
             'timestamp': timestamp,
