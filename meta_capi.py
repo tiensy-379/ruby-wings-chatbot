@@ -88,13 +88,13 @@ def _build_user_data(request, phone: str = None, fbp: str = None, fbc: str = Non
 
     if phone:
         user_data["ph"] = _hash(str(phone))
-
     if fbp:
         user_data["fbp"] = fbp
     if fbc:
         user_data["fbc"] = fbc
 
     return user_data
+
 
 
 def _send_to_meta(pixel_id: str, payload: Dict, timeout: int = 5) -> Optional[Dict]:
@@ -200,10 +200,15 @@ def send_meta_lead(
             "event_name": event_name,
             "event_time": int(time.time()),
             "event_id": event_id,
-            "event_source_url": request.url if hasattr(request, "url") else "",
+            "event_source_url": (
+                kwargs.get("event_source_url")
+                or request.headers.get("Referer")
+                or request.url
+            ),
             "action_source": "website",
             "user_data": user_data
         }
+
 
         # Custom data
         custom_data = {}
@@ -263,7 +268,7 @@ def send_meta_offline_purchase(
             return None
 
         if not event_id:
-            event_id = str(uuid.uuid4())
+            return None
 
         # Build user data (phone is REQUIRED for offline match)
         user_data = _build_user_data(request, phone=phone)
