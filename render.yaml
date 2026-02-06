@@ -14,7 +14,7 @@ services:
     initialDelaySec: 60
 
     buildCommand: |
-      echo "🚀 Ruby Wings build started"
+      echo "🚀 Ruby Wings build started (2GB SAFE)"
 
       python -m pip install --upgrade pip setuptools wheel
       pip install -r requirements.txt
@@ -25,32 +25,23 @@ services:
         echo '{"tours": []}' > knowledge.json
       fi
 
-      echo "🧠 Building FAISS index (2GB mode)"
-      python build_index.py
+      echo "✅ Build done (NO reindex)"
 
-      echo "✅ Build done"
-
-    startCommand: |
-      echo "🚀 Ruby Wings starting (2GB mode)"
-
-      export RAM_PROFILE=2048
-      export FAISS_ENABLED=true
-      export GUNICORN_WORKERS=2
-      export GUNICORN_THREADS=4
-
-      gunicorn app:app \
-        --workers 2 \
-        --threads 4 \
-        --bind=0.0.0.0:$PORT \
-        --timeout 120 \
-        --graceful-timeout 30 \
-        --keepalive 5 \
-        --max-requests 1000 \
-        --max-requests-jitter 50 \
-        --worker-connections 1000 \
-        --log-level info \
-        --access-logfile - \
-        --error-logfile -
+    startCommand: >
+      gunicorn app:app
+      --bind=0.0.0.0:$PORT
+      --workers 1
+      --threads 4
+      --timeout 300
+      --graceful-timeout 30
+      --keepalive 5
+      --max-requests 1000
+      --max-requests-jitter 50
+      --worker-class=gthread
+      --worker-tmp-dir=/dev/shm
+      --log-level info
+      --access-logfile -
+      --error-logfile -
 
     disk:
       name: ruby-wings-data
