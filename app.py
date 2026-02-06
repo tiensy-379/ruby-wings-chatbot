@@ -2453,7 +2453,7 @@ def index_tour_names():
     TOUR_NAME_TO_INDEX = {}
     
     for m in MAPPING:
-        path = m.get("path", "")
+        path = m.get("path", "") if isinstance(m, dict) else ""
         if path.endswith(".tour_name"):
             txt = m.get("text", "") or ""
             norm = normalize_text_simple(txt)
@@ -2485,8 +2485,8 @@ def build_tours_db():
     
     # First pass: collect all fields for each tour
     for m in MAPPING:
-        path = m.get("path", "")
-        text = m.get("text", "")
+        path = m.get("path", "") if isinstance(m, dict) else ""
+        text = m.get("text", "") if isinstance(m, dict) else ""
         
         if not path or not text:
             continue
@@ -2633,7 +2633,7 @@ def get_passages_by_field(field_name: str, limit: int = 50,
     global_matches = []
     
     for m in MAPPING:
-        path = m.get("path", "")
+        path = m.get("path", "") if isinstance(m, dict) else ""
         if path.endswith(f".{field_name}") or f".{field_name}" in path:
             is_exact_match = False
             if tour_indices:
