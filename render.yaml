@@ -4,7 +4,6 @@ services:
   - type: web
     name: ruby-wings-chatbot-v4
     env: python
-    runtime: python-3.10.13
     plan: standard
     region: singapore
     autoDeploy: true
@@ -15,7 +14,7 @@ services:
     initialDelaySec: 60
 
     buildCommand: |
-      echo "🚀 Ruby Wings build started (2GB SAFE)"
+      echo "🚀 Ruby Wings build started"
 
       python -m pip install --upgrade pip setuptools wheel
       pip install -r requirements.txt
@@ -25,24 +24,29 @@ services:
       if [ ! -f "knowledge.json" ]; then
         echo '{"tours": []}' > knowledge.json
       fi
+      echo "✅ Build done"
 
-      echo "✅ Build done (NO reindex)"
+    startCommand: |
+      echo "🚀 Ruby Wings starting (2GB mode)"
 
-    startCommand: >
-      gunicorn app:app
-      --bind=0.0.0.0:$PORT
-      --workers 1
-      --threads 4
-      --timeout 300
-      --graceful-timeout 30
-      --keepalive 5
-      --max-requests 1000
-      --max-requests-jitter 50
-      --worker-class=gthread
-      --worker-tmp-dir=/dev/shm
-      --log-level info
-      --access-logfile -
-      --error-logfile -
+      export RAM_PROFILE=2048
+      export FAISS_ENABLED=true
+      export GUNICORN_WORKERS=2
+      export GUNICORN_THREADS=4
+
+      gunicorn app:app \
+        --workers 2 \
+        --threads 4 \
+        --bind=0.0.0.0:$PORT \
+        --timeout 120 \
+        --graceful-timeout 30 \
+        --keepalive 5 \
+        --max-requests 1000 \
+        --max-requests-jitter 50 \
+        --worker-connections 1000 \
+        --log-level info \
+        --access-logfile - \
+        --error-logfile -
 
     disk:
       name: ruby-wings-data
@@ -85,7 +89,7 @@ services:
         value: "data/faiss_index.bin"
 
       - key: FAISS_MAPPING_PATH
-        value: "data/faiss_mapping.json"
+        value: "data/faiss_index_meta.json"
 
       - key: FALLBACK_VECTORS_PATH
         value: "data/vectors.npz"

@@ -21,13 +21,6 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ruby-wings")
 import os
-
-def build_index(force_rebuild: bool = False) -> bool:
-    if os.getenv("DISABLE_BUILD_INDEX") == "1":
-        print("⚠️ build_index DISABLED by env")
-        return True
-    global INDEX, EMBEDDING_MODEL
-
 import sys
 import json
 import threading
