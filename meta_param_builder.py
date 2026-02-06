@@ -6,7 +6,7 @@ class MetaParamService:
     def __init__(self):
         self.builder = ParamBuilder([
             "rubywings.vn",
-            "ruby-wings-chatbot.onrender.com"
+            "ruby-wings-chatbot-v4.onrender.com" 
         ])
 
     def process_request(self, request):
