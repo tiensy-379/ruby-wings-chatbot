@@ -28,7 +28,7 @@ openai==1.3.0
 numpy==1.26.4
 
 # FAISS — Python 3.10 compatible
-faiss-cpu==1.7.4
+faiss-cpu==1.13.2
 
 # Data / Validation
 pydantic==2.4.2
