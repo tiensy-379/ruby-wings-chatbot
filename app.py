@@ -4742,15 +4742,42 @@ def initialize_app():
     # Load knowledge base
     load_knowledge()
     
-    # Load or build tours database
-    if os.path.exists(FAISS_MAPPING_PATH):
-        try:
-            with open(FAISS_MAPPING_PATH, 'r', encoding='utf-8') as f:
-                MAPPING[:] = json.load(f)
-            FLAT_TEXTS[:] = [m.get('text', '') for m in MAPPING]
-            logger.info(f"📁 Loaded {len(MAPPING)} mappings from disk")
-        except Exception as e:
-            logger.error(f"Failed to load mappings: {e}")
+    # ===============================
+# Load FAISS mappings (SAFE)
+# ===============================
+MAPPING.clear()
+FLAT_TEXTS.clear()
+
+if os.path.exists(FAISS_MAPPING_PATH):
+    try:
+        with open(FAISS_MAPPING_PATH, 'r', encoding='utf-8') as f:
+            loaded = json.load(f)
+
+        # CASE 1: mapping là LIST[DICT]  → faiss_mapping.json
+        if isinstance(loaded, list):
+            MAPPING.extend(loaded)
+            FLAT_TEXTS.extend([
+                m.get('text', '') for m in loaded if isinstance(m, dict)
+            ])
+            logger.info(f"📁 Loaded {len(MAPPING)} FAISS mappings (list)")
+
+        # CASE 2: mapping là DICT → faiss_index_meta.json (KHÔNG dùng cho FLAT_TEXTS)
+        elif isinstance(loaded, dict):
+            logger.warning(
+                "⚠️ FAISS_MAPPING_PATH points to META dict, "
+                "skip FLAT_TEXTS build (this is OK)"
+            )
+
+        else:
+            logger.error(
+                f"❌ Invalid FAISS mapping format: {type(loaded)}"
+            )
+
+    except Exception as e:
+        logger.error(f"❌ Failed to load FAISS mapping safely: {e}")
+else:
+    logger.warning("⚠️ FAISS_MAPPING_PATH not found, skip mapping load")
+
     
     # Build tour databases
     index_tour_names()
