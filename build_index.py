@@ -120,7 +120,7 @@ def call_embeddings_with_retry(inputs: List[str], model: str) -> List[List[float
 def build_index():
     print("Flattening knowledge.json via common_utils...")
     mapping = flatten_json(KNOW_PATH)
-    texts = [m.get("text", "") for m in mapping if isinstance(m, dict)]
+    texts = [m.get("text", "") for m in mapping]
     n = len(texts)
     print(f"Found {n} passages.")
     if n == 0:
