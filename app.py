@@ -2453,7 +2453,7 @@ def index_tour_names():
     TOUR_NAME_TO_INDEX = {}
     
     for m in MAPPING:
-        path = m.get("path", "") if isinstance(m, dict) else ""
+        path = m.get("path", "")
         if path.endswith(".tour_name"):
             txt = m.get("text", "") or ""
             norm = normalize_text_simple(txt)
@@ -2477,53 +2477,27 @@ def index_tour_names():
     logger.info(f"📝 Indexed {len(TOUR_NAME_TO_INDEX)} tour names")
 
 def build_tours_db():
-    logger.error("🔥 ENTERED build_tours_db()")
-
-    # ===== DEBUG: dump mapping paths safely =====
-    logger.error("🧪 DUMP MAPPING PATH SAMPLE (first 30 items)")
-
-    if not MAPPING:
-        logger.error("❌ MAPPING is EMPTY at build_tours_db()")
-        return
-    else:
-        has_tours_path = False
-        for i, m in enumerate(MAPPING[:30]):
-            if isinstance(m, dict):
-                path = m.get("path", "")
-                logger.error(f"[{i}] path={path}")
-                if "tours[" in path:
-                    has_tours_path = True
-            else:
-                logger.error(f"[{i}] NON-DICT item: {type(m)}")
-
-        if not has_tours_path:
-            logger.error("❌ NO PATH CONTAINS 'tours[' → tour_entities.json SCHEMA KHÔNG KHỚP")
-            return
-
-
-    # ===== NORMAL LOGIC CONTINUES (DO NOT TOUCH) =====
     """Build structured tour database from MAPPING using Tour dataclass"""
     global TOURS_DB, TOUR_TAGS
-
+    
     TOURS_DB.clear()
     TOUR_TAGS.clear()
-
     
     # First pass: collect all fields for each tour
     for m in MAPPING:
-        path = m.get("path", "") if isinstance(m, dict) else ""
-        text = m.get("text", "") if isinstance(m, dict) else ""
+        path = m.get("path", "")
+        text = m.get("text", "")
         
         if not path or not text:
             continue
         
-        tour_match = re.search(r'\btours\[(\d+)\]', path)
+        tour_match = re.search(r'tours\[(\d+)\]', path)
         if not tour_match:
             continue
         
         tour_idx = int(tour_match.group(1))
         
-        field_match = re.search(r'\btours\[\d+\]\.(\w+)', path)
+        field_match = re.search(r'tours\[\d+\]\.(\w+)(?:\[\d+\])?', path)
         if not field_match:
             continue
         
@@ -2659,7 +2633,7 @@ def get_passages_by_field(field_name: str, limit: int = 50,
     global_matches = []
     
     for m in MAPPING:
-        path = m.get("path", "") if isinstance(m, dict) else ""
+        path = m.get("path", "")
         if path.endswith(f".{field_name}") or f".{field_name}" in path:
             is_exact_match = False
             if tour_indices:
@@ -4765,74 +4739,50 @@ def initialize_app():
     # Apply memory optimizations
     optimize_for_memory_profile()
     
-    # ===== LOAD TOUR ENTITIES (FOR TOUR DB ONLY) =====
-    load_knowledge(os.environ.get("TOUR_ENTITIES_PATH", "tour_entities.json"))
+    # Load knowledge base
+    load_knowledge()
+    
+    # Load or build tours database
+    if os.path.exists(FAISS_MAPPING_PATH):
+        try:
+            with open(FAISS_MAPPING_PATH, 'r', encoding='utf-8') as f:
+                MAPPING[:] = json.load(f)
+            FLAT_TEXTS[:] = [m.get('text', '') for m in MAPPING]
+            logger.info(f"📁 Loaded {len(MAPPING)} mappings from disk")
+        except Exception as e:
+            logger.error(f"Failed to load mappings: {e}")
+    
+    # Build tour databases
     index_tour_names()
     build_tours_db()
-
-    # ===== LOAD GENERAL KNOWLEDGE (FOR CHAT / FAISS) =====
-    load_knowledge(os.environ.get("KNOWLEDGE_PATH", "knowledge.json"))
-
-
     
-# Load FAISS mappings (SAFE - DO NOT TOUCH MAPPING)
-# ===============================
-if os.path.exists(FAISS_MAPPING_PATH):
-    try:
-        with open(FAISS_MAPPING_PATH, 'r', encoding='utf-8') as f:
-            loaded = json.load(f)
-
-        # CHỈ dùng cho FAISS, TUYỆT ĐỐI KHÔNG clear / overwrite MAPPING
-        if isinstance(loaded, list):
-            logger.info(f"📁 FAISS mapping list detected ({len(loaded)} items) – ignored for tours DB")
-
-        elif isinstance(loaded, dict):
-            logger.warning(
-                "⚠️ FAISS_MAPPING_PATH points to META dict – FAISS only, tours DB untouched"
-            )
+    # Build index in background
+    def build_index_background():
+        time.sleep(2)
+        success = build_index(force_rebuild=False)
+        if success:
+            logger.info("✅ Index ready")
         else:
-            logger.error(f"❌ Unknown FAISS mapping format: {type(loaded)}")
-
-    except Exception as e:
-        logger.error(f"❌ Failed to read FAISS mapping: {e}")
-else:
-    logger.info("ℹ️ No FAISS mapping file found – using knowledge MAPPING")
-
-
-# ===============================
-# Build tour databases
-# ===============================
-index_tour_names()
-build_tours_db()
-
+            logger.warning("⚠️ Index building failed")
     
-# Build index in background
-def build_index_background():
-    time.sleep(2)
-    success = build_index(force_rebuild=False)
-    if success:
-        logger.info("✅ Index ready")
-    else:
-        logger.warning("⚠️ Index building failed")
+    threading.Thread(target=build_index_background, daemon=True).start()
     
-threading.Thread(target=build_index_background, daemon=True).start()
+    # Initialize Google Sheets client
+    if ENABLE_GOOGLE_SHEETS:
+        threading.Thread(target=get_gspread_client, daemon=True).start()
     
-# Initialize Google Sheets client
-if ENABLE_GOOGLE_SHEETS:
-    threading.Thread(target=get_gspread_client, daemon=True).start()
+    # Log active upgrades
+    active_upgrades = [name for name, enabled in UpgradeFlags.get_all_flags().items() 
+                      if enabled and name.startswith("UPGRADE_")]
+    logger.info(f"🔧 Active upgrades: {len(active_upgrades)}")
+    for upgrade in active_upgrades:
+        logger.info(f"   • {upgrade}")
     
-# Log active upgrades
-active_upgrades = [name for name, enabled in UpgradeFlags.get_all_flags().items() 
-                    if enabled and name.startswith("UPGRADE_")]
-logger.info(f"🔧 Active upgrades: {len(active_upgrades)}")
-for upgrade in active_upgrades:
-    logger.info(f"   • {upgrade}")
+    # Log memory profile
+    logger.info(f"🧠 Memory Profile: {RAM_PROFILE}MB | Low RAM: {IS_LOW_RAM} | High RAM: {IS_HIGH_RAM}")
+    logger.info(f"📊 Tours Database: {len(TOURS_DB)} tours loaded")
     
-# Log memory profile
-logger.info(f"🧠 Memory Profile: {RAM_PROFILE}MB | Low RAM: {IS_LOW_RAM} | High RAM: {IS_HIGH_RAM}")
-logger.info(f"📊 Tours Database: {len(TOURS_DB)} tours loaded")
-    
-logger.info("✅ Application initialized successfully with dataclasses")
+    logger.info("✅ Application initialized successfully with dataclasses")
 
 # =========== APPLICATION START ===========
 if __name__ == "__main__":
@@ -4852,5 +4802,5 @@ if __name__ == "__main__":
     app.run(host=HOST, port=PORT, debug=DEBUG, threaded=True)
 
 else:
-    # For WSGI (gunicorn)
-    pass
+    # For WSGI
+    initialize_app()

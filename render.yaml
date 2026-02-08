@@ -4,8 +4,6 @@ services:
   - type: web
     name: ruby-wings-chatbot-v4
     env: python
-    runtime: python-3.10.13
-
     plan: standard
     region: singapore
     autoDeploy: true
@@ -26,6 +24,10 @@ services:
       if [ ! -f "knowledge.json" ]; then
         echo '{"tours": []}' > knowledge.json
       fi
+
+      echo "🧠 Building FAISS index (2GB mode)"
+      python build_index.py
+
       echo "✅ Build done"
 
     startCommand: |
@@ -87,25 +89,17 @@ services:
       - key: FAISS_ENABLED
         value: "true"
 
-      # FIX: bỏ data/ vì file nằm ở ROOT
       - key: FAISS_INDEX_PATH
-        value: "faiss_index.bin"
+        value: "data/faiss_index.bin"
 
-      # FIX: bỏ data/ để load đúng JSON
       - key: FAISS_MAPPING_PATH
-        value: "faiss_mapping.json"
+        value: "data/faiss_mapping.json"
 
-      # FIX: đồng bộ vectors
       - key: FALLBACK_VECTORS_PATH
-        value: "vectors.npz"
+        value: "data/vectors.npz"
 
       - key: ENABLE_FALLBACK_STORAGE
         value: "false"
-
-      # OK: file ghi fallback ở root
-      - key: FALLBACK_STORAGE_PATH
-        value: "leads_fallback.json"
-
 
       # ===== GOOGLE SHEETS =====
       - key: ENABLE_GOOGLE_SHEETS
