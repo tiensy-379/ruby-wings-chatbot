@@ -93,7 +93,7 @@ services:
 
       # FIX: bỏ data/ để load đúng JSON
       - key: FAISS_MAPPING_PATH
-        value: "faiss_index_meta.json"
+        value: "faiss_mapping.json"
 
       # FIX: đồng bộ vectors
       - key: FALLBACK_VECTORS_PATH
