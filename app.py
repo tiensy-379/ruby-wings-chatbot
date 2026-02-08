@@ -2477,6 +2477,7 @@ def index_tour_names():
     logger.info(f"📝 Indexed {len(TOUR_NAME_TO_INDEX)} tour names")
 
 def build_tours_db():
+    logger.error("🔥 ENTERED build_tours_db()")
     logger.warning("🔍 DEBUG MAPPING SAMPLE (first 30 items):")
 
     for i, m in enumerate(MAPPING[:30]):
