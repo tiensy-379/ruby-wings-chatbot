@@ -2453,6 +2453,9 @@ def index_tour_names():
     TOUR_NAME_TO_INDEX = {}
     
     for m in MAPPING:
+        if not isinstance(m, dict):
+            continue  # defensive only
+        
         path = m.get("path", "")
         if path.endswith(".tour_name"):
             txt = m.get("text", "") or ""
@@ -2467,14 +2470,24 @@ def index_tour_names():
                 if prev is None:
                     TOUR_NAME_TO_INDEX[norm] = idx
                 else:
-                    existing_txt = MAPPING[next(
-                        i for i, m2 in enumerate(MAPPING) 
-                        if re.search(rf"\[{prev}\]", m2.get('path','')) and ".tour_name" in m2.get('path','')
-                    )].get("text","")
+                    # tìm tour_name cũ để so độ dài text
+                    existing_txt = ""
+                    for m2 in MAPPING:
+                        if not isinstance(m2, dict):
+                            continue
+                        p2 = m2.get("path", "")
+                        if (
+                            re.search(rf"\[{prev}\]", p2)
+                            and ".tour_name" in p2
+                        ):
+                            existing_txt = m2.get("text", "")
+                            break
+                    
                     if len(txt) > len(existing_txt):
                         TOUR_NAME_TO_INDEX[norm] = idx
     
     logger.info(f"📝 Indexed {len(TOUR_NAME_TO_INDEX)} tour names")
+
 
 def build_tours_db():
     """Build structured tour database from MAPPING using Tour dataclass"""
@@ -2485,6 +2498,9 @@ def build_tours_db():
     
     # First pass: collect all fields for each tour
     for m in MAPPING:
+        if not isinstance(m, dict):
+            continue  # defensive only
+        
         path = m.get("path", "")
         text = m.get("text", "")
         
@@ -2497,11 +2513,15 @@ def build_tours_db():
         
         tour_idx = int(tour_match.group(1))
         
-        field_match = re.search(r'tours\[\d+\]\.(\w+)(?:\[\d+\])?', path)
+        field_match = re.search(
+            r'tours\[\d+\]\.(\w+)(?:\[\d+\])?',
+            path
+        )
         if not field_match:
             continue
         
         field_name = field_match.group(1)
+
         
         # Initialize tour entry
         if tour_idx not in TOURS_DB:
@@ -2633,6 +2653,9 @@ def get_passages_by_field(field_name: str, limit: int = 50,
     global_matches = []
     
     for m in MAPPING:
+        if not isinstance(m, dict):
+            continue  # defensive only
+
         path = m.get("path", "")
         if path.endswith(f".{field_name}") or f".{field_name}" in path:
             is_exact_match = False
@@ -2650,6 +2673,7 @@ def get_passages_by_field(field_name: str, limit: int = 50,
     all_results = exact_matches + global_matches
     all_results.sort(key=lambda x: x[0], reverse=True)
     return all_results[:limit]
+
 
 # =========== CACHE SYSTEM (DATACLASS COMPATIBLE) ===========
 class CacheSystem:
@@ -2745,12 +2769,15 @@ def query_index(query: str, top_k: int = TOP_K) -> List[Tuple[float, Dict]]:
         results = []
         for score, idx in zip(D[0], I[0]):
             if 0 <= idx < len(MAPPING):
-                results.append((float(score), MAPPING[idx]))
+                m = MAPPING[idx]
+                if isinstance(m, dict):        # defensive only
+                    results.append((float(score), m))
         
         return results
     except Exception as e:
         logger.error(f"Index search error: {e}")
         return []
+
 
 class NumpyIndex:
     """Simple numpy-based index with safe numpy handling"""
@@ -4742,15 +4769,29 @@ def initialize_app():
     # Load knowledge base
     load_knowledge()
     
-    # Load or build tours database
+    # Load or build tours database (SAFE)
     if os.path.exists(FAISS_MAPPING_PATH):
         try:
             with open(FAISS_MAPPING_PATH, 'r', encoding='utf-8') as f:
-                MAPPING[:] = json.load(f)
-            FLAT_TEXTS[:] = [m.get('text', '') for m in MAPPING]
-            logger.info(f"📁 Loaded {len(MAPPING)} mappings from disk")
+                loaded = json.load(f)
+
+            # Defensive: chỉ chấp nhận list[dict]
+            if isinstance(loaded, list):
+                safe_mapping = [m for m in loaded if isinstance(m, dict)]
+                MAPPING[:] = safe_mapping
+                FLAT_TEXTS[:] = [m.get('text', '') for m in safe_mapping]
+                logger.info(f"📁 Loaded {len(MAPPING)} mappings from disk (safe)")
+            else:
+                MAPPING[:] = []
+                FLAT_TEXTS[:] = []
+                logger.warning(
+                    "⚠️ FAISS_MAPPING_PATH is not list, skip loading mappings"
+                )
+
         except Exception as e:
-            logger.error(f"Failed to load mappings: {e}")
+            MAPPING[:] = []
+            FLAT_TEXTS[:] = []
+            logger.error(f"❌ Failed to load mappings safely: {e}")
     
     # Build tour databases
     index_tour_names()
@@ -4772,35 +4813,24 @@ def initialize_app():
         threading.Thread(target=get_gspread_client, daemon=True).start()
     
     # Log active upgrades
-    active_upgrades = [name for name, enabled in UpgradeFlags.get_all_flags().items() 
-                      if enabled and name.startswith("UPGRADE_")]
+    active_upgrades = [
+        name for name, enabled in UpgradeFlags.get_all_flags().items()
+        if enabled and name.startswith("UPGRADE_")
+    ]
     logger.info(f"🔧 Active upgrades: {len(active_upgrades)}")
     for upgrade in active_upgrades:
         logger.info(f"   • {upgrade}")
     
     # Log memory profile
-    logger.info(f"🧠 Memory Profile: {RAM_PROFILE}MB | Low RAM: {IS_LOW_RAM} | High RAM: {IS_HIGH_RAM}")
+    logger.info(
+        f"🧠 Memory Profile: {RAM_PROFILE}MB | "
+        f"Low RAM: {IS_LOW_RAM} | High RAM: {IS_HIGH_RAM}"
+    )
     logger.info(f"📊 Tours Database: {len(TOURS_DB)} tours loaded")
     
     logger.info("✅ Application initialized successfully with dataclasses")
 
+
 # =========== APPLICATION START ===========
 if __name__ == "__main__":
-    initialize_app()
-    
-    # Save mappings if not exists
-    if MAPPING and not os.path.exists(FAISS_MAPPING_PATH):
-        try:
-            with open(FAISS_MAPPING_PATH, 'w', encoding='utf-8') as f:
-                json.dump(MAPPING, f, ensure_ascii=False, indent=2)
-            logger.info(f"💾 Saved mappings to {FAISS_MAPPING_PATH}")
-        except Exception as e:
-            logger.error(f"Failed to save mappings: {e}")
-    
-    # Start server
-    logger.info(f"🌐 Starting server on {HOST}:{PORT}")
-    app.run(host=HOST, port=PORT, debug=DEBUG, threaded=True)
-
-else:
-    # For WSGI
     initialize_app()
