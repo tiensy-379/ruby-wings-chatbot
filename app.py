@@ -4844,5 +4844,5 @@ if __name__ == "__main__":
     app.run(host=HOST, port=PORT, debug=DEBUG, threaded=True)
 
 else:
-    # For WSGI
-    initialize_app()
+    # For WSGI (gunicorn)
+    pass
