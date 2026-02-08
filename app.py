@@ -2478,19 +2478,25 @@ def index_tour_names():
 
 def build_tours_db():
     logger.error("🔥 ENTERED build_tours_db()")
-    logger.warning("🔍 DEBUG MAPPING SAMPLE (first 30 items):")
 
-    for i, m in enumerate(MAPPING[:30]):
-        if isinstance(m, dict):
-            logger.warning(f"[{i}] path={m.get('path')} | keys={list(m.keys())}")
-        else:
-            logger.warning(f"[{i}] NON-DICT: {type(m)} -> {str(m)[:120]}")
-    
+    # ===== DEBUG: dump mapping paths safely =====
+    logger.error("🧪 DUMP MAPPING PATH SAMPLE (first 30 items)")
+    if not MAPPING:
+        logger.error("❌ MAPPING is EMPTY at build_tours_db()")
+    else:
+        for i, m in enumerate(MAPPING[:30]):
+            if isinstance(m, dict):
+                logger.error(f"[{i}] path={m.get('path')}")
+            else:
+                logger.error(f"[{i}] NON-DICT item: {type(m)}")
+
+    # ===== NORMAL LOGIC CONTINUES (DO NOT TOUCH) =====
     """Build structured tour database from MAPPING using Tour dataclass"""
     global TOURS_DB, TOUR_TAGS
-    
+
     TOURS_DB.clear()
     TOUR_TAGS.clear()
+
     
     # First pass: collect all fields for each tour
     for m in MAPPING:
