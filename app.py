@@ -2477,6 +2477,14 @@ def index_tour_names():
     logger.info(f"📝 Indexed {len(TOUR_NAME_TO_INDEX)} tour names")
 
 def build_tours_db():
+    logger.warning("🔍 DEBUG MAPPING SAMPLE (first 30 items):")
+
+    for i, m in enumerate(MAPPING[:30]):
+        if isinstance(m, dict):
+            logger.warning(f"[{i}] path={m.get('path')} | keys={list(m.keys())}")
+        else:
+            logger.warning(f"[{i}] NON-DICT: {type(m)} -> {str(m)[:120]}")
+    
     """Build structured tour database from MAPPING using Tour dataclass"""
     global TOURS_DB, TOUR_TAGS
     
