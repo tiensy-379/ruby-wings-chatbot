@@ -4753,43 +4753,29 @@ def initialize_app():
     load_knowledge("tour_entities.json")
 
     
+# Load FAISS mappings (SAFE - DO NOT TOUCH MAPPING)
 # ===============================
-# Load FAISS mappings (SAFE)
-# ===============================
-if not MAPPING:
-    FLAT_TEXTS.clear()
+if os.path.exists(FAISS_MAPPING_PATH):
+    try:
+        with open(FAISS_MAPPING_PATH, 'r', encoding='utf-8') as f:
+            loaded = json.load(f)
 
-    if os.path.exists(FAISS_MAPPING_PATH):
-        try:
-            with open(FAISS_MAPPING_PATH, 'r', encoding='utf-8') as f:
-                loaded = json.load(f)
+        # CHỈ dùng cho FAISS, TUYỆT ĐỐI KHÔNG clear / overwrite MAPPING
+        if isinstance(loaded, list):
+            logger.info(f"📁 FAISS mapping list detected ({len(loaded)} items) – ignored for tours DB")
 
-            # CASE 1: mapping là LIST[DICT] → faiss_mapping.json
-            if isinstance(loaded, list):
-                MAPPING.extend(loaded)
-                FLAT_TEXTS.extend([
-                    m.get('text', '') for m in loaded if isinstance(m, dict)
-                ])
-                logger.info(f"📁 Loaded {len(MAPPING)} FAISS mappings (list)")
+        elif isinstance(loaded, dict):
+            logger.warning(
+                "⚠️ FAISS_MAPPING_PATH points to META dict – FAISS only, tours DB untouched"
+            )
+        else:
+            logger.error(f"❌ Unknown FAISS mapping format: {type(loaded)}")
 
-            # CASE 2: mapping là DICT → faiss_index_meta.json
-            elif isinstance(loaded, dict):
-                logger.warning(
-                    "⚠️ FAISS_MAPPING_PATH points to META dict, "
-                    "skip FLAT_TEXTS build (this is OK)"
-                )
-
-            else:
-                logger.error(
-                    f"❌ Invalid FAISS mapping format: {type(loaded)}"
-                )
-
-        except Exception as e:
-            logger.error(f"❌ Failed to load FAISS mapping safely: {e}")
-    else:
-        logger.warning("⚠️ FAISS_MAPPING_PATH not found, skip mapping load")
+    except Exception as e:
+        logger.error(f"❌ Failed to read FAISS mapping: {e}")
 else:
-    logger.info("ℹ️ MAPPING already populated, skip FAISS mapping load")
+    logger.info("ℹ️ No FAISS mapping file found – using knowledge MAPPING")
+
 
 # ===============================
 # Build tour databases
