@@ -2500,13 +2500,13 @@ def build_tours_db():
         if not path or not text:
             continue
         
-        tour_match = re.search(r'tours\[(\d+)\]', path)
+        tour_match = re.search(r'\btours\[(\d+)\]', path)
         if not tour_match:
             continue
         
         tour_idx = int(tour_match.group(1))
         
-        field_match = re.search(r'tours\[\d+\]\.(\w+)(?:\[\d+\])?', path)
+        field_match = re.search(r'\btours\[\d+\]\.(\w+)', path)
         if not field_match:
             continue
         
