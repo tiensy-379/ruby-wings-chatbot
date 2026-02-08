@@ -2481,14 +2481,25 @@ def build_tours_db():
 
     # ===== DEBUG: dump mapping paths safely =====
     logger.error("🧪 DUMP MAPPING PATH SAMPLE (first 30 items)")
+
     if not MAPPING:
         logger.error("❌ MAPPING is EMPTY at build_tours_db()")
+        return
     else:
+        has_tours_path = False
         for i, m in enumerate(MAPPING[:30]):
             if isinstance(m, dict):
-                logger.error(f"[{i}] path={m.get('path')}")
+                path = m.get("path", "")
+                logger.error(f"[{i}] path={path}")
+                if "tours[" in path:
+                    has_tours_path = True
             else:
                 logger.error(f"[{i}] NON-DICT item: {type(m)}")
+
+        if not has_tours_path:
+            logger.error("❌ NO PATH CONTAINS 'tours[' → tour_entities.json SCHEMA KHÔNG KHỚP")
+            return
+
 
     # ===== NORMAL LOGIC CONTINUES (DO NOT TOUCH) =====
     """Build structured tour database from MAPPING using Tour dataclass"""
