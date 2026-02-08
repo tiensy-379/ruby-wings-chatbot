@@ -4749,76 +4749,82 @@ def initialize_app():
     optimize_for_memory_profile()
     
     # Load knowledge base
-    load_knowledge()
+    load_knowledge("knowledge.json")
+    load_knowledge("tour_entities.json")
+
     
-    # ===============================
+# ===============================
 # Load FAISS mappings (SAFE)
 # ===============================
-MAPPING.clear()
-FLAT_TEXTS.clear()
+if not MAPPING:
+    FLAT_TEXTS.clear()
 
-if os.path.exists(FAISS_MAPPING_PATH):
-    try:
-        with open(FAISS_MAPPING_PATH, 'r', encoding='utf-8') as f:
-            loaded = json.load(f)
+    if os.path.exists(FAISS_MAPPING_PATH):
+        try:
+            with open(FAISS_MAPPING_PATH, 'r', encoding='utf-8') as f:
+                loaded = json.load(f)
 
-        # CASE 1: mapping là LIST[DICT]  → faiss_mapping.json
-        if isinstance(loaded, list):
-            MAPPING.extend(loaded)
-            FLAT_TEXTS.extend([
-                m.get('text', '') for m in loaded if isinstance(m, dict)
-            ])
-            logger.info(f"📁 Loaded {len(MAPPING)} FAISS mappings (list)")
+            # CASE 1: mapping là LIST[DICT] → faiss_mapping.json
+            if isinstance(loaded, list):
+                MAPPING.extend(loaded)
+                FLAT_TEXTS.extend([
+                    m.get('text', '') for m in loaded if isinstance(m, dict)
+                ])
+                logger.info(f"📁 Loaded {len(MAPPING)} FAISS mappings (list)")
 
-        # CASE 2: mapping là DICT → faiss_index_meta.json (KHÔNG dùng cho FLAT_TEXTS)
-        elif isinstance(loaded, dict):
-            logger.warning(
-                "⚠️ FAISS_MAPPING_PATH points to META dict, "
-                "skip FLAT_TEXTS build (this is OK)"
-            )
+            # CASE 2: mapping là DICT → faiss_index_meta.json
+            elif isinstance(loaded, dict):
+                logger.warning(
+                    "⚠️ FAISS_MAPPING_PATH points to META dict, "
+                    "skip FLAT_TEXTS build (this is OK)"
+                )
 
-        else:
-            logger.error(
-                f"❌ Invalid FAISS mapping format: {type(loaded)}"
-            )
+            else:
+                logger.error(
+                    f"❌ Invalid FAISS mapping format: {type(loaded)}"
+                )
 
-    except Exception as e:
-        logger.error(f"❌ Failed to load FAISS mapping safely: {e}")
+        except Exception as e:
+            logger.error(f"❌ Failed to load FAISS mapping safely: {e}")
+    else:
+        logger.warning("⚠️ FAISS_MAPPING_PATH not found, skip mapping load")
 else:
-    logger.warning("⚠️ FAISS_MAPPING_PATH not found, skip mapping load")
+    logger.info("ℹ️ MAPPING already populated, skip FAISS mapping load")
+
+# ===============================
+# Build tour databases
+# ===============================
+index_tour_names()
+build_tours_db()
 
     
-    # Build tour databases
-    index_tour_names()
-    build_tours_db()
+# Build index in background
+def build_index_background():
+    time.sleep(2)
+    success = build_index(force_rebuild=False)
+    if success:
+        logger.info("✅ Index ready")
+    else:
+        logger.warning("⚠️ Index building failed")
     
-    # Build index in background
-    def build_index_background():
-        time.sleep(2)
-        success = build_index(force_rebuild=False)
-        if success:
-            logger.info("✅ Index ready")
-        else:
-            logger.warning("⚠️ Index building failed")
+threading.Thread(target=build_index_background, daemon=True).start()
     
-    threading.Thread(target=build_index_background, daemon=True).start()
+# Initialize Google Sheets client
+if ENABLE_GOOGLE_SHEETS:
+    threading.Thread(target=get_gspread_client, daemon=True).start()
     
-    # Initialize Google Sheets client
-    if ENABLE_GOOGLE_SHEETS:
-        threading.Thread(target=get_gspread_client, daemon=True).start()
+# Log active upgrades
+active_upgrades = [name for name, enabled in UpgradeFlags.get_all_flags().items() 
+                    if enabled and name.startswith("UPGRADE_")]
+logger.info(f"🔧 Active upgrades: {len(active_upgrades)}")
+for upgrade in active_upgrades:
+    logger.info(f"   • {upgrade}")
     
-    # Log active upgrades
-    active_upgrades = [name for name, enabled in UpgradeFlags.get_all_flags().items() 
-                      if enabled and name.startswith("UPGRADE_")]
-    logger.info(f"🔧 Active upgrades: {len(active_upgrades)}")
-    for upgrade in active_upgrades:
-        logger.info(f"   • {upgrade}")
+# Log memory profile
+logger.info(f"🧠 Memory Profile: {RAM_PROFILE}MB | Low RAM: {IS_LOW_RAM} | High RAM: {IS_HIGH_RAM}")
+logger.info(f"📊 Tours Database: {len(TOURS_DB)} tours loaded")
     
-    # Log memory profile
-    logger.info(f"🧠 Memory Profile: {RAM_PROFILE}MB | Low RAM: {IS_LOW_RAM} | High RAM: {IS_HIGH_RAM}")
-    logger.info(f"📊 Tours Database: {len(TOURS_DB)} tours loaded")
-    
-    logger.info("✅ Application initialized successfully with dataclasses")
+logger.info("✅ Application initialized successfully with dataclasses")
 
 # =========== APPLICATION START ===========
 if __name__ == "__main__":
