@@ -4754,9 +4754,14 @@ def initialize_app():
     # Apply memory optimizations
     optimize_for_memory_profile()
     
-    # Load knowledge base
-    load_knowledge("knowledge.json")
-    load_knowledge("tour_entities.json")
+    # ===== LOAD TOUR ENTITIES (FOR TOUR DB ONLY) =====
+    load_knowledge(os.environ.get("TOUR_ENTITIES_PATH", "tour_entities.json"))
+    index_tour_names()
+    build_tours_db()
+
+    # ===== LOAD GENERAL KNOWLEDGE (FOR CHAT / FAISS) =====
+    load_knowledge(os.environ.get("KNOWLEDGE_PATH", "knowledge.json"))
+
 
     
 # Load FAISS mappings (SAFE - DO NOT TOUCH MAPPING)
