@@ -31,6 +31,27 @@ import unicodedata
 import traceback
 import hashlib
 import time
+from dataclasses import dataclass, field
+# =========== DATACLASS DEFINITIONS ===========
+@dataclass
+class Tour:
+    """Tour dataclass with all required fields"""
+    index: int = 0
+    name: str = ""
+    summary: str = ""
+    location: str = ""
+    duration: str = ""
+    price: str = ""
+    includes: List[str] = field(default_factory=list)
+    notes: str = ""
+    style: str = ""
+    transport: str = ""
+    accommodation: str = ""
+    meals: str = ""
+    tags: List[str] = field(default_factory=list)
+    
+    def __str__(self):
+        return f"Tour({self.name})"
 from common_utils import flatten_json
 import random
 try:
@@ -2496,6 +2517,7 @@ def load_knowledge():
                     logger.info(f"🏷️ First tour data keys: {list(tour_data.keys())}")# Create Tour object
                                 # Create Tour object (chỉ các trường có trong dataclass Tour)
                 tour = Tour(
+                    index=idx,  # Thêm index
                     name=tour_data.get("tour_name", "").strip(),
                     summary=tour_data.get("summary", ""),
                     location=tour_data.get("location", ""),
