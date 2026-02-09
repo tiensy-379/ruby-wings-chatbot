@@ -2491,8 +2491,10 @@ def load_knowledge():
         tours = KNOW.get("tours", [])
         for idx, tour_data in enumerate(tours):
             try:
-                # Create Tour object
-                                # Create Tour object (không có trường id trong constructor)
+                                # Debug: Log first tour structure
+                if idx == 0:
+                    logger.info(f"🏷️ First tour data keys: {list(tour_data.keys())}")# Create Tour object
+                                # Create Tour object (chỉ các trường có trong dataclass Tour)
                 tour = Tour(
                     name=tour_data.get("tour_name", "").strip(),
                     summary=tour_data.get("summary", ""),
@@ -2505,7 +2507,6 @@ def load_knowledge():
                     transport=tour_data.get("transport", ""),
                     accommodation=tour_data.get("accommodation", ""),
                     meals=tour_data.get("meals", ""),
-                    event_support=tour_data.get("event_support", ""),
                     tags=tour_data.get("tags", []),
                 )
                 
