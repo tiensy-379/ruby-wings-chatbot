@@ -1,0 +1,171 @@
+# ===== PYTHON =====
+__pycache__/
+*.py[cod]
+*.so
+.Python
+venv/
+env/
+ENV/
+python_env/
+.python-version
+pip-wheel-metadata/
+*.pyc
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+.eggs/
+.venv/
+
+# ===== BUILD / DIST =====
+build/
+dist/
+*.egg-info/
+wheels/
+sdist/
+wheelhouse/
+*.whl
+*.tar.gz
+*.zip
+.coverage
+htmlcov/
+.tox/
+
+# ===== DATA FILES =====
+data/
+*.log
+ruby_wings.log
+logs/
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# ===== FAISS / INDEX =====
+faiss_index.bin
+index.faiss
+faiss_index_meta.json
+faiss_mapping.json
+vectors.npz
+*.index
+*.npy
+*.npz
+
+# ===== RUNTIME STORAGE =====
+leads_fallback.json
+*.jsonl
+*.csv
+*.tsv
+*.xlsx
+*.xls
+
+# ===== ENV / SECRETS =====
+.env
+.env.*
+.env.local
+.env.development
+.env.production
+.env.staging
+.env.test
+*.key
+*.pem
+*.crt
+secrets.json
+credentials.json
+config.yaml
+config.yml
+config.json
+service_account.json
+
+# ===== IDE / EDITOR =====
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+*~
+.DS_Store
+Thumbs.db
+desktop.ini
+.project
+.settings/
+*.sublime-*
+*.code-workspace
+
+# ===== DEPLOYMENT =====
+.render/
+.render-cloud/
+Dockerfile
+docker-compose.yml
+.dockerignore
+*.dockerfile
+Procfile
+Pipfile
+Pipfile.lock
+poetry.lock
+pyproject.toml
+render.yaml.bak
+render-*.yaml
+render-cloud.yaml
+
+# ===== TEMPORARY FILES =====
+*.tmp
+*.temp
+*.cache
+.cache/
+node_modules/
+.yarn/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ===== TEST & COVERAGE =====
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.mypy_cache/
+*.cover
+.hypothesis/
+
+# ===== JUPYTER =====
+*.ipynb
+.ipynb_checkpoints/
+experiments/
+notebooks/
+
+# ===== SYSTEM =====
+*.pid
+*.pid.lock
+*.lock
+*.sock
+*.state
+*.seed
+
+# ===== ARCHIVES =====
+*.7z
+*.rar
+*.zip
+*.tar.gz
+
+# ===== LOG ROTATION =====
+*.log.*
+*.log-*
+ruby_wings.*.log
+
+# ===== EXCEPTIONS (KEEP THESE) =====
+!knowledge.json
+!README.md
+!LICENSE
+!.gitkeep
+!.gitignore
+!data/.gitkeep
+!entities.py
+!meta_capi.py
+
+echo "tour_entities.json" >> .gitignore
+echo "data/" >> .gitignore
+echo "logs/" >> .gitignore
+echo "__pycache__/" >> .gitignore
+echo "*.pyc" >> .gitignore
+echo ".env" >> .gitignore
