@@ -3412,7 +3412,6 @@ Câu hỏi của khách: {user_message}"""
            "• Đi bao nhiêu người?\n\n" \
            "Hoặc gọi ngay 0332510486 để được tư vấn chi tiết! 😊"
 
-# =========== MAIN CHAT ENDPOINT - ĐỈNH CAO THÔNG MINH ===========
 @app.route("/chat", methods=["POST"])
 def chat_endpoint_ultimate():
     """
@@ -3425,12 +3424,17 @@ def chat_endpoint_ultimate():
         # ================== INITIALIZATION ==================
         data = request.get_json() or {}
         user_message = (data.get("message") or "").strip()
+        
+        # FIX: KHỞI TẠO BIẾN TRƯỚC KHI LOG
+        tour_indices = []
+        direct_tour_matches = []
+        detected_intents = []
+        
+        # LOG - CHỈ LOG NHỮNG THÔNG TIN ĐÃ CÓ SẴN
         logger.info(f"🔍 Chat request: '{user_message}'")
         logger.info(f"📊 TOURS_DB count: {len(TOURS_DB)}")
         logger.info(f"📊 FAISS index count: {len(FLAT_TEXTS) if FLAT_TEXTS else 0}")
-        logger.info(f"🎯 Direct tour matches: {direct_tour_matches}")
-        logger.info(f"🎯 Final tour indices: {tour_indices}")
-        logger.info(f"🎯 Detected intents: {detected_intents}")
+        
         session_id = extract_session_id(data, request.remote_addr)
         
         if not user_message:
@@ -3511,14 +3515,17 @@ def chat_endpoint_ultimate():
                     detected_intents.append(intent)
                     break
         
-                        # ================== TOUR RESOLUTION ENGINE ==================
+                # ================== TOUR RESOLUTION ENGINE ==================
+        # FIX: KHỞI TẠO LẠI ĐỂ ĐẢM BẢO SẠCH
         tour_indices = []
-        direct_tour_matches = []  # KHỞI TẠO Ở ĐẦU - BẮT BUỘC
+        direct_tour_matches = []
         
         # Strategy 1: Direct tour name matching
-        if TOUR_NAME_TO_INDEX:  # Chỉ thực hiện nếu có dữ liệu
+        if TOUR_NAME_TO_INDEX and len(TOUR_NAME_TO_INDEX) > 0:
             temp_matches = []
             for norm_name, idx in TOUR_NAME_TO_INDEX.items():
+                if not norm_name:
+                    continue
                 # Kiểm tra tên tour có trong message không
                 tour_words = set(norm_name.split())
                 msg_words = set(message_lower.split())
@@ -3529,8 +3536,7 @@ def chat_endpoint_ultimate():
             
             direct_tour_matches = temp_matches
         
-        # LOG - CHỈ khi biến đã được khởi tạo
-        logger.info(f"🎯 Direct tour matches: {direct_tour_matches}")
+
         
         if direct_tour_matches:
             tour_indices = direct_tour_matches[:3]  # Chỉ lấy 3 tour đầu
@@ -3551,6 +3557,18 @@ def chat_endpoint_ultimate():
                     else:
                         tour_indices = filtered_indices[:5]  # Giới hạn 5 tour
                     logger.info(f"🎯 Filter-based search: {len(tour_indices)} tours")
+        
+    
+        
+        # LOG KẾT QUẢ SAU KHI ĐÃ XỬ LÝ XONG
+        logger.info(f"🎯 Direct tour matches: {direct_tour_matches}")
+        logger.info(f"🎯 Final tour indices: {tour_indices}")
+        logger.info(f"🎯 Detected intents: {detected_intents}")
+
+
+        
+        # ================== INTELLIGENT RESPONSE GENERATION ==================
+        # ... (phần còn lại giữ nguyên)
         
         # ================== INTELLIGENT RESPONSE GENERATION ==================
         reply = ""
