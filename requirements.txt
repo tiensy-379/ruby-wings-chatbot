@@ -57,7 +57,7 @@ exceptiongroup==1.1.3
 blinker==1.7.0
 capi_param_builder_python==1.1.1
 Flask==2.3.3
-gunicorn==20.1.0
+gunicorn>=20.1.0,<22
 openai==0.28.1
 numpy==1.24.3
 faiss-cpu==1.7.4
