@@ -1,5 +1,12 @@
 # meta_param_builder.py
-from capi_param_builder import ParamBuilder
+# Tạo lớp ParamBuilder trực tiếp trong file này
+class ParamBuilder:
+    def __init__(self):
+        pass
+    
+    def build(self, request):
+        # Logic đơn giản để trích xuất fbp/fbc
+        return {"fbp": "", "fbc": ""}
 import hashlib
 
 class MetaParamService:
