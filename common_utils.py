@@ -1,11 +1,25 @@
 # common_utils.py
 from typing import Any, Dict
 
+import json
+
 def flatten_json(data):
     """Convert tours to searchable passages"""
+    # FIX: Handle both file path (string) and loaded JSON data
+    if isinstance(data, str):
+        # If data is a string, assume it's a file path
+        with open(data, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        print(f"[DEBUG] Loaded JSON from file")
+    
+    # Ensure data is a dictionary with 'tours' key
+    if not isinstance(data, dict):
+        raise ValueError(f"Expected dict, got {type(data)}")
+    
+    tours = data.get("tours", [])
     passages = []
     
-    for tour in data.get("tours", []):
+    for tour in tours:
         # Lấy tất cả trường có giá trị
         parts = []
         
@@ -27,5 +41,5 @@ def flatten_json(data):
         if parts:  # Chỉ thêm nếu có dữ liệu
             passages.append(" | ".join(parts))
     
-    print(f"[DEBUG] Created {len(passages)} passages from {len(data.get('tours', []))} tours")
+    print(f"[DEBUG] Created {len(passages)} passages from {len(tours)} tours")
     return passages
