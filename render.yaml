@@ -12,23 +12,64 @@ services:
     healthCheckPath: /api/health
     healthCheckTimeout: 30
     initialDelaySec: 60
+    
+    startCommand: |
+      echo "🚀 Ruby Wings v4.0 Starting..."
+      echo "🔧 Environment: Production"
+      echo "📊 Memory: 2048MB | Workers: 2 | Threads: 4"
+      
+      exec gunicorn app:app \
+        --workers 2 \
+        --threads 4 \
+        --bind=0.0.0.0:$PORT \
+        --timeout 120 \
+        --graceful-timeout 30 \
+        --keepalive 5 \
+        --max-requests 1000 \
+        --max-requests-jitter 50 \
+        --worker-connections 1000 \
+        --log-level info \
+        --access-logfile - \
+        --error-logfile -
 
     buildCommand: |
-      echo "🚀 Ruby Wings build started"
-
+      echo "🚀 Ruby Wings v4.0 Build Started"
+      echo "🔧 Python: $(python --version)"
+      
+      # Upgrade pip and install dependencies
       python -m pip install --upgrade pip setuptools wheel
       pip install -r requirements.txt
-
+      
+      # Create necessary directories
       mkdir -p data logs
-
+      
+      # CRITICAL: Verify knowledge.json exists and has tours
+      echo "📁 Verifying knowledge.json..."
       if [ ! -f "knowledge.json" ]; then
-        echo '{"tours": []}' > knowledge.json
+        echo "❌ CRITICAL: knowledge.json not found!"
+        echo "This file must be committed to the repository."
+        exit 1
       fi
-
-      echo "🧠 Building FAISS index (2GB mode)"
+      
+      # Check tour count
+      TOUR_COUNT=$(python -c "import json; d=json.load(open('knowledge.json')); print(len(d.get('tours', [])))")
+      echo "✅ Found $TOUR_COUNT tours in knowledge.json"
+      
+      if [ "$TOUR_COUNT" -eq 0 ]; then
+        echo "❌ ERROR: No tours found in knowledge.json!"
+        echo "Please check knowledge.json format."
+        exit 1
+      fi
+      
+      # Build FAISS index
+      echo "🧠 Building FAISS index..."
       python build_index.py
-
-      echo "✅ Build done"
+      
+      echo "✅ Build completed successfully"
+      echo "📊 Summary:"
+      echo "   - Tours: $TOUR_COUNT"
+      echo "   - Dependencies: Installed"
+      echo "   - Index: Built"
 
     startCommand: |
       echo "🚀 Ruby Wings starting (2GB mode)"

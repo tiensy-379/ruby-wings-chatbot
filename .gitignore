@@ -162,3 +162,10 @@ ruby_wings.*.log
 !data/.gitkeep
 !entities.py
 !meta_capi.py
+
+echo "tour_entities.json" >> .gitignore
+echo "data/" >> .gitignore
+echo "logs/" >> .gitignore
+echo "__pycache__/" >> .gitignore
+echo "*.pyc" >> .gitignore
+echo ".env" >> .gitignore
