@@ -2492,8 +2492,8 @@ def load_knowledge():
         for idx, tour_data in enumerate(tours):
             try:
                 # Create Tour object
+                                # Create Tour object (không có trường id trong constructor)
                 tour = Tour(
-                    id=idx,
                     name=tour_data.get("tour_name", "").strip(),
                     summary=tour_data.get("summary", ""),
                     location=tour_data.get("location", ""),
