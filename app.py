@@ -31,6 +31,7 @@ import unicodedata
 import traceback
 import hashlib
 import time
+from typing import List, Dict, Tuple, Any, Optional
 from dataclasses import dataclass, field
 # =========== DATACLASS DEFINITIONS ===========
 @dataclass
@@ -2515,9 +2516,9 @@ def load_knowledge():
                                 # Debug: Log first tour structure
                 if idx == 0:
                     logger.info(f"🏷️ First tour data keys: {list(tour_data.keys())}")# Create Tour object
-                                # Create Tour object (chỉ các trường có trong dataclass Tour)
+                               # Create Tour object với trường index
                 tour = Tour(
-                    index=idx,  # Thêm index
+                    index=idx,  # QUAN TRỌNG: Thêm index
                     name=tour_data.get("tour_name", "").strip(),
                     summary=tour_data.get("summary", ""),
                     location=tour_data.get("location", ""),
