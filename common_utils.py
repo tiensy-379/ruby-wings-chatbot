@@ -3,8 +3,10 @@ from typing import Any, Dict
 
 import json
 
+import json
+
 def flatten_json(data):
-    """Convert tours to searchable passages"""
+    """Convert tours to searchable passages, return list of dict with 'text' key"""
     # FIX: Handle both file path (string) and loaded JSON data
     if isinstance(data, str):
         # If data is a string, assume it's a file path
@@ -17,7 +19,7 @@ def flatten_json(data):
         raise ValueError(f"Expected dict, got {type(data)}")
     
     tours = data.get("tours", [])
-    passages = []
+    mapping = []  # List of dictionaries
     
     for tour in tours:
         # Lấy tất cả trường có giá trị
@@ -39,7 +41,16 @@ def flatten_json(data):
                     parts.append(f"{field}: {value}")
         
         if parts:  # Chỉ thêm nếu có dữ liệu
-            passages.append(" | ".join(parts))
+            passage = " | ".join(parts)
+            # Tạo dictionary với key "text" và các thông tin khác của tour
+            mapping.append({
+                "text": passage,
+                "tour_name": tour.get("tour_name", ""),
+                "location": tour.get("location", ""),
+                "duration": tour.get("duration", ""),
+                "price": tour.get("price", ""),
+                # Có thể thêm các trường khác nếu cần
+            })
     
-    print(f"[DEBUG] Created {len(passages)} passages from {len(tours)} tours")
-    return passages
+    print(f"[DEBUG] Created {len(mapping)} passages from {len(tours)} tours")
+    return mapping
