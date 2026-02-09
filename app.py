@@ -20,8 +20,9 @@ from meta_param_builder import MetaParamService
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("ruby-wings")
-import os
 import sys
+import os
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import json
 import threading
 import logging
@@ -31,6 +32,12 @@ import traceback
 import hashlib
 import time
 import random
+try:
+    import numpy as np
+    NUMPY_AVAILABLE = True
+except ImportError:
+    print("❌ NumPy not installed!")
+    sys.exit(1)
 from functools import lru_cache, wraps
 from typing import List, Tuple, Dict, Optional, Any, Set, Union, Callable
 from datetime import datetime, timedelta

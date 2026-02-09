@@ -33,43 +33,73 @@ services:
         --error-logfile -
 
     buildCommand: |
-      echo "🚀 Ruby Wings v4.0 Build Started"
+      echo "🚀 Ruby Wings v4.0 Build Started - FIXED DEPENDENCIES"
+      echo "📅 $(date)"
       echo "🔧 Python: $(python --version)"
       
-      # Upgrade pip and install dependencies
-      python -m pip install --upgrade pip setuptools wheel
-      pip install -r requirements.txt
+      # 1. SET PIP VERSION TO 23.3 (STABLE) - QUAN TRỌNG
+      echo "📦 Setting pip to stable version..."
+      python -m pip install --upgrade "pip<24.0"
       
-      # Create necessary directories
-      mkdir -p data logs
+      # 2. INSTALL CORE DEPENDENCIES FIRST
+      echo "📦 Installing core dependencies..."
+      pip install "setuptools<70.0" "wheel<0.44"
       
-      # CRITICAL: Verify knowledge.json exists and has tours
-      echo "📁 Verifying knowledge.json..."
-      if [ ! -f "knowledge.json" ]; then
-        echo "❌ CRITICAL: knowledge.json not found!"
-        echo "This file must be committed to the repository."
-        exit 1
-      fi
+      # 3. INSTALL NUMPY FIRST (FAISS DEPENDENCY)
+      pip install "numpy==1.24.3"
       
-      # Check tour count
-      TOUR_COUNT=$(python -c "import json; d=json.load(open('knowledge.json')); print(len(d.get('tours', [])))")
-      echo "✅ Found $TOUR_COUNT tours in knowledge.json"
+      # 4. INSTALL FAISS WITH NO-DEPS THEN DEPS
+      echo "🔧 Installing FAISS (special handling)..."
+      pip install "faiss-cpu==1.7.4" --no-deps
+      pip install "scipy==1.10.1" "numpy==1.24.3"
       
-      if [ "$TOUR_COUNT" -eq 0 ]; then
-        echo "❌ ERROR: No tours found in knowledge.json!"
-        echo "Please check knowledge.json format."
-        exit 1
-      fi
-      
-      # Build FAISS index
-      echo "🧠 Building FAISS index..."
-      python build_index.py
-      
-      echo "✅ Build completed successfully"
-      echo "📊 Summary:"
-      echo "   - Tours: $TOUR_COUNT"
-      echo "   - Dependencies: Installed"
-      echo "   - Index: Built"
+      # 5. INSTALL OTHER REQUIREMENTS WITH LEGACY RESOLVER
+      echo "📦 Installing other requirements..."
+      if [ -f "requirements.txt" ]; then
+        # Use legacy resolver for compatibility
+        pip install --use-deprecated=legacy-resolver -r requirements.txt
+      else
+        # Fallback to manual install
+        pip install "Flask==2.3.3"
+        pip install "Flask-CORS==4.0.0"
+        pip install "openai==1.3.0"
+        pip install "gspread==5.12.0"
+        pip install "google-auth==2.23.4"
+        pip install "google-auth-httplib2==0.1.0"
+        pip install "google-auth-oauthlib==1.0.0"
+        pip install "httpx==0.25.1"
+        pip install "scikit-learn==1.3.0"
+        pip install "pyvi==0.1.1"
+        pip install "python-dotenv==1.0.0"
+        pip install "gunicorn==21.2.0"
+        pip install "requests==2.31.0"
+        fi
+        
+        # 6. CREATE DIRECTORIES
+        mkdir -p data logs
+        
+        # 7. VERIFY KNOWLEDGE.JSON
+        echo "📁 Verifying knowledge.json..."
+        if [ ! -f "knowledge.json" ]; then
+          echo "❌ CRITICAL: knowledge.json not found!"
+          echo "Files in directory:"
+          ls -la
+          exit 1
+        fi
+        
+        TOUR_COUNT=$(python -c "import json; d=json.load(open('knowledge.json')); print(len(d.get('tours', [])))")
+        echo "✅ Found $TOUR_COUNT tours in knowledge.json"
+        
+        if [ "$TOUR_COUNT" -eq 0 ]; then
+          echo "❌ ERROR: No tours found in knowledge.json!"
+          exit 1
+        fi
+        
+        # 8. BUILD INDEX
+        echo "🧠 Building FAISS index..."
+        python build_index.py
+        
+        echo "✅ BUILD COMPLETED SUCCESSFULLY"
 
     startCommand: |
       echo "🚀 Ruby Wings starting (2GB mode)"
