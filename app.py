@@ -31,6 +31,7 @@ import unicodedata
 import traceback
 import hashlib
 import time
+from common_utils import flatten_json
 import random
 try:
     import numpy as np
@@ -302,6 +303,35 @@ class UpgradeFlags:
 
 # =========== FLASK APP CONFIG ===========
 app = Flask(__name__)
+@app.before_request
+def ensure_data_loaded():
+    """Đảm bảo dữ liệu được tải trước khi xử lý request"""
+    global APP_INITIALIZED
+    
+    if not APP_INITIALIZED:
+        try:
+            logger.info("🔄 Khởi tạo dữ liệu trước request...")
+            
+            # Kiểm tra và tạo thư mục data
+            if not os.path.exists("data"):
+                os.makedirs("data")
+            
+            # Tải knowledge base
+            load_knowledge()
+            
+            # Build index nếu có dữ liệu
+            if HAS_FAISS and len(FLAT_TEXTS) > 0:
+                build_index()
+                logger.info(f"✅ Đã build FAISS index: {len(FLAT_TEXTS)} passages")
+            
+            APP_INITIALIZED = True
+            logger.info(f"✅ Hoàn thành khởi tạo: {len(TOURS_DB)} tours")
+            
+        except Exception as e:
+            logger.error(f"❌ Lỗi khởi tạo: {e}")
+            traceback.print_exc()
+            # Vẫn đánh dấu đã khởi tạo để không retry
+            APP_INITIALIZED = True
 app.json_encoder = EnhancedJSONEncoder  # Use custom JSON encoder
 CORS(app, origins=CORS_ORIGINS, supports_credentials=True)
 from meta_capi import send_meta_pageview
@@ -373,6 +403,8 @@ _cache_lock = threading.Lock()
 _embedding_cache: Dict[str, Tuple[List[float], int]] = {}
 _embedding_cache_lock = threading.Lock()
 MAX_EMBEDDING_CACHE_SIZE = UpgradeFlags.get_all_flags()["EMBEDDING_CACHE_SIZE"]
+# App initialization flag
+APP_INITIALIZED = False
 
 # =========== MEMORY OPTIMIZATION FUNCTIONS ===========
 def optimize_for_memory_profile():
@@ -2415,44 +2447,93 @@ class TemplateSystem:
         return info_text
 
 # =========== TOUR DATABASE BUILDER (USING Tour DATACLASS) ===========
-def load_knowledge(path: str = KNOWLEDGE_PATH):
-    """Load knowledge base from JSON file"""
-    global KNOW, FLAT_TEXTS, MAPPING
+def load_knowledge():
+    """Load knowledge base from JSON file with fallback"""
+    global KNOW, TOURS_DB, TOUR_NAME_TO_INDEX, FLAT_TEXTS
     
     try:
-        with open(path, "r", encoding="utf-8") as f:
+        # Multiple possible paths
+        possible_paths = [
+            "data/knowledge.json",
+            "knowledge.json",
+            "src/data/knowledge.json",
+            "/opt/render/project/src/data/knowledge.json",
+            os.path.join(os.path.dirname(__file__), "data/knowledge.json"),
+        ]
+        
+        knowledge_path = None
+        for path in possible_paths:
+            if os.path.exists(path):
+                knowledge_path = path
+                logger.info(f"📂 Found knowledge.json at: {path}")
+                break
+        
+        if not knowledge_path:
+            logger.error("❌ Cannot find knowledge.json in any path")
+            logger.error(f"   Current dir: {os.getcwd()}")
+            logger.error(f"   Files in current dir: {os.listdir('.')}")
+            if os.path.exists("data"):
+                logger.error(f"   Files in data dir: {os.listdir('data')}")
+            return
+        
+        # Load and parse JSON
+        with open(knowledge_path, "r", encoding="utf-8") as f:
             KNOW = json.load(f)
-        logger.info(f"✅ Loaded knowledge from {path}")
-    except Exception as e:
-        logger.error(f"❌ Could not open {path}: {e}")
-        KNOW = {}
-    
-    FLAT_TEXTS = []
-    MAPPING = []
-    
-    def scan(obj, prefix="root"):
-        if isinstance(obj, dict):
-            for k, v in obj.items():
-                scan(v, f"{prefix}.{k}")
-        elif isinstance(obj, list):
-            for i, v in enumerate(obj):
-                scan(v, f"{prefix}[{i}]")
-        elif isinstance(obj, str):
-            t = obj.strip()
-            if t:
-                FLAT_TEXTS.append(t)
-                MAPPING.append({"path": prefix, "text": t})
-        else:
+        
+        logger.info(f"📊 Knowledge loaded: {len(KNOW.get('tours', []))} tours")
+        
+        # Reset databases
+        TOURS_DB.clear()
+        TOUR_NAME_TO_INDEX.clear()
+        FLAT_TEXTS.clear()
+        
+        # Process tours
+        tours = KNOW.get("tours", [])
+        for idx, tour_data in enumerate(tours):
             try:
-                s = str(obj).strip()
-                if s:
-                    FLAT_TEXTS.append(s)
-                    MAPPING.append({"path": prefix, "text": s})
-            except Exception:
-                pass
-    
-    scan(KNOW)
-    logger.info(f"📊 Knowledge scanned: {len(FLAT_TEXTS)} passages")
+                # Create Tour object
+                tour = Tour(
+                    id=idx,
+                    name=tour_data.get("tour_name", "").strip(),
+                    summary=tour_data.get("summary", ""),
+                    location=tour_data.get("location", ""),
+                    duration=tour_data.get("duration", ""),
+                    price=tour_data.get("price", ""),
+                    includes=tour_data.get("includes", []),
+                    notes=tour_data.get("notes", ""),
+                    style=tour_data.get("style", ""),
+                    transport=tour_data.get("transport", ""),
+                    accommodation=tour_data.get("accommodation", ""),
+                    meals=tour_data.get("meals", ""),
+                    event_support=tour_data.get("event_support", ""),
+                    tags=tour_data.get("tags", []),
+                )
+                
+                # Store in databases
+                TOURS_DB[idx] = tour
+                
+                # Create normalized name mapping
+                if tour.name:
+                    norm_name = re.sub(r'[^\w\s]', '', tour.name.lower()).strip()
+                    TOUR_NAME_TO_INDEX[norm_name] = idx
+                
+                # Add to flat texts for FAISS
+                flat_data = flatten_json({"tours": [tour_data]})
+                if flat_data:
+                    FLAT_TEXTS.extend([item["text"] for item in flat_data])
+                    
+            except Exception as e:
+                logger.error(f"❌ Error processing tour {idx}: {e}")
+                continue
+        
+        logger.info(f"✅ Processed {len(TOURS_DB)} tours, {len(FLAT_TEXTS)} passages")
+        
+        if len(TOURS_DB) == 0:
+            logger.error("❌ NO tours loaded! Check knowledge.json structure")
+            
+    except Exception as e:
+        logger.error(f"❌ load_knowledge error: {e}")
+        traceback.print_exc()
 
 def index_tour_names():
     """Build tour name to index mapping"""
@@ -3407,18 +3488,21 @@ def chat_endpoint_ultimate():
                     break
         
         # ================== TOUR RESOLUTION ENGINE ==================
-        tour_indices = []
+        direct_tour_matches = []  # KHỞI TẠO TRƯỚC ĐỂ TRÁNH LỖI
         
-        # Strategy 1: Direct tour name matching
+                # Strategy 1: Direct tour name matching
         direct_tour_matches = []
-        for norm_name, idx in TOUR_NAME_TO_INDEX.items():
-            # Kiểm tra tên tour có trong message không
-            tour_words = set(norm_name.split())
-            msg_words = set(message_lower.split())
-            common_words = tour_words.intersection(msg_words)
-            
-            if len(common_words) >= 2:  # Ít nhất 2 từ trùng
-                direct_tour_matches.append(idx)
+        if TOUR_NAME_TO_INDEX:  # Chỉ thực hiện nếu có dữ liệu
+            for norm_name, idx in TOUR_NAME_TO_INDEX.items():
+                # Kiểm tra tên tour có trong message không
+                tour_words = set(norm_name.split())
+                msg_words = set(message_lower.split())
+                common_words = tour_words.intersection(msg_words)
+                
+                if len(common_words) >= 2:  # Ít nhất 2 từ trùng
+                    direct_tour_matches.append(idx)
+        
+        logger.info(f"🎯 Direct tour matches: {direct_tour_matches}")
         
         if direct_tour_matches:
             tour_indices = direct_tour_matches[:3]  # Chỉ lấy 3 tour đầu
@@ -4909,8 +4993,148 @@ def initialize_app():
 
 
 # =========== APPLICATION START ===========
+# ================== INITIALIZE ON STARTUP ==================
+# ================== ĐẢM BẢO KHỞI TẠO KHI ỨNG DỤNG CHẠY ==================
+def initialize_on_start():
+    """Khởi tạo dữ liệu khi ứng dụng bắt đầu"""
+    try:
+        logger.info("🚀 Khởi động Ruby Wings Chatbot v4...")
+        
+        # Đảm bảo thư mục data tồn tại
+        if not os.path.exists("data"):
+            os.makedirs("data")
+            logger.info("📁 Tạo thư mục data")
+        
+        # Tải knowledge base
+        load_knowledge()
+        logger.info(f"✅ Đã tải {len(TOURS_DB)} tours, {len(TOUR_NAME_TO_INDEX)} tên tour")
+        
+        if len(TOURS_DB) == 0:
+            logger.error("❌ KHÔNG tải được tours nào từ knowledge.json!")
+            logger.error(f"   Current directory: {os.getcwd()}")
+            logger.error(f"   Files: {os.listdir('.')}")
+            if os.path.exists("data"):
+                logger.error(f"   Data files: {os.listdir('data')}")
+        
+        # Xây dựng FAISS index nếu có
+        if HAS_FAISS and len(FLAT_TEXTS) > 0:
+            build_index()
+            logger.info(f"✅ Đã xây dựng FAISS index với {len(FLAT_TEXTS)} passages")
+        else:
+            logger.warning("⚠️ Không thể xây dựng FAISS index, sử dụng fallback search")
+            
+    except Exception as e:
+        logger.error(f"❌ Lỗi khởi tạo: {e}")
+        traceback.print_exc()
+
+# CHỈ chạy khi ứng dụng thực sự khởi động
+if not os.environ.get('RENDER'):  # Trên Render, khởi tạo qua before_request
+    initialize_on_start()
+else:
+    logger.info("🔄 Render mode - Khởi tạo qua before_request")
+@app.route("/api/debug", methods=["GET"])
+def debug_endpoint():
+    """Debug endpoint to check loaded data"""
+    debug_info = {
+        "status": "healthy" if len(TOURS_DB) > 0 else "no_data",
+        "app_initialized": APP_INITIALIZED,
+        "counts": {
+            "tours_db": len(TOURS_DB),
+            "tour_name_to_index": len(TOUR_NAME_TO_INDEX),
+            "flat_texts": len(FLAT_TEXTS),
+            "knowledge_tours": len(KNOW.get("tours", [])) if KNOW else 0
+        },
+        "sample_tours": [],
+        "file_info": {
+            "current_directory": os.getcwd(),
+            "data_directory_exists": os.path.exists("data"),
+            "files_in_current_dir": os.listdir("."),
+        }
+    }
+    
+    # Thêm thông tin về 3 tour đầu tiên
+    for i, (idx, tour) in enumerate(list(TOURS_DB.items())[:3]):
+        debug_info["sample_tours"].append({
+            "id": idx,
+            "name": tour.name,
+            "location": tour.location,
+            "duration": tour.duration,
+            "price": tour.price[:50] if tour.price else ""
+        })
+    
+    # Thêm thông tin về các file trong thư mục data nếu có
+    if os.path.exists("data"):
+        debug_info["file_info"]["files_in_data_dir"] = os.listdir("data")
+        # Kiểm tra knowledge.json
+        knowledge_paths = [
+            "data/knowledge.json",
+            "knowledge.json",
+            "src/data/knowledge.json"
+        ]
+        for path in knowledge_paths:
+            if os.path.exists(path):
+                debug_info["file_info"]["knowledge_json_found"] = path
+                # Đọc kích thước file
+                try:
+                    size = os.path.getsize(path)
+                    debug_info["file_info"]["knowledge_json_size"] = f"{size} bytes"
+                except:
+                    pass
+                break
+    
+    # Thêm thông tin về upgrades
+    debug_info["upgrades"] = UpgradeFlags.get_all_flags()
+    
+    # Thêm thông tin về các services
+    debug_info["services"] = {
+        "openai": "available" if client else "unavailable",
+        "faiss": "available" if HAS_FAISS else "unavailable",
+        "google_sheets": "available" if HAS_GOOGLE_SHEETS else "unavailable",
+        "meta_capi": "available" if HAS_META_CAPI else "unavailable",
+    }
+    
+    return jsonify(debug_info)
+# Run initialization
+initialize_app()
 if __name__ == "__main__":
-    initialize_app()
+# ================== ĐẢM BẢO KHỞI TẠO KHI ỨNG DỤNG CHẠY ==================
+    def initialize_on_start():
+        """Khởi tạo dữ liệu khi ứng dụng bắt đầu"""
+        try:
+            logger.info("🚀 Khởi động Ruby Wings Chatbot v4...")
+            
+            # Đảm bảo thư mục data tồn tại
+            if not os.path.exists("data"):
+                os.makedirs("data")
+                logger.info("📁 Tạo thư mục data")
+            
+            # Tải knowledge base
+            load_knowledge()
+            logger.info(f"✅ Đã tải {len(TOURS_DB)} tours, {len(TOUR_NAME_TO_INDEX)} tên tour")
+            
+            if len(TOURS_DB) == 0:
+                logger.error("❌ KHÔNG tải được tours nào từ knowledge.json!")
+                logger.error(f"   Current directory: {os.getcwd()}")
+                logger.error(f"   Files: {os.listdir('.')}")
+                if os.path.exists("data"):
+                    logger.error(f"   Data files: {os.listdir('data')}")
+            
+            # Xây dựng FAISS index nếu có
+            if HAS_FAISS and len(FLAT_TEXTS) > 0:
+                build_index()
+                logger.info(f"✅ Đã xây dựng FAISS index với {len(FLAT_TEXTS)} passages")
+            else:
+                logger.warning("⚠️ Không thể xây dựng FAISS index, sử dụng fallback search")
+                
+        except Exception as e:
+            logger.error(f"❌ Lỗi khởi tạo: {e}")
+            traceback.print_exc()
+
+# CHỈ chạy khi ứng dụng thực sự khởi động
+if not os.environ.get('RENDER'):  # Trên Render, khởi tạo qua before_request
+    initialize_on_start()
+else:
+    logger.info("🔄 Render mode - Khởi tạo qua before_request")
 def get_fallback_tours(query=None, limit=5):
     """Fallback khi FAISS không trả về kết quả"""
     try:
