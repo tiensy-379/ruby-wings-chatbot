@@ -3511,12 +3511,13 @@ def chat_endpoint_ultimate():
                     detected_intents.append(intent)
                     break
         
-                # ================== TOUR RESOLUTION ENGINE ==================
+                        # ================== TOUR RESOLUTION ENGINE ==================
         tour_indices = []
-        direct_tour_matches = []  # KHỞI TẠO Ở ĐÂY - TRƯỚC KHI SỬ DỤNG
+        direct_tour_matches = []  # KHỞI TẠO Ở ĐẦU - BẮT BUỘC
         
         # Strategy 1: Direct tour name matching
         if TOUR_NAME_TO_INDEX:  # Chỉ thực hiện nếu có dữ liệu
+            temp_matches = []
             for norm_name, idx in TOUR_NAME_TO_INDEX.items():
                 # Kiểm tra tên tour có trong message không
                 tour_words = set(norm_name.split())
@@ -3524,8 +3525,11 @@ def chat_endpoint_ultimate():
                 common_words = tour_words.intersection(msg_words)
                 
                 if len(common_words) >= 2:  # Ít nhất 2 từ trùng
-                    direct_tour_matches.append(idx)
+                    temp_matches.append(idx)
+            
+            direct_tour_matches = temp_matches
         
+        # LOG - CHỈ khi biến đã được khởi tạo
         logger.info(f"🎯 Direct tour matches: {direct_tour_matches}")
         
         if direct_tour_matches:
