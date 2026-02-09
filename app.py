@@ -3511,11 +3511,11 @@ def chat_endpoint_ultimate():
                     detected_intents.append(intent)
                     break
         
-        # ================== TOUR RESOLUTION ENGINE ==================
-        direct_tour_matches = []  # KHỞI TẠO TRƯỚC ĐỂ TRÁNH LỖI
+                # ================== TOUR RESOLUTION ENGINE ==================
+        tour_indices = []
+        direct_tour_matches = []  # KHỞI TẠO Ở ĐÂY - TRƯỚC KHI SỬ DỤNG
         
-                # Strategy 1: Direct tour name matching
-        direct_tour_matches = []
+        # Strategy 1: Direct tour name matching
         if TOUR_NAME_TO_INDEX:  # Chỉ thực hiện nếu có dữ liệu
             for norm_name, idx in TOUR_NAME_TO_INDEX.items():
                 # Kiểm tra tên tour có trong message không
@@ -3531,13 +3531,6 @@ def chat_endpoint_ultimate():
         if direct_tour_matches:
             tour_indices = direct_tour_matches[:3]  # Chỉ lấy 3 tour đầu
             logger.info(f"🎯 Direct tour matches found: {tour_indices}")
-        
-        # Strategy 2: Fuzzy matching for partial names
-        if not tour_indices and UpgradeFlags.is_enabled("6_FUZZY_MATCHING"):
-            fuzzy_matches = FuzzyMatcher.find_similar_tours(user_message, TOUR_NAME_TO_INDEX)
-            if fuzzy_matches:
-                tour_indices = [idx for idx, score in fuzzy_matches[:2] if score > 0.7]
-                logger.info(f"🔍 Fuzzy matches found: {tour_indices}")
         
         # Strategy 3: Filter-based search
         mandatory_filters = FilterSet()
