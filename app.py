@@ -4855,7 +4855,9 @@ def track_contact():
         event_id = data.get('event_id')
         phone = data.get('phone')
         source = data.get('source', 'Contact')
-
+ # 🔍 DEBUG: Thêm log để kiểm tra
+        logger.info(f"📞 [DEBUG] Track contact called: source={source}, event_id={event_id}, phone={phone}")
+        logger.info(f"📞 [DEBUG] ENABLE_META_CAPI_CALL={ENABLE_META_CAPI_CALL}, HAS_META_CAPI={HAS_META_CAPI}")
         # ===== META PARAM BUILDER =====
         meta = MetaParamService()
         meta.process_request(request)
