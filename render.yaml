@@ -14,15 +14,21 @@ services:
     initialDelaySec: 60
 
     buildCommand: |
-    echo "🚀 Ruby Wings build started"
+      echo "🚀 Ruby Wings build started"
 
-    python -m pip install --upgrade pip setuptools wheel
-    pip install -r requirements.txt
+      python -m pip install --upgrade pip setuptools wheel
+      pip install -r requirements.txt
 
-    mkdir -p data logs
+      mkdir -p data logs
 
-    echo "✅ Build done (FAISS prebuilt)"
+      if [ ! -f "knowledge.json" ]; then
+        echo '{"tours": []}' > knowledge.json
+      fi
 
+      echo "🧠 Building FAISS index (2GB mode)"
+      python build_index.py
+
+      echo "✅ Build done"
 
     startCommand: |
       echo "🚀 Ruby Wings starting (2GB mode)"
