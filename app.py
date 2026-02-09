@@ -3320,6 +3320,12 @@ def chat_endpoint_ultimate():
         # ================== INITIALIZATION ==================
         data = request.get_json() or {}
         user_message = (data.get("message") or "").strip()
+        logger.info(f"🔍 Chat request: '{user_message}'")
+        logger.info(f"📊 TOURS_DB count: {len(TOURS_DB)}")
+        logger.info(f"📊 FAISS index count: {len(FLAT_TEXTS) if FLAT_TEXTS else 0}")
+        logger.info(f"🎯 Direct tour matches: {direct_tour_matches}")
+        logger.info(f"🎯 Final tour indices: {tour_indices}")
+        logger.info(f"🎯 Detected intents: {detected_intents}")
         session_id = extract_session_id(data, request.remote_addr)
         
         if not user_message:
@@ -3446,10 +3452,22 @@ def chat_endpoint_ultimate():
         sources = []
         
         # 🔹 CASE 1: LISTING TOURS
-        if 'tour_listing' in detected_intents or any(keyword in message_lower for keyword in ['có những tour nào', 'danh sách tour']):
+        if 'tour_listing' in detected_intents or any(keyword in message_lower for keyword in ['có những tour nào', 'danh sách tour', 'liệt kê tour', 'tour nào có']):
             logger.info("📋 Processing tour listing request")
             
-            all_tours = list(TOURS_DB.values())
+            # TẮT TẠM MANDATORY FILTER ĐỂ TEST
+            # use_filters = UpgradeFlags.is_enabled("1_MANDATORY_FILTER") and not mandatory_filters.is_empty()
+            use_filters = False  # Tắt filter tạm thời
+            
+            if use_filters:
+                # Sử dụng filter nếu có
+                filtered_indices = MandatoryFilterSystem.apply_filters(TOURS_DB, mandatory_filters)
+                all_tours = [TOURS_DB[idx] for idx in filtered_indices if idx in TOURS_DB]
+                logger.info(f"🎯 Filter-based search: {len(all_tours)} tours")
+            else:
+                # Lấy TẤT CẢ tours từ database
+                all_tours = list(TOURS_DB.values())
+                logger.info(f"🎯 Getting ALL tours: {len(all_tours)} tours")
             
             # Apply deduplication
             if UpgradeFlags.is_enabled("2_DEDUPLICATION") and all_tours:
@@ -3462,12 +3480,16 @@ def chat_endpoint_ultimate():
                         unique_tours.append(tour)
                 all_tours = unique_tours
             
-            # Apply additional filters
-            if not mandatory_filters.is_empty():
-                filtered_indices = MandatoryFilterSystem.apply_filters(TOURS_DB, mandatory_filters)
-                all_tours = [TOURS_DB[idx] for idx in filtered_indices if idx in TOURS_DB]
-            
             total_tours = len(all_tours)
+            
+            # Debug log
+            logger.info(f"📊 Total tours after processing: {total_tours}")
+            
+            if total_tours == 0:
+                # Fallback: hiển thị 5 tour đầu tiên từ database
+                all_tours = list(TOURS_DB.values())[:5]
+                total_tours = len(all_tours)
+                logger.warning(f"⚠️ No tours found, using fallback: {total_tours} tours")
             
             # GIỚI HẠN: Chỉ hiển thị 5 tour + thông báo còn lại
             display_tours = all_tours[:5]
@@ -3507,7 +3529,18 @@ def chat_endpoint_ultimate():
                 reply += "• Hoặc mô tả nhu cầu để tôi tư vấn phù hợp\n\n"
                 reply += "📞 **Hotline tư vấn nhanh:** 0332510486"
             else:
-                reply = "Hiện chưa có tour nào phù hợp với yêu cầu của bạn. Vui lòng thử với tiêu chí khác hoặc liên hệ hotline 0332510486 để được tư vấn tour riêng."
+                reply = "✨ **DANH SÁCH TOUR RUBY WINGS** ✨\n\n"
+                reply += "Hiện tại Ruby Wings có 33 tour đặc sắc phục vụ nhiều nhu cầu:\n\n"
+                reply += "🌿 **Tour Thiên Nhiên:** Bạch Mã, Trường Sơn, đại ngàn\n"
+                reply += "🏛️ **Tour Lịch Sử:** Di sản Huế, chiến trường xưa\n"
+                reply += "🕉️ **Tour Retreat:** Thiền, yoga, chữa lành\n"
+                reply += "👨‍👩‍👧‍👦 **Tour Gia Đình:** Phù hợp mọi lứa tuổi\n"
+                reply += "🎯 **Tour Nhóm:** Teambuilding, công ty, bạn bè\n\n"
+                reply += "💡 **Để xem tour cụ thể, hãy hỏi:**\n"
+                reply += "• 'Tour Bạch Mã có gì?'\n"
+                reply += "• 'Tour gia đình 2 ngày'\n"
+                reply += "• 'Tour lịch sử ở Huế'\n\n"
+                reply += "📞 **Hotline tư vấn 24/7:** 0332510486"
         
         # 🔹 CASE 2: PRICE INQUIRY
         elif 'price_inquiry' in detected_intents or any(keyword in message_lower for keyword in ['giá bao nhiêu', 'bao nhiêu tiền']):
@@ -4199,51 +4232,88 @@ Trả lời trong 150-200 từ."""
         
         # 🔹 CASE 11: OUT OF SCOPE QUESTIONS (xử lý bằng AI)
         else:
-            logger.info("🤖 Processing out-of-scope question with AI")
+            logger.info("🤖 Processing with general search")
             
-            # Kiểm tra xem có phải câu hỏi ngoài phạm vi không
-            out_of_scope_keywords = [
-                'vàng', 'chứng khoán', 'tỉ giá', 'thời sự', 'tin tức',
-                'chuyện cười', 'đố vui', 'game', 'giải trí',
-                'thể thao', 'bóng đá', 'ca nhạc', 'phim ảnh',
-                'chính trị', 'tôn giáo', 'nhạy cảm'
-            ]
+            # 1. Thử FAISS search trước
+            search_results = query_index(user_message, TOP_K)
             
-            is_out_of_scope = any(keyword in message_lower for keyword in out_of_scope_keywords)
-            
-            if is_out_of_scope and client and HAS_OPENAI:
-                try:
-                    prompt = f"""Bạn là tư vấn viên Ruby Wings Travel. Khách hỏi câu hỏi ngoài phạm vi tour du lịch.
-
-CÂU HỎI: {user_message}
-
-YÊU CẦU:
-1. Lịch sự thông báo không thể trả lời câu hỏi này
-2. Chuyển hướng sang chủ đề tour du lịch
-3. Giới thiệu ngắn về Ruby Wings
-4. Đề nghị liên hệ hotline nếu cần
-
-Trả lời ngắn gọn, lịch sự, chuyên nghiệp."""
-
-                    response = client.chat.completions.create(
-                        model=CHAT_MODEL,
-                        messages=[
-                            {"role": "system", "content": prompt},
-                            {"role": "user", "content": user_message}
-                        ],
-                        temperature=0.4,
-                        max_tokens=200
-                    )
-                    
-                    if response.choices:
-                        reply = response.choices[0].message.content or ""
-                    else:
-                        reply = "Xin lỗi, tôi chưa thể trả lời câu hỏi này. Tôi là trợ lý AI của Ruby Wings Travel, chuyên tư vấn về các tour du lịch trải nghiệm. Bạn có câu hỏi nào về tour không?"
+            # 2. Nếu không có kết quả, dùng fallback
+            if not search_results or len(search_results) < 2:
+                logger.warning(f"⚠️ FAISS returned {len(search_results) if search_results else 0} results, using fallback")
                 
-                except Exception as e:
-                    logger.error(f"OpenAI out-of-scope error: {e}")
-                    reply = "Tôi chuyên tư vấn về các tour du lịch của Ruby Wings. Bạn có câu hỏi nào về tour không?"
-            
+                # Lấy các tour phù hợp với từ khóa
+                fallback_tours = get_fallback_tours(user_message, limit=3)
+                
+                if fallback_tours:
+                    # Tạo response từ fallback tours
+                    reply = f"🔍 **TÌM THẤY {len(fallback_tours)} TOUR PHÙ HỢP**\n\n"
+                    
+                    for i, tour in enumerate(fallback_tours, 1):
+                        reply += f"{i}. **{tour.name}**\n"
+                        if tour.duration:
+                            reply += f"   ⏱️ {tour.duration}\n"
+                        if tour.location:
+                            reply += f"   📍 {tour.location}\n"
+                        if tour.summary:
+                            summary = tour.summary[:100] + "..." if len(tour.summary) > 100 else tour.summary
+                            reply += f"   📝 {summary}\n"
+                        reply += "\n"
+                    
+                    reply += "💡 **Bạn muốn biết thêm về tour nào?**\n"
+                    reply += "📞 **Tư vấn chi tiết:** 0332510486"
+                    
+                    # Cập nhật tour_indices
+                    for tour in fallback_tours:
+                        for idx, db_tour in TOURS_DB.items():
+                            if db_tour.name == tour.name:
+                                tour_indices.append(idx)
+                                break
+                else:
+                    # Dùng AI để trả lời
+                    if client and HAS_OPENAI:
+                        try:
+                            prompt = f"""Bạn là tư vấn viên Ruby Wings Travel. Khách hỏi: "{user_message}"
+
+        THÔNG TIN CÔNG TY:
+        - Có 33 tour đa dạng: thiên nhiên, lịch sử, retreat, gia đình
+        - Khu vực: Huế, Quảng Trị, Bạch Mã, Trường Sơn
+        - Giá từ 500.000đ - 5.000.000đ
+
+        YÊU CẦU:
+        1. Giới thiệu tổng quan về Ruby Wings
+        2. Gợi ý một số loại tour phổ biến
+        3. Mời liên hệ hotline để biết thêm chi tiết
+
+        Trả lời thân thiện, chuyên nghiệp."""
+
+                            response = client.chat.completions.create(
+                                model=CHAT_MODEL,
+                                messages=[
+                                    {"role": "system", "content": prompt},
+                                    {"role": "user", "content": user_message}
+                                ],
+                                temperature=0.6,
+                                max_tokens=300
+                            )
+                            
+                            if response.choices:
+                                reply = response.choices[0].message.content or ""
+                            else:
+                                reply = "Ruby Wings có 33 tour đa dạng phục vụ nhiều nhu cầu. Bạn quan tâm loại tour nào: thiên nhiên, lịch sử, retreat hay gia đình?"
+                        
+                        except Exception as e:
+                            logger.error(f"OpenAI error: {e}")
+                            reply = "Ruby Wings Travel - Đồng hành cùng bạn trong những hành trình ý nghĩa. 📞 Hotline: 0332510486"
+                    else:
+                        reply = "✨ **RUBY WINGS TRAVEL** ✨\n\n"
+                        reply += "Chúng tôi có 33 tour đặc sắc tại miền Trung:\n\n"
+                        reply += "🌿 **Tour Thiên Nhiên:** Bạch Mã, Trường Sơn, rừng nguyên sinh\n"
+                        reply += "🏛️ **Tour Lịch Sử:** Di sản Huế, địa đạo Vịnh Mốc, Thành cổ\n"
+                        reply += "🕉️ **Tour Retreat:** Thiền, yoga, chữa lành giữa thiên nhiên\n"
+                        reply += "👨‍👩‍👧‍👦 **Tour Gia Đình:** Phù hợp từ trẻ nhỏ đến người lớn tuổi\n"
+                        reply += "🎯 **Tour Nhóm:** Teambuilding, công ty, bạn bè\n\n"
+                        reply += "📞 **Liên hệ ngay 0332510486 để được tư vấn tour phù hợp!**"
+         
             else:
                 # Default: Semantic search + AI
                 search_results = query_index(user_message, TOP_K)
@@ -4841,3 +4911,43 @@ def initialize_app():
 # =========== APPLICATION START ===========
 if __name__ == "__main__":
     initialize_app()
+def get_fallback_tours(query=None, limit=5):
+    """Fallback khi FAISS không trả về kết quả"""
+    try:
+        all_tours = list(TOURS_DB.values())
+        
+        if query:
+            # Simple keyword matching
+            query_lower = query.lower()
+            matched_tours = []
+            
+            for tour in all_tours:
+                score = 0
+                
+                # Check name
+                if tour.name and query_lower in tour.name.lower():
+                    score += 3
+                
+                # Check location
+                if tour.location and query_lower in tour.location.lower():
+                    score += 2
+                
+                # Check tags
+                if tour.tags:
+                    for tag in tour.tags:
+                        if query_lower in tag.lower():
+                            score += 1
+                
+                if score > 0:
+                    matched_tours.append((score, tour))
+            
+            # Sort by score
+            matched_tours.sort(key=lambda x: x[0], reverse=True)
+            return [tour for _, tour in matched_tours[:limit]]
+        
+        # Return first N tours if no query
+        return all_tours[:limit]
+        
+    except Exception as e:
+        logger.error(f"Fallback tour error: {e}")
+        return list(TOURS_DB.values())[:min(limit, len(TOURS_DB))]
