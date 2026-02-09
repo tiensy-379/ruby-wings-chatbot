@@ -13,24 +13,6 @@ services:
     healthCheckTimeout: 30
     initialDelaySec: 60
     
-    startCommand: |
-      echo "🚀 Ruby Wings v4.0 Starting..."
-      echo "🔧 Environment: Production"
-      echo "📊 Memory: 2048MB | Workers: 2 | Threads: 4"
-      
-      exec gunicorn app:app \
-        --workers 2 \
-        --threads 4 \
-        --bind=0.0.0.0:$PORT \
-        --timeout 120 \
-        --graceful-timeout 30 \
-        --keepalive 5 \
-        --max-requests 1000 \
-        --max-requests-jitter 50 \
-        --worker-connections 1000 \
-        --log-level info \
-        --access-logfile - \
-        --error-logfile -
 
     buildCommand: |
       echo "🚀 Ruby Wings v4.0 Build Started - FIXED DEPENDENCIES"
@@ -101,15 +83,13 @@ services:
         
         echo "✅ BUILD COMPLETED SUCCESSFULLY"
 
-    startCommand: |
+      startCommand: |
       echo "🚀 Ruby Wings starting (2GB mode)"
 
       export RAM_PROFILE=2048
       export FAISS_ENABLED=true
-      export GUNICORN_WORKERS=2
-      export GUNICORN_THREADS=4
 
-      gunicorn app:app \
+      python -m gunicorn app:app \
         --workers 2 \
         --threads 4 \
         --bind=0.0.0.0:$PORT \
