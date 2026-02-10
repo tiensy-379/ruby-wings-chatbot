@@ -4770,6 +4770,10 @@ def save_lead():
         # =====================================================
         # 5. META CAPI – LEAD (CHUẨN META, DEDUP 100%)
         # =====================================================
+        logger.warning(
+        f"[META FLAG CHECK] ENABLE_META_CAPI_LEAD={ENABLE_META_CAPI_LEAD}, HAS_META_CAPI={HAS_META_CAPI}"
+    )
+
         if ENABLE_META_CAPI_LEAD and HAS_META_CAPI:
 
             test_code = os.environ.get("META_TEST_EVENT_CODE", "").strip()
