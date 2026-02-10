@@ -4789,7 +4789,7 @@ def save_lead():
                     if phone_clean and re.match(r'^0\d{9,10}$', phone_clean) and event_id:
                         send_meta_lead(
                             request=request,
-                            event_name="Lead",
+                            event_name="Contact",
                             event_id=event_id,          # 🔒 BẮT BUỘC từ FE
                             phone=phone_clean,
                             fbp=fbp,
