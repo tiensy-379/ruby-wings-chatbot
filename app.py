@@ -4876,7 +4876,11 @@ def track_contact():
         response = jsonify({'status': 'ok'})
         response.headers.add("Access-Control-Allow-Origin", cors_origin())
         response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type, X-RW-EVENT-ID")
+        response.headers.add(
+            "Access-Control-Allow-Headers",
+            "Content-Type, X-RW-EVENT-ID"
+        )
+        response.headers.add("Access-Control-Max-Age", "86400")
         return response, 200
 
     try:
