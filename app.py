@@ -4851,12 +4851,23 @@ ALLOWED_ORIGINS = [
 ]
 
 def cors_origin():
-    """CORS origin validation - strict mode"""
+    """
+    CORS safe mode:
+    - Allow đúng Origin nếu nằm trong whitelist
+    - Nếu Origin không whitelist → vẫn trả đúng Origin để KHÔNG chặn POST
+    - Không ảnh hưởng endpoint same-origin
+    """
     origin = request.headers.get("Origin")
+
+    if not origin:
+        return "*"  # same-origin / server-side / tool
+
     if origin in ALLOWED_ORIGINS:
         return origin
-    # KHÔNG trả về "*" trong production - fail safe
-    return ALLOWED_ORIGINS[0] if ALLOWED_ORIGINS else "https://www.rubywings.vn"
+
+    # ⚠️ fallback vận hành: không chặn POST (tránh chết CAPI)
+    return origin
+
 
 @app.route("/api/track-contact", methods=["POST", "OPTIONS"])
 def track_contact():
