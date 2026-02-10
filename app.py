@@ -4770,10 +4770,6 @@ def save_lead():
         # =====================================================
         # 5. META CAPI – LEAD (CHUẨN META, DEDUP 100%)
         # =====================================================
-        logger.warning(
-        f"[META FLAG CHECK] ENABLE_META_CAPI_LEAD={ENABLE_META_CAPI_LEAD}, HAS_META_CAPI={HAS_META_CAPI}"
-    )
-
         if ENABLE_META_CAPI_LEAD and HAS_META_CAPI:
 
             test_code = os.environ.get("META_TEST_EVENT_CODE", "").strip()
@@ -4856,25 +4852,31 @@ ALLOWED_ORIGINS = [
 
 def cors_origin():
     """
-    CORS safe mode:
-    - Allow đúng Origin nếu nằm trong whitelist
-    - Nếu Origin không whitelist → vẫn trả đúng Origin để KHÔNG chặn POST
-    - Không ảnh hưởng endpoint same-origin
+    CORS production-safe:
+    - Cho phép Origin trong whitelist
+    - Same-origin / server-side → cho qua
+    - Origin lạ → vẫn trả về Origin để KHÔNG làm chết hệ
+    - Không dùng "*" cho browser-origin (tránh lỗi credentials)
     """
     origin = request.headers.get("Origin")
 
+    # Same-origin / server-side / tool (no Origin header)
     if not origin:
-        return "*"  # same-origin / server-side / tool
+        return "https://www.rubywings.vn"
 
+    # Whitelist chuẩn
     if origin in ALLOWED_ORIGINS:
         return origin
 
-    # ⚠️ fallback vận hành: không chặn POST (tránh chết CAPI)
+    # Fallback an toàn: KHÔNG chặn POST, nhưng KHÔNG mở wildcard
     return origin
+
 
 
 @app.route("/api/track-contact", methods=["POST", "OPTIONS"])
 def track_contact():
+    logger.warning(f"[CORS AUDIT] Origin={request.headers.get('Origin')}")
+    # ===== CORS PREFLIGHT =====
     if request.method == 'OPTIONS':
         response = jsonify({'status': 'ok'})
         response.headers.add("Access-Control-Allow-Origin", cors_origin())
@@ -4891,6 +4893,8 @@ def track_contact():
         event_id = data.get('event_id')
         phone = data.get('phone')
         source = data.get('source', 'Contact')
+
+        logger.info(f"📞 Track contact: source={source}, event_id={event_id[:8] if event_id else 'None'}")
 
         # 🔒 1. CHECK EVENT_ID (bắt buộc cho CAPI)
         if not event_id:
