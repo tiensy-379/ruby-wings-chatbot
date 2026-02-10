@@ -4844,46 +4844,67 @@ def save_lead():
 # =========================================================
 # API: CONTACT CLICK (ALIAS – FIX 404, SAFE)
 # =========================================================
-@app.route('/api/track-contact', methods=['POST', 'OPTIONS'])
+ALLOWED_ORIGINS = [
+    "https://rubywings.vn",
+    "https://www.rubywings.vn",
+]
+
+def cors_origin():
+    origin = request.headers.get("Origin")
+    if origin in ALLOWED_ORIGINS:
+        return origin
+    return "*"   # fallback an toàn, chưa khoá cứng
+
+@app.route("/api/track-contact", methods=["POST", "OPTIONS"])
 def track_contact():
     if request.method == 'OPTIONS':
-        return jsonify({'status': 'ok'}), 200
+        response = jsonify({'status': 'ok'})
+        response.headers.add("Access-Control-Allow-Origin", cors_origin())
+        response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+        return response, 200
 
     try:
         data = request.get_json() or {}
-
         event_id = data.get('event_id')
         phone = data.get('phone')
         source = data.get('source', 'Contact')
- # 🔍 DEBUG: Thêm log để kiểm tra
-        logger.info(f"📞 [DEBUG] Track contact called: source={source}, event_id={event_id}, phone={phone}")
-        logger.info(f"📞 [DEBUG] ENABLE_META_CAPI_CALL={ENABLE_META_CAPI_CALL}, HAS_META_CAPI={HAS_META_CAPI}")
-        # ===== META PARAM BUILDER =====
+
+        logger.info(f"📞 [DEBUG] Track contact: source={source}, event_id={event_id}, phone={phone}")
+
+        # 🔒 CHỈ CAPI khi đủ điều kiện
+        if not event_id:
+            logger.warning(f"⚠️ Missing event_id → Pixel only ({source})")
+            response = jsonify({'success': True, 'message': 'Pixel only'})
+            response.headers.add("Access-Control-Allow-Origin", cors_origin())
+            return response
+
         meta = MetaParamService()
         meta.process_request(request)
-
-        fbp = meta.get_fbp()
-        fbc = meta.get_fbc()
 
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             send_meta_lead(
                 request=request,
-                event_name="Contact",      # KHÔNG đổi
-                event_id=event_id,         # từ FE
+                event_name="Contact",
+                event_id=event_id,
                 phone=phone,
-                fbp=fbp,                   # fallback dedup
-                fbc=fbc,                   # fallback dedup
+                fbp=meta.get_fbp(),
+                fbc=meta.get_fbc(),
                 content_name=source
             )
             increment_stat('meta_capi_calls')
-            logger.info("📩 Contact Meta CAPI sent")
 
-        return jsonify({'success': True})
+        response = jsonify({'success': True})
+        response.headers.add("Access-Control-Allow-Origin", cors_origin())
+        return response
 
     except Exception as e:
         increment_stat('meta_capi_errors')
-        logger.error(f'❌ Track contact error: {e}')
-        return jsonify({'error': str(e)}), 500
+        logger.error(f"❌ Track contact error: {e}")
+        response = jsonify({'error': str(e)})
+        response.headers.add("Access-Control-Allow-Origin", cors_origin())
+        return response, 500
+
 
 
 @app.route('/api/track-call', methods=['POST', 'OPTIONS'])
