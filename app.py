@@ -4847,21 +4847,25 @@ def save_lead():
 ALLOWED_ORIGINS = [
     "https://rubywings.vn",
     "https://www.rubywings.vn",
+    "http://localhost:3000",  # local dev
 ]
 
 def cors_origin():
+    """CORS origin validation - strict mode"""
     origin = request.headers.get("Origin")
     if origin in ALLOWED_ORIGINS:
         return origin
-    return "*"   # fallback an toàn, chưa khoá cứng
+    # KHÔNG trả về "*" trong production - fail safe
+    return ALLOWED_ORIGINS[0] if ALLOWED_ORIGINS else "https://www.rubywings.vn"
 
 @app.route("/api/track-contact", methods=["POST", "OPTIONS"])
 def track_contact():
+    # ===== CORS PREFLIGHT =====
     if request.method == 'OPTIONS':
         response = jsonify({'status': 'ok'})
         response.headers.add("Access-Control-Allow-Origin", cors_origin())
         response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
-        response.headers.add("Access-Control-Allow-Headers", "Content-Type")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, X-RW-EVENT-ID")
         return response, 200
 
     try:
@@ -4870,29 +4874,38 @@ def track_contact():
         phone = data.get('phone')
         source = data.get('source', 'Contact')
 
-        logger.info(f"📞 [DEBUG] Track contact: source={source}, event_id={event_id}, phone={phone}")
+        logger.info(f"📞 Track contact: source={source}, event_id={event_id[:8] if event_id else 'None'}")
 
-        # 🔒 CHỈ CAPI khi đủ điều kiện
+        # 🔒 1. CHECK EVENT_ID (bắt buộc cho CAPI)
         if not event_id:
             logger.warning(f"⚠️ Missing event_id → Pixel only ({source})")
-            response = jsonify({'success': True, 'message': 'Pixel only'})
+            response = jsonify({'success': True, 'message': 'Pixel only (no CAPI)'})
             response.headers.add("Access-Control-Allow-Origin", cors_origin())
             return response
 
+        # 🔒 2. CHECK META CAPI AVAILABILITY
+        if not ENABLE_META_CAPI_LEAD or not HAS_META_CAPI:
+            logger.info(f"ℹ️ Meta CAPI disabled: ENABLE_META_CAPI_LEAD={ENABLE_META_CAPI_LEAD}, HAS_META_CAPI={HAS_META_CAPI}")
+            response = jsonify({'success': True, 'message': 'CAPI disabled'})
+            response.headers.add("Access-Control-Allow-Origin", cors_origin())
+            return response
+
+        # 🔒 3. EXTRACT META PARAMS
         meta = MetaParamService()
         meta.process_request(request)
 
-        if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
-            send_meta_lead(
-                request=request,
-                event_name="Contact",
-                event_id=event_id,
-                phone=phone,
-                fbp=meta.get_fbp(),
-                fbc=meta.get_fbc(),
-                content_name=source
-            )
-            increment_stat('meta_capi_calls')
+        # 🔒 4. SEND META CAPI
+        send_meta_lead(
+            request=request,
+            event_name="Lead",  # Chuẩn Meta: "Lead" thay vì "Contact"
+            event_id=event_id,
+            phone=phone or "",
+            fbp=meta.get_fbp(),
+            fbc=meta.get_fbc(),
+            content_name=f"Contact: {source}"
+        )
+        increment_stat('meta_capi_leads')
+        logger.info(f"✅ Meta CAPI Lead sent: {source}")
 
         response = jsonify({'success': True})
         response.headers.add("Access-Control-Allow-Origin", cors_origin())
@@ -4900,11 +4913,10 @@ def track_contact():
 
     except Exception as e:
         increment_stat('meta_capi_errors')
-        logger.error(f"❌ Track contact error: {e}")
-        response = jsonify({'error': str(e)})
+        logger.error(f"❌ Track contact error: {e}", exc_info=True)
+        response = jsonify({'error': 'Internal server error'})
         response.headers.add("Access-Control-Allow-Origin", cors_origin())
         return response, 500
-
 
 
 @app.route('/api/track-call', methods=['POST', 'OPTIONS'])
