@@ -4871,6 +4871,7 @@ def cors_origin():
 
 @app.route("/api/track-contact", methods=["POST", "OPTIONS"])
 def track_contact():
+    logger.warning(f"[CORS AUDIT] Origin={request.headers.get('Origin')}")
     # ===== CORS PREFLIGHT =====
     if request.method == 'OPTIONS':
         response = jsonify({'status': 'ok'})
