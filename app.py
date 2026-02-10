@@ -4871,17 +4871,12 @@ def cors_origin():
 
 @app.route("/api/track-contact", methods=["POST", "OPTIONS"])
 def track_contact():
-    logger.warning(f"[CORS AUDIT] Origin={request.headers.get('Origin')}")
     # ===== CORS PREFLIGHT =====
     if request.method == 'OPTIONS':
         response = jsonify({'status': 'ok'})
         response.headers.add("Access-Control-Allow-Origin", cors_origin())
         response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
-        response.headers.add(
-            "Access-Control-Allow-Headers",
-            "Content-Type, X-RW-EVENT-ID"
-        )
-        response.headers.add("Access-Control-Max-Age", "86400")
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, X-RW-EVENT-ID")
         return response, 200
 
     try:
