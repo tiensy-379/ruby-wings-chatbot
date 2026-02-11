@@ -167,7 +167,7 @@ def send_meta_lead(
 
         # Feature gate
         if not config.get('enable_lead'):
-            logger.debug("Meta CAPI Lead: Feature disabled")
+           # logger.debug("Meta CAPI Lead: Feature disabled")
             return None
 
         # Hard requirement
@@ -208,6 +208,8 @@ def send_meta_lead(
             "action_source": "website",
             "user_data": user_data
         }
+        # 🔒 SAFE OVERRIDE – KHOÁ CỨNG DOMAIN (PROD)
+        payload_event["event_source_url"] = "https://www.rubywings.vn"
 
 
         # Custom data
@@ -228,10 +230,11 @@ def send_meta_lead(
 
         masked_phone = f"{phone[:4]}..." if phone else "None"
         if result:
-            logger.info(
-                f"Meta CAPI Lead sent: {event_name} | "
-                f"event_id={event_id} | phone={masked_phone}"
-            )
+            # logger.info(
+            #    f"Meta CAPI Lead sent: {event_name} | "
+            #    f"event_id={event_id} | phone={masked_phone}"
+            #)
+            pass
         else:
             logger.warning(f"Meta CAPI Lead failed: event_id={event_id}")
 
@@ -347,14 +350,14 @@ def send_meta_bulk_events(request, events: list):
         # Add test event code if in debug mode
         if config['test_code'] and config['debug']:
          #   payload["test_event_code"] = config['test_code']
-            logger.info(f"Meta CAPI Bulk (TEST MODE): {len(events)} events")
+            pass
         
         # Send to Meta
         result = _send_to_meta(config['pixel_id'], payload)
         
         if result:
             received = result.get('events_received', 0)
-            logger.info(f"Meta CAPI Bulk sent: {received}/{len(events)} events received")
+        
         
         return result
         

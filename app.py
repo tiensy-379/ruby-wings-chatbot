@@ -3431,9 +3431,9 @@ def chat_endpoint_ultimate():
         detected_intents = []
         
         # LOG - CHỈ LOG NHỮNG THÔNG TIN ĐÃ CÓ SẴN
-        logger.info(f"🔍 Chat request: '{user_message}'")
-        logger.info(f"📊 TOURS_DB count: {len(TOURS_DB)}")
-        logger.info(f"📊 FAISS index count: {len(FLAT_TEXTS) if FLAT_TEXTS else 0}")
+        # logger.info(f"🔍 Chat request: '{user_message}'")
+        # logger.info(f"📊 TOURS_DB count: {len(TOURS_DB)}")
+        # logger.info(f"📊 FAISS index count: {len(FLAT_TEXTS) if FLAT_TEXTS else 0}")
         
         session_id = extract_session_id(data, request.remote_addr)
         
@@ -3743,7 +3743,7 @@ Trả lời ngắn gọn, chuyên nghiệp."""
         
         # 🔹 CASE 3: TOUR COMPARISON
         elif 'comparison' in detected_intents:
-            logger.info("⚖️ Processing tour comparison request")
+            # logger.info("⚖️ Processing tour comparison request")
             
             # Tìm các tour để so sánh
             comparison_tours = []
@@ -4005,7 +4005,7 @@ Trả lời thân thiện, chuyên nghiệp."""
         
         # 🔹 CASE 5: GENERAL INFORMATION (giới thiệu, triết lý, văn hóa)
         elif 'general_info' in detected_intents or any(keyword in message_lower for keyword in ['giới thiệu', 'là gì', 'thế nào', 'triết lý']):
-            logger.info("🏛️ Processing general information request")
+            # logger.info("🏛️ Processing general information request")
             
             # Xác định loại thông tin cần
             if 'ruby wings' in message_lower or 'công ty' in message_lower:
@@ -5126,6 +5126,7 @@ if not os.environ.get('RENDER'):  # Trên Render, khởi tạo qua before_reques
     initialize_on_start()
 else:
     logger.info("🔄 Render mode - Khởi tạo qua before_request")
+    pass
 @app.route("/api/debug", methods=["GET"])
 def debug_endpoint():
     """Debug endpoint to check loaded data"""
