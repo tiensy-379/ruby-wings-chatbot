@@ -1,13 +1,4 @@
 def safe_validate(reply):
-    def normalize_tour_key(text: str) -> str:
-        """Normalize tour name/text for stable matching & dedup."""
-        if not text:
-            return ""
-        t = unicodedata.normalize("NFKD", str(text).lower())
-        t = "".join(ch for ch in t if not unicodedata.combining(ch))
-        t = re.sub(r"[^a-z0-9\s]", " ", t)
-        t = re.sub(r"\s+", " ", t).strip()
-        return t
     try:
         if not isinstance(reply, dict):
             return reply
@@ -296,54 +287,6 @@ def get_stats() -> dict:
         return GLOBAL_STATS.copy()
 
 # =========== UPGRADE FEATURE FLAGS ===========
-def format_tour_program_response(tour) -> str:
-    """Build detailed response from knowledge fields (12 fields + event_support)."""
-    if not tour:
-        return ""
-
-    name = getattr(tour, 'name', '') or 'Tour'
-    summary = getattr(tour, 'summary', '') or ''
-    location = getattr(tour, 'location', '') or ''
-    duration = getattr(tour, 'duration', '') or ''
-    price = getattr(tour, 'price', '') or ''
-    includes = getattr(tour, 'includes', []) or []
-    notes = getattr(tour, 'notes', '') or ''
-    style = getattr(tour, 'style', '') or ''
-    transport = getattr(tour, 'transport', '') or ''
-    accommodation = getattr(tour, 'accommodation', '') or ''
-    meals = getattr(tour, 'meals', '') or ''
-    event_support = getattr(tour, 'event_support', '') or ''
-
-    lines = [f"📘 **CHƯƠNG TRÌNH: {name}**"]
-    if summary:
-        lines.append(f"- Tổng quan: {summary}")
-    if location:
-        lines.append(f"- Địa điểm: {location}")
-    if duration:
-        lines.append(f"- Thời lượng: {duration}")
-    if price:
-        lines.append(f"- Giá: {price}")
-    if style:
-        lines.append(f"- Phong cách: {style}")
-    if transport:
-        lines.append(f"- Phương tiện: {transport}")
-    if accommodation:
-        lines.append(f"- Lưu trú: {accommodation}")
-    if meals:
-        lines.append(f"- Bữa ăn: {meals}")
-
-    if includes:
-        lines.append("- Lịch trình/bao gồm:")
-        for item in includes[:12]:
-            lines.append(f"  • {item}")
-
-    if notes:
-        lines.append(f"- Lưu ý: {notes}")
-    if event_support:
-        lines.append(f"- Hỗ trợ đoàn: {event_support}")
-
-    lines.append("📞 Hotline: 0332510486")
-    return "\n".join(lines)
 class UpgradeFlags:
     """Control all 10 upgrades with environment variables"""
     
@@ -3533,12 +3476,6 @@ def chat_endpoint_ultimate():
         
         # ================== AI-POWERED CONTEXT ANALYSIS ==================
         message_lower = user_message.lower()
-        # FOLLOW-UP CONTEXT MEMORY
-        followup_keywords = [
-            'giá tour', 'giá', 'chương trình', 'lịch trình', 'chi tiết tour',
-            'tour này', 'tour do', 'giá tour này'
-        ]
-        is_followup_tour_question = any(k in message_lower for k in followup_keywords)
         # CONTEXT MEMORY (follow-up):
         # Nếu user đang hỏi nối tiếp về giá/chương trình/lịch trình,
         # và lượt này chưa match được tour mới thì dùng tour gần nhất trong session.
@@ -3617,12 +3554,7 @@ def chat_endpoint_ultimate():
         if direct_tour_matches:
             tour_indices = direct_tour_matches[:3]  # Chỉ lấy 3 tour đầu
             logger.info(f"🎯 Direct tour matches found: {tour_indices}")
-        # Nếu không match được tour mới, dùng tour gần nhất trong context cho follow-up
-        if is_followup_tour_question and not tour_indices:
-            last_tour_idx = getattr(context, 'current_tour', None)
-            if isinstance(last_tour_idx, int) and last_tour_idx in TOURS_DB:
-                tour_indices = [last_tour_idx]
-                logger.info(f"🧠 Reuse context.current_tour={last_tour_idx} for follow-up")
+        
         # Strategy 3: Filter-based search
         mandatory_filters = FilterSet()
         if UpgradeFlags.is_enabled("1_MANDATORY_FILTER"):
@@ -3654,11 +3586,6 @@ def chat_endpoint_ultimate():
         # ================== INTELLIGENT RESPONSE GENERATION ==================
         reply = ""
         sources = []
-        # Ưu tiên trả lời theo chương trình tour cụ thể nếu đã xác định được tour
-        if any(k in message_lower for k in ['chương trình', 'lịch trình', 'chi tiết tour']) and tour_indices:
-            selected_tour = TOURS_DB.get(tour_indices[0])
-            if selected_tour:
-                reply = format_tour_program_response(selected_tour)
         
         # 🔹 CASE 1: LISTING TOURS
         if 'tour_listing' in detected_intents or any(keyword in message_lower for keyword in ['có những tour nào', 'danh sách tour', 'liệt kê tour', 'tour nào có']):
@@ -3678,14 +3605,14 @@ def chat_endpoint_ultimate():
                 all_tours = list(TOURS_DB.values())
                 logger.info(f"🎯 Getting ALL tours: {len(all_tours)} tours")
             
-            # Apply deduplication (normalized)
+            # Apply deduplication
             if UpgradeFlags.is_enabled("2_DEDUPLICATION") and all_tours:
-                seen_keys = set()
+                seen_names = set()
                 unique_tours = []
                 for tour in all_tours:
-                    key = normalize_tour_key(getattr(tour, "name", ""))
-                    if key and key not in seen_keys:
-                        seen_keys.add(key)
+                    name = tour.name
+                    if name and name not in seen_names:
+                        seen_names.add(name)
                         unique_tours.append(tour)
                 all_tours = unique_tours
             
@@ -3752,7 +3679,7 @@ def chat_endpoint_ultimate():
                 reply += "📞 **Hotline tư vấn 24/7:** 0332510486"
         
         # 🔹 CASE 2: PRICE INQUIRY
-        elif 'price_inquiry' in detected_intents or any(keyword in message_lower for keyword in ['giá bao nhiêu', 'bao nhiêu tiền', 'giá tour', 'giá tour này', 'giá tout']):
+        elif 'price_inquiry' in detected_intents or any(keyword in message_lower for keyword in ['giá bao nhiêu', 'bao nhiêu tiền']):
             logger.info("💰 Processing price inquiry")
             
             if tour_indices:
@@ -3812,11 +3739,6 @@ Trả lời ngắn gọn, chuyên nghiệp."""
                             reply = "Giá tour tùy thuộc vào loại tour, thời gian và số lượng người. Vui lòng cho biết bạn quan tâm tour nào để tôi báo giá cụ thể."
                     else:
                         reply = "Giá tour Ruby Wings rất đa dạng, từ tour 1 ngày giá 500.000đ đến tour cao cấp 5.000.000đ. Bạn muốn biết giá tour cụ thể nào?"
-            # Bảo hiểm context lần cuối trước khi rơi về bảng giá chung
-            if not tour_indices:
-                last_tour_idx = getattr(context, 'current_tour', None)
-                if isinstance(last_tour_idx, int) and last_tour_idx in TOURS_DB:
-                    tour_indices = [last_tour_idx]
             else:
                 # Không có tour cụ thể
                 reply = "💰 **BẢNG GIÁ THAM KHẢO RUBY WINGS** 💰\n\n"

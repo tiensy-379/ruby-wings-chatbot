@@ -57,6 +57,7 @@ class Tour:
     transport: str = ""
     notes: str = ""
     style: str = ""
+    event_support: str = ""
     
     # Metadata
     tags: List[str] = field(default_factory=list)
@@ -224,6 +225,7 @@ class FilterSet:
     weekend: bool = False
     holiday: Optional[str] = None
     group_type: Optional[str] = None
+
     
     def is_empty(self) -> bool:
         """Check if filter set is empty"""
