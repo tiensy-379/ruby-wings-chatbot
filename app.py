@@ -1,4 +1,13 @@
 def safe_validate(reply):
+    def normalize_tour_key(text: str) -> str:
+        """Normalize tour name/text for stable matching & dedup."""
+        if not text:
+            return ""
+        t = unicodedata.normalize("NFKD", str(text).lower())
+        t = "".join(ch for ch in t if not unicodedata.combining(ch))
+        t = re.sub(r"[^a-z0-9\s]", " ", t)
+        t = re.sub(r"\s+", " ", t).strip()
+        return t
     try:
         if not isinstance(reply, dict):
             return reply
@@ -50,10 +59,20 @@ class Tour:
     accommodation: str = ""
     meals: str = ""
     tags: List[str] = field(default_factory=list)
+    event_support: str = ""
     
     def __str__(self):
         return f"Tour({self.name})"
 from common_utils import flatten_json
+def normalize_tour_key(text: str) -> str:
+    """Normalize Vietnamese text for stable intent/matching/dedup."""
+    if not text:
+        return ""
+    t = unicodedata.normalize("NFKD", str(text).lower())
+    t = "".join(ch for ch in t if not unicodedata.combining(ch))
+    t = re.sub(r"[^a-z0-9\s]", " ", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
 import random
 try:
     import numpy as np
@@ -285,8 +304,93 @@ def get_stats() -> dict:
     """Get current stats"""
     with STATS_LOCK:
         return GLOBAL_STATS.copy()
+    def resolve_best_tour_indices(user_message: str, top_k: int = 3) -> List[int]:
+        """Resolve tour by exact-normalized match first, then token overlap score."""
+        msg_norm = normalize_tour_key(user_message)
+        if not msg_norm:
+            return []
+
+        scored = []
+        for norm_name, idx in TOUR_NAME_TO_INDEX.items():
+            name_norm = normalize_tour_key(norm_name)
+            if not name_norm:
+                continue
+
+            # Exact/contains boost
+            score = 0
+            if name_norm in msg_norm:
+                score += 100
+
+            # Token overlap
+            msg_tokens = set(msg_norm.split())
+            name_tokens = set(name_norm.split())
+            overlap = len(msg_tokens.intersection(name_tokens))
+            score += overlap * 5
+
+            if score > 0:
+                scored.append((idx, score))
+
+        scored.sort(key=lambda x: x[1], reverse=True)
+
+        ordered = []
+        seen = set()
+        for idx, _ in scored:
+            if idx not in seen:
+                seen.add(idx)
+                ordered.append(idx)
+            if len(ordered) >= top_k:
+                break
+        return ordered
 
 # =========== UPGRADE FEATURE FLAGS ===========
+def format_tour_program_response(tour) -> str:
+    """Build detailed response from knowledge fields (12 fields + event_support)."""
+    if not tour:
+        return ""
+
+    name = getattr(tour, 'name', '') or 'Tour'
+    summary = getattr(tour, 'summary', '') or ''
+    location = getattr(tour, 'location', '') or ''
+    duration = getattr(tour, 'duration', '') or ''
+    price = getattr(tour, 'price', '') or ''
+    includes = getattr(tour, 'includes', []) or []
+    notes = getattr(tour, 'notes', '') or ''
+    style = getattr(tour, 'style', '') or ''
+    transport = getattr(tour, 'transport', '') or ''
+    accommodation = getattr(tour, 'accommodation', '') or ''
+    meals = getattr(tour, 'meals', '') or ''
+    event_support = getattr(tour, 'event_support', '') or ''
+
+    lines = [f"📘 **CHƯƠNG TRÌNH: {name}**"]
+    if summary:
+        lines.append(f"- Tổng quan: {summary}")
+    if location:
+        lines.append(f"- Địa điểm: {location}")
+    if duration:
+        lines.append(f"- Thời lượng: {duration}")
+    if price:
+        lines.append(f"- Giá: {price}")
+    if style:
+        lines.append(f"- Phong cách: {style}")
+    if transport:
+        lines.append(f"- Phương tiện: {transport}")
+    if accommodation:
+        lines.append(f"- Lưu trú: {accommodation}")
+    if meals:
+        lines.append(f"- Bữa ăn: {meals}")
+
+    if includes:
+        lines.append("- Lịch trình/bao gồm:")
+        for item in includes[:12]:
+            lines.append(f"  • {item}")
+
+    if notes:
+        lines.append(f"- Lưu ý: {notes}")
+    if event_support:
+        lines.append(f"- Hỗ trợ đoàn: {event_support}")
+
+    lines.append("📞 Hotline: 0332510486")
+    return "\n".join(lines)
 class UpgradeFlags:
     """Control all 10 upgrades with environment variables"""
     
@@ -1712,6 +1816,7 @@ class ConversationStateMachine:
     def _determine_state(self, user_message: str, bot_response: str) -> ConversationState:
         """Determine new state based on current interaction"""
         message_lower = user_message.lower()
+        message_norm = normalize_tour_key(user_message)
         
         farewell_words = ['tạm biệt', 'cảm ơn', 'thanks', 'bye', 'goodbye']
         if any(word in message_lower for word in farewell_words):
@@ -3476,6 +3581,12 @@ def chat_endpoint_ultimate():
         
         # ================== AI-POWERED CONTEXT ANALYSIS ==================
         message_lower = user_message.lower()
+        # FOLLOW-UP CONTEXT MEMORY
+        followup_keywords = [
+            'giá tour', 'giá', 'chương trình', 'lịch trình', 'chi tiết tour',
+            'tour này', 'tour do', 'giá tour này'
+        ]
+        is_followup_tour_question = any(k in message_lower for k in followup_keywords)
         # CONTEXT MEMORY (follow-up):
         # Nếu user đang hỏi nối tiếp về giá/chương trình/lịch trình,
         # và lượt này chưa match được tour mới thì dùng tour gần nhất trong session.
@@ -3503,28 +3614,30 @@ def chat_endpoint_ultimate():
         
         # ================== SMART INTENT DETECTION ==================
         intent_categories = {
-            'tour_listing': ['có những tour nào', 'danh sách tour', 'liệt kê tour', 'tour nào có'],
-            'price_inquiry': ['giá bao nhiêu', 'bao nhiêu tiền', 'chi phí', 'giá tour'],
-            'tour_detail': ['chi tiết tour', 'lịch trình', 'có gì', 'bao gồm gì'],
-            'comparison': ['so sánh', 'khác nhau', 'nên chọn', 'tốt hơn'],
-            'recommendation': ['phù hợp', 'gợi ý', 'đề xuất', 'tư vấn', 'nên đi'],
-            'booking_info': ['đặt tour', 'đăng ký', 'booking', 'giữ chỗ'],
-            'policy': ['chính sách', 'giảm giá', 'ưu đãi', 'khuyến mãi'],
-            'general_info': ['giới thiệu', 'là gì', 'thế nào', 'ra sao'],
-            'location_info': ['ở đâu', 'địa điểm', 'đến đâu', 'vị trí'],
-            'time_info': ['khi nào', 'thời gian', 'bao lâu', 'mấy ngày'],
-            'weather_info': ['thời tiết', 'khí hậu', 'nắng mưa', 'mùa nào'],
-            'food_info': ['ẩm thực', 'món ăn', 'đặc sản', 'đồ ăn'],
-            'culture_info': ['văn hóa', 'lịch sử', 'truyền thống', 'di tích'],
-            'wellness_info': ['thiền', 'yoga', 'chữa lành', 'sức khỏe'],
-            'group_info': ['nhóm', 'đoàn', 'công ty', 'gia đình'],
-            'custom_request': ['tùy chỉnh', 'riêng', 'cá nhân hóa', 'theo yêu cầu']
-        }
+            'tour_listing': ['có những tour nào','co nhung tour nao','co tour nao','danh sách tour','liệt kê tour','tour nào có','các tour hiện có','tổng hợp tour','toàn bộ tour','tour đang mở','tour đang có','có tour gì','hiện có tour gì','xem danh sách tour','cho xem tour','các chương trình tour','các hành trình đang chạy','tour ruby wings có gì'],
+            'price_inquiry': ['giá bao nhiêu','gia bao nhieu','bao nhiêu tiền','bao nhieu tien','chi phí','chi phi','giá tour','gia tour','giá chương trình','gia chuong trinh','giá hành trình','gia hanh trinh','giá đi','gia di','mức giá','muc gia','giá như thế nào','gia nhu the nao','giá khoảng bao nhiêu','gia khoang bao nhieu','tốn bao nhiêu','ton bao nhieu'],
+            'tour_detail': ['chi tiết tour','chi tiet tour','lịch trình','lich trinh','chương trình','chuong trinh','tour có gì','có những gì','bao gồm gì','bao gom gi','trong tour có gì','nội dung tour','noi dung tour','các hoạt động','hoat dong gi','đi những đâu','di nhung dau','tham quan những đâu','tham quan gi','tour gồm những gì'],
+            'comparison': ['so sánh','so sanh','khác nhau','khac nhau','so với','so voi','so sánh giữa','so sanh giua','điểm khác nhau','diem khac nhau','khác gì','khac gi','so sánh tour','so sanh tour','so sánh chương trình','so sanh chuong trinh'],
+            'recommendation': ['phù hợp','phu hop','gợi ý','goi y','đề xuất','de xuat','tư vấn','tu van','nên đi','nen di','nên chọn tour nào','nen chon tour nao','tư vấn giúp','tu van giup','gợi ý giúp','goi y giup','phù hợp với tôi','phu hop voi toi','tour nào phù hợp','tour nao phu hop'],
+            'booking_info': ['đặt tour','dat tour','đăng ký','dang ky','booking','giữ chỗ','giu cho','đặt chỗ','dat cho','đăng ký tour','dang ky tour','booking tour','giữ suất','giu suat','đặt lịch đi','dat lich di','cách đặt tour','cach dat tour','đăng ký như thế nào','dang ky nhu the nao'],
+            'policy': ['chính sách','chinh sach','giảm giá','giam gia','ưu đãi','uu dai','khuyến mãi','khuyen mai','chính sách tour','chinh sach tour','chính sách hủy','chinh sach huy','chính sách hoàn','chinh sach hoan','điều khoản','dieu khoan','điều kiện áp dụng','dieu kien ap dung','ưu đãi hiện có','uu dai hien co','chương trình khuyến mãi','chuong trinh khuyen mai'],
+            'general_info': ['giới thiệu','gioi thieu','là gì','la gi','thế nào','the nao','ra sao','thông tin chung','thong tin chung','nói về','noi ve','tìm hiểu','tim hieu','giới thiệu chung','gioi thieu chung','thông tin cơ bản','thong tin co ban','cho biết thêm','cho biet them'],
+            'location_info': ['ở đâu','địa điểm','đến đâu','vị trí','Quảng Trị','Thị xã Quảng Trị','Thành cổ Quảng Trị','Đông Hà','Vĩnh Linh','Gio Linh','Hiền Lương','Bến Hải','Vĩ tuyến 17','Hướng Hóa','Khe Sanh','Lao Bảo','Trường Sơn','Tây Trường Sơn','Nghĩa trang Liệt sĩ Trường Sơn','Nghĩa trang Liệt sĩ Quốc gia Trường Sơn','Nhà tù Lao Bảo','Sân bay Tà Cơn','Bảo tàng Khe Sanh','Rào Quán','Hồ Rào Quán','Đakrông','La Vang','DMZ','Vịnh Mốc','Địa đạo Vịnh Mốc','Cửa Việt','Cảng Cửa Việt','Đảo Cồn Cỏ','Cồn Cỏ','Vĩnh Mốc','Huế','Thành phố Huế','Đại Nội Huế','Chùa Thiên Mụ','Chùa Từ Hiếu','Rú Chá','Đầm Chuồn','Phá Tam Giang','Quảng Bình','Đồng Hới','Phong Nha','Động Phong Nha','Vũng Chùa','Nhật Lệ','Hà Nội','Ninh Bình','Tràng An','Tam Cốc','Bái Đính','Hạ Long','Bãi Cháy','Quảng Nam','Hội An','Rừng dừa Bảy Mẫu','Đà Nẵng','Ngũ Hành Sơn','Sa Pa','Fansipan','Lào Cai','Phú Thọ','Đền Hùng','TP.HCM','Thành phố Hồ Chí Minh','Bình Dương','Đại Nam','Cần Thơ','Sóc Trăng','Cà Mau','Đất Mũi','Đồng Tháp','Nha Trang','Đà Lạt','Buôn Ma Thuột','Quy Nhơn','Phú Yên','Tuy Hòa','Tam Đảo','Mộc Châu','Sơn La','Phú Quốc','Hòn Thơm'],
+            'time_info': ['khi nào','thời gian','bao lâu','mấy ngày','mấy đêm','đi mấy ngày','đi bao lâu','thời lượng','ngày nào','bao giờ','mấy hôm','thời gian đi','thời gian tour','kéo dài bao lâu'],
+            'weather_info': ['thời tiết','thoi tiet','khí hậu','khi hau','nắng mưa','nang mua','thời tiết thế nào','thoi tiet the nao','trời có mưa không','troi co mua khong','thời tiết có tốt không','thoi tiet co tot khong','mùa nào đẹp','mua nao dep','thời tiết khi đi','thoi tiet khi di','đi mùa nào','di mua nao'],
+            'food_info': ['ẩm thực','am thuc','món ăn','mon an','đặc sản','dac san','đồ ăn','do an','ăn gì','an gi','ăn uống','an uong','ẩm thực địa phương','am thuc dia phuong','đặc sản vùng','dac san vung','bữa ăn trong tour','bua an trong tour','tour ăn gì','tour an gi'],
+            'culture_info': ['văn hóa','van hoa','lịch sử','lich su','truyền thống','truyen thong','di tích','di tich','giá trị văn hóa','gia tri van hoa','giá trị lịch sử','gia tri lich su','văn hóa địa phương','van hoa dia phuong','ý nghĩa lịch sử','y nghia lich su','di sản','di san'],
+            'wellness_info': ['thiền','thien','yoga','chữa lành','chua lanh','sức khỏe','suc khoe','chăm sóc sức khỏe','cham soc suc khoe','thiền định','thien dinh','khí công','khi cong','retreat','trị liệu','tri lieu','phục hồi năng lượng','phuc hoi nang luong'],
+            'group_info': ['nhóm','nhom','đoàn','doan','công ty','cong ty','gia đình','gia dinh','đi theo nhóm','di theo nhom','đi theo đoàn','di theo doan','đoàn đông','doan dong','tour cho nhóm','tour cho doan','tour gia đình','tour cong ty','đoàn bao nhiêu người','doan bao nhieu nguoi'],
+            'custom_request': ['tùy chỉnh','tuy chinh','riêng','tour riêng','ca nhan hoa','cá nhân hóa','theo yêu cầu','theo yeu cau','thiết kế riêng','thiet ke rieng','làm tour riêng','lam tour rieng','tour thiết kế','tour thiet ke','chỉnh theo nhu cầu','chinh theo nhu cau'],
+}
+
         
         detected_intents = []
         for intent, keywords in intent_categories.items():
             for keyword in keywords:
-                if keyword in message_lower:
+                kw_norm = normalize_tour_key(keyword)
+                if keyword in message_lower or (kw_norm and kw_norm in message_norm):
                     detected_intents.append(intent)
                     break
         
@@ -3533,28 +3646,18 @@ def chat_endpoint_ultimate():
         tour_indices = []
         direct_tour_matches = []
         
-        # Strategy 1: Direct tour name matching
-        if TOUR_NAME_TO_INDEX and len(TOUR_NAME_TO_INDEX) > 0:
-            temp_matches = []
-            for norm_name, idx in TOUR_NAME_TO_INDEX.items():
-                if not norm_name:
-                    continue
-                # Kiểm tra tên tour có trong message không
-                tour_words = set(norm_name.split())
-                msg_words = set(message_lower.split())
-                common_words = tour_words.intersection(msg_words)
-                
-                if len(common_words) >= 2:  # Ít nhất 2 từ trùng
-                    temp_matches.append(idx)
-            
-            direct_tour_matches = temp_matches
-        
-
-        
+        # Strategy 1: Direct tour name matching (normalized resolver)
+        direct_tour_matches = resolve_best_tour_indices(user_message, top_k=5)
         if direct_tour_matches:
-            tour_indices = direct_tour_matches[:3]  # Chỉ lấy 3 tour đầu
+            tour_indices = direct_tour_matches[:3]
             logger.info(f"🎯 Direct tour matches found: {tour_indices}")
-        
+
+        # Nếu không match được tour mới, dùng tour gần nhất trong context cho follow-up
+        if is_followup_tour_question and not tour_indices:
+            last_tour_idx = getattr(context, 'current_tour', None)
+            if isinstance(last_tour_idx, int) and last_tour_idx in TOURS_DB:
+                tour_indices = [last_tour_idx]
+                logger.info(f"🧠 Reuse context.current_tour={last_tour_idx} for follow-up")
         # Strategy 3: Filter-based search
         mandatory_filters = FilterSet()
         if UpgradeFlags.is_enabled("1_MANDATORY_FILTER"):
@@ -3586,10 +3689,15 @@ def chat_endpoint_ultimate():
         # ================== INTELLIGENT RESPONSE GENERATION ==================
         reply = ""
         sources = []
+        response_locked = False
+        if any(k in message_lower for k in ['chương trình', 'lịch trình', 'chi tiết tour']) and tour_indices:
+            selected_tour = TOURS_DB.get(tour_indices[0])
+            if selected_tour:
+                reply = format_tour_program_response(selected_tour)
+                response_locked = True
         
         # 🔹 CASE 1: LISTING TOURS
-        if 'tour_listing' in detected_intents or any(keyword in message_lower for keyword in ['có những tour nào', 'danh sách tour', 'liệt kê tour', 'tour nào có']):
-            logger.info("📋 Processing tour listing request")
+        if (not response_locked) and ('tour_listing' in detected_intents or any(keyword in message_lower for keyword in ['có những tour nào', 'danh sách tour', 'liệt kê tour', 'tour nào có'])):
             
             # TẮT TẠM MANDATORY FILTER ĐỂ TEST
             # use_filters = UpgradeFlags.is_enabled("1_MANDATORY_FILTER") and not mandatory_filters.is_empty()
@@ -3605,14 +3713,17 @@ def chat_endpoint_ultimate():
                 all_tours = list(TOURS_DB.values())
                 logger.info(f"🎯 Getting ALL tours: {len(all_tours)} tours")
             
-            # Apply deduplication
+            # Apply deduplication (normalized)
             if UpgradeFlags.is_enabled("2_DEDUPLICATION") and all_tours:
-                seen_names = set()
+                seen_keys = set()
                 unique_tours = []
                 for tour in all_tours:
-                    name = tour.name
-                    if name and name not in seen_names:
-                        seen_names.add(name)
+                    try:
+                        key = normalize_tour_key(getattr(tour, "name", ""))
+                    except Exception:
+                        key = (getattr(tour, "name", "") or "").strip().lower()
+                    if key and key not in seen_keys:
+                        seen_keys.add(key)
                         unique_tours.append(tour)
                 all_tours = unique_tours
             
@@ -3679,7 +3790,7 @@ def chat_endpoint_ultimate():
                 reply += "📞 **Hotline tư vấn 24/7:** 0332510486"
         
         # 🔹 CASE 2: PRICE INQUIRY
-        elif 'price_inquiry' in detected_intents or any(keyword in message_lower for keyword in ['giá bao nhiêu', 'bao nhiêu tiền']):
+        elif 'price_inquiry' in detected_intents or any(keyword in message_lower for keyword in ['giá bao nhiêu', 'bao nhiêu tiền', 'giá tour', 'giá tour này', 'giá tout', 'gía tour']):
             logger.info("💰 Processing price inquiry")
             
             if tour_indices:
@@ -3699,6 +3810,7 @@ def chat_endpoint_ultimate():
                     reply = "💰 **THÔNG TIN GIÁ TOUR** 💰\n\n"
                     reply += "\n".join(price_responses)
                     reply += "\n\n📞 **Giá ưu đãi cho nhóm & đặt sớm:** 0332510486"
+                    response_locked = True
                 else:
                     # Dùng AI để trả lời thông minh
                     if client and HAS_OPENAI:
@@ -3739,6 +3851,11 @@ Trả lời ngắn gọn, chuyên nghiệp."""
                             reply = "Giá tour tùy thuộc vào loại tour, thời gian và số lượng người. Vui lòng cho biết bạn quan tâm tour nào để tôi báo giá cụ thể."
                     else:
                         reply = "Giá tour Ruby Wings rất đa dạng, từ tour 1 ngày giá 500.000đ đến tour cao cấp 5.000.000đ. Bạn muốn biết giá tour cụ thể nào?"
+            # Bảo hiểm context lần cuối trước khi rơi về bảng giá chung
+            if not tour_indices:
+                last_tour_idx = getattr(context, 'current_tour', None)
+                if isinstance(last_tour_idx, int) and last_tour_idx in TOURS_DB:
+                    tour_indices = [last_tour_idx]
             else:
                 # Không có tour cụ thể
                 reply = "💰 **BẢNG GIÁ THAM KHẢO RUBY WINGS** 💰\n\n"
@@ -4365,7 +4482,13 @@ Trả lời trong 150-200 từ."""
             
             else:
                 reply = "Ruby Wings có chính sách ưu đãi hấp dẫn và quy trình đặt tour chuyên nghiệp. Liên hệ hotline để được tư vấn chi tiết."
-        
+        if (not response_locked) and ('pha tam giang' in message_norm or 'đầm chuồn' in message_lower):
+            exact_hits = resolve_best_tour_indices('Di sản Huế Đầm Chuồn Hoàng hôn phá Tam Giang', top_k=1)
+            if exact_hits:
+                t = TOURS_DB.get(exact_hits[0])
+                if t:
+                    reply = format_tour_program_response(t)
+                    response_locked = True
         # 🔹 CASE 11: OUT OF SCOPE QUESTIONS (xử lý bằng AI)
         else:
             logger.info("🤖 Processing with general search")
