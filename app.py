@@ -3587,13 +3587,7 @@ def chat_endpoint_ultimate():
             'tour này', 'tour do', 'giá tour này'
         ]
         is_followup_tour_question = any(k in message_lower for k in followup_keywords)
-        # CONTEXT MEMORY (follow-up):
-        # Nếu user đang hỏi nối tiếp về giá/chương trình/lịch trình,
-        # và lượt này chưa match được tour mới thì dùng tour gần nhất trong session.
-        followup_keywords = [
-            'giá tour', 'giá', 'chương trình', 'lịch trình', 'chi tiết tour', 'tour này'
-        ]
-        is_followup_tour_question = any(k in message_lower for k in followup_keywords)
+        
 
         # Lưu ý: tour_indices đã được khởi tạo [] ở đầu hàm.
         if is_followup_tour_question and not tour_indices:
@@ -3792,83 +3786,31 @@ def chat_endpoint_ultimate():
         # 🔹 CASE 2: PRICE INQUIRY
         elif 'price_inquiry' in detected_intents or any(keyword in message_lower for keyword in ['giá bao nhiêu', 'bao nhiêu tiền', 'giá tour', 'giá tour này', 'giá tout', 'gía tour']):
             logger.info("💰 Processing price inquiry")
-            
-            if tour_indices:
-                # Có tour cụ thể
-                price_responses = []
-                for idx in tour_indices[:2]:  # Chỉ 2 tour đầu
-                    tour = TOURS_DB.get(idx)
-                    if tour and tour.price:
-                        price_text = tour.price
-                        # Làm đẹp price text
-                        if 'nghìn' in price_text.lower():
-                            price_text = price_text.replace('nghìn', 'k').replace('Nghìn', 'k')
-                        
-                        price_responses.append(f"**{tour.name}:** {price_text}")
-                
-                if price_responses:
-                    reply = "💰 **THÔNG TIN GIÁ TOUR** 💰\n\n"
-                    reply += "\n".join(price_responses)
-                    reply += "\n\n📞 **Giá ưu đãi cho nhóm & đặt sớm:** 0332510486"
-                    response_locked = True
-                else:
-                    # Dùng AI để trả lời thông minh
-                    if client and HAS_OPENAI:
-                        try:
-                            prompt = f"""Bạn là tư vấn viên Ruby Wings. Khách hỏi về giá tour nhưng chưa chỉ định tour cụ thể.
 
-THÔNG TIN CHUNG VỀ GIÁ TOUR RUBY WINGS:
-- Tour 1 ngày: từ 500.000đ - 1.500.000đ
-- Tour 2 ngày 1 đêm: từ 1.500.000đ - 3.000.000đ  
-- Tour 3 ngày 2 đêm: từ 2.500.000đ - 5.000.000đ
-- Tour nhóm: có chính sách giảm giá theo số lượng
-- Tour cao cấp: giá theo yêu cầu
-
-YÊU CẦU:
-1. Giải thích phạm vi giá tour của Ruby Wings
-2. Hỏi lại khách về loại tour cụ thể
-3. Đề nghị liên hệ hotline để báo giá chi tiết
-
-Trả lời ngắn gọn, chuyên nghiệp."""
-
-                            response = client.chat.completions.create(
-                                model=CHAT_MODEL,
-                                messages=[
-                                    {"role": "system", "content": prompt},
-                                    {"role": "user", "content": user_message}
-                                ],
-                                temperature=0.5,
-                                max_tokens=250
-                            )
-                            
-                            if response.choices:
-                                reply = response.choices[0].message.content or ""
-                            else:
-                                reply = "Giá tour Ruby Wings dao động từ 500.000đ - 5.000.000đ tùy loại tour và dịch vụ. Bạn quan tâm tour nào cụ thể để tôi báo giá chi tiết?"
-                        
-                        except Exception as e:
-                            logger.error(f"OpenAI price inquiry error: {e}")
-                            reply = "Giá tour tùy thuộc vào loại tour, thời gian và số lượng người. Vui lòng cho biết bạn quan tâm tour nào để tôi báo giá cụ thể."
-                    else:
-                        reply = "Giá tour Ruby Wings rất đa dạng, từ tour 1 ngày giá 500.000đ đến tour cao cấp 5.000.000đ. Bạn muốn biết giá tour cụ thể nào?"
-            # Bảo hiểm context lần cuối trước khi rơi về bảng giá chung
+            # bảo hiểm context trước
             if not tour_indices:
                 last_tour_idx = getattr(context, 'current_tour', None)
                 if isinstance(last_tour_idx, int) and last_tour_idx in TOURS_DB:
                     tour_indices = [last_tour_idx]
+
+            if tour_indices:
+                price_responses = []
+                for idx in tour_indices[:2]:
+                    tour = TOURS_DB.get(idx)
+                    if tour and tour.price:
+                        price_responses.append(f"**{tour.name}:** {tour.price}")
+
+                if price_responses:
+                    reply = "💰 **THÔNG TIN GIÁ TOUR** 💰\n\n" + "\n".join(price_responses)
+                    reply += "\n\n📞 **Giá ưu đãi cho nhóm & đặt sớm:** 0332510486"
+                    response_locked = True
+                else:
+                    reply = "Mình chưa có giá chi tiết của tour này. 📞 Hotline: 0332510486"
             else:
-                # Không có tour cụ thể
                 reply = "💰 **BẢNG GIÁ THAM KHẢO RUBY WINGS** 💰\n\n"
                 reply += "🏷️ **Tour 1 ngày:** 500.000đ - 1.500.000đ\n"
-                reply += "   • Thiên nhiên, văn hóa, ẩm thực\n\n"
                 reply += "🏷️ **Tour 2 ngày 1 đêm:** 1.500.000đ - 3.000.000đ\n"
-                reply += "   • Trải nghiệm sâu, retreat, lịch sử\n\n"
-                reply += "🏷️ **Tour 3+ ngày:** 2.500.000đ - 5.000.000đ\n"
-                reply += "   • Cao cấp, cá nhân hóa, nhóm đặc biệt\n\n"
-                reply += "🎯 **Ưu đãi đặc biệt:**\n"
-                reply += "• Nhóm 10+ người: Giảm 10-20%\n"
-                reply += "• Đặt trước 30 ngày: Giảm 5%\n"
-                reply += "• Cựu chiến binh: Ưu đãi đặc biệt\n\n"
+                reply += "🏷️ **Tour 3+ ngày:** 2.500.000đ - 5.000.000đ\n\n"
                 reply += "📞 **Liên hệ ngay 0332510486 để nhận báo giá chi tiết!**"
         
         # 🔹 CASE 3: TOUR COMPARISON
