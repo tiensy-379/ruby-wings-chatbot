@@ -3807,24 +3807,12 @@ def chat_endpoint_ultimate():
         # ================== AI-POWERED CONTEXT ANALYSIS ==================
         message_lower = user_message.lower()
         message_norm = normalize_tour_key(user_message)
-                # ================== FOLLOW-UP CONTEXT MEMORY ==================
+                        # ================== FOLLOW-UP CONTEXT MEMORY ==================
         followup_keywords = [
             'giá tour', 'giá', 'chương trình', 'lịch trình', 'chi tiết tour',
             'tour này', 'tour do', 'giá tour này'
         ]
         is_followup_tour_question = any(k in message_lower for k in followup_keywords)
-        
-        # Chỉ reuse context khi chưa có tour nào được match trực tiếp
-        if is_followup_tour_question and not tour_indices:
-            last_tour_idx = getattr(context, 'current_tour', None)
-            if isinstance(last_tour_idx, int):
-                last_tour = TOURS_DB.get(last_tour_idx)
-                # Chỉ reuse nếu tour tồn tại và LÀ TOUR THẬT (is_tour = True)
-                if last_tour and last_tour.is_tour:
-                    tour_indices = [last_tour_idx]
-                    logger.info(f"🧠 Reuse context.current_tour={last_tour_idx} for follow-up")
-                else:
-                    logger.info(f"⏭️ Context tour {last_tour_idx} is non-tour or invalid, skip reuse")
         
         # ================== COMPLEXITY SCORING ==================
         complexity_score = 0
