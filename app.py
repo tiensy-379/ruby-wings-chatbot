@@ -486,9 +486,7 @@ class UpgradeFlags:
 def resolve_best_tour_indices(query, top_k=3):
     """
     Tìm index của tour phù hợp nhất dựa trên query.
-    - Ưu tiên khớp chính xác tên tour (normalized)
-    - Nếu không, tìm từ khóa xuất hiện trong tên
-    - Dùng fuzzy matching cơ bản
+    Returns list of (index, score) tuples.
     """
     if not query:
         logger.warning("⚠️ resolve_best_tour_indices: empty query")
@@ -497,49 +495,31 @@ def resolve_best_tour_indices(query, top_k=3):
     normalized_query = normalize_tour_key(query)
     query_words = set(normalized_query.split())
     
-    # Debug: log danh sách tour đang có
-    logger.info(f"🔍 TOUR_NAME_TO_INDEX size: {len(TOUR_NAME_TO_INDEX)}")
-    if len(TOUR_NAME_TO_INDEX) == 0:
-        logger.error("❌ TOUR_NAME_TO_INDEX is EMPTY! Tours may not be loaded correctly.")
-    
     scores = []
     for norm_name, idx in TOUR_NAME_TO_INDEX.items():
         score = 0
         # 1. Khớp chính xác cả chuỗi
         if normalized_query == norm_name:
             score = 100
-            logger.debug(f"🎯 Exact match: '{norm_name}' → {idx}")
         # 2. Khớp chứa chuỗi (query nằm trong tên)
         elif normalized_query in norm_name:
             score = 80
-            logger.debug(f"🔗 Substring match: '{normalized_query}' in '{norm_name}' → {idx}")
         # 3. Khớp tên nằm trong query
         elif norm_name in normalized_query:
             score = 75
-            logger.debug(f"🔗 Reverse substring: '{norm_name}' in '{normalized_query}' → {idx}")
         # 4. Khớp từ khóa riêng lẻ
         else:
             name_words = set(norm_name.split())
             common = query_words.intersection(name_words)
             if common:
                 score = 50 + len(common) * 5
-                logger.debug(f"🔤 Word match: {common} → '{norm_name}' score {score}")
         
         if score > 0:
             scores.append((score, len(norm_name), idx, norm_name))
     
-    # Sắp xếp theo điểm giảm dần, độ dài tên giảm dần
     scores.sort(key=lambda x: (-x[0], -x[1]))
     
-    # Log top matches
-    if scores:
-        logger.info(f"📊 Top matches for '{query}':")
-        for i, (score, _, idx, name) in enumerate(scores[:5]):
-            logger.info(f"   #{i+1}: {name} (idx={idx}, score={score})")
-    else:
-        logger.warning(f"⚠️ No matches found for '{query}'")
-    
-    result = [idx for _, _, idx, _ in scores[:top_k]]
+    result = [(idx, score) for score, _, idx, _ in scores[:top_k]]
     logger.info(f"🎯 resolve_best_tour_indices('{query}') → {result}")
     return result
 
@@ -3860,18 +3840,40 @@ def chat_endpoint_ultimate():
         
         # Strategy 1: Direct tour name matching (normalized resolver)
         logger.info(f"🔎 Calling resolve_best_tour_indices with message: '{user_message}'")
-        direct_tour_matches = resolve_best_tour_indices(user_message, top_k=5)
+                # Gọi resolve để lấy cả tour và điểm số
+        direct_matches_with_scores = resolve_best_tour_indices(user_message, top_k=5)
+        direct_tour_matches = [idx for idx, _ in direct_matches_with_scores[:3]]
+        direct_tour_scores = {idx: score for idx, score in direct_matches_with_scores}
         logger.info(f"📌 direct_tour_matches = {direct_tour_matches}")
-        if direct_tour_matches:
-            tour_indices = direct_tour_matches[:3]
-            logger.info(f"🎯 Direct tour matches found: {tour_indices}")
+        logger.info(f"📌 direct_tour_scores = {direct_tour_scores}")
 
-        # Nếu không match được tour mới, dùng tour gần nhất trong context cho follow-up
-        if is_followup_tour_question and not tour_indices:
+        # ƯU TIÊN CONTEXT CHO CÂU HỎI FOLLOW-UP
+        if is_followup_tour_question:
             last_tour_idx = getattr(context, 'current_tour', None)
-            if isinstance(last_tour_idx, int) and last_tour_idx in TOURS_DB:
+            context_exists = isinstance(last_tour_idx, int) and last_tour_idx in TOURS_DB
+            
+            # Kiểm tra xem người dùng có đề cập rõ ràng tour khác không
+            explicit_mention = False
+            if direct_matches_with_scores:
+                for idx, score in direct_matches_with_scores:
+                    if score >= 80:  # Ngưỡng "đề cập rõ ràng"
+                        explicit_mention = True
+                        break
+            
+            if context_exists and not explicit_mention:
+                # Ưu tiên dùng context nếu không có tour mới rõ ràng
                 tour_indices = [last_tour_idx]
-                logger.info(f"🧠 Reuse context.current_tour={last_tour_idx} for follow-up")
+                logger.info(f"🧠 Reuse context.current_tour={last_tour_idx} for follow-up (no explicit mention)")
+            elif direct_tour_matches:
+                # Không có context hoặc có tour mới rõ ràng -> dùng direct matches
+                tour_indices = direct_tour_matches[:3]
+                logger.info(f"🎯 Using direct tour matches: {tour_indices}")
+            # Nếu không có gì, giữ tour_indices = [] (xử lý sau)
+        else:
+            # Không phải follow-up, dùng direct matches bình thường
+            if direct_tour_matches:
+                tour_indices = direct_tour_matches[:3]
+                logger.info(f"🎯 Direct tour matches found: {tour_indices}")
         # Strategy 3: Filter-based search
         mandatory_filters = FilterSet()
         if UpgradeFlags.is_enabled("1_MANDATORY_FILTER"):
@@ -4794,10 +4796,11 @@ def chat_endpoint_ultimate():
                     reply = "Ruby Wings có chính sách ưu đãi hấp dẫn và quy trình đặt tour chuyên nghiệp. Liên hệ hotline để được tư vấn chi tiết."
         
         # 🔹 SPECIAL CASE: Phá Tam Giang / Đầm Chuồn
-        if (not response_locked) and ('pha tam giang' in message_norm or 'đầm chuồn' in message_lower):
-            exact_hits = resolve_best_tour_indices('Di sản Huế Đầm Chuồn Hoàng hôn phá Tam Giang', top_k=1)
-            if exact_hits:
-                t = TOURS_DB.get(exact_hits[0])
+                if (not response_locked) and ('pha tam giang' in message_norm or 'đầm chuồn' in message_lower):
+                    exact_hits_with_scores = resolve_best_tour_indices('Di sản Huế Đầm Chuồn Hoàng hôn phá Tam Giang', top_k=1)
+                    if exact_hits_with_scores:
+                        idx, _ = exact_hits_with_scores[0]
+                        t = TOURS_DB.get(idx)
                 if t:
                     reply = format_tour_program_response(t)
                     response_locked = True
