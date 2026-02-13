@@ -379,8 +379,15 @@ def format_tour_program_response(tour) -> str:
 # ================== TOUR FIELD FORMATTERS ==================
 def format_tour_price_response(tour):
     """Format price information for a tour"""
+    logger.info(f"🔎 format_tour_price_response called for tour index: {getattr(tour, 'index', 'N/A')}, name: '{getattr(tour, 'name', 'N/A')}'")
+    price_value = getattr(tour, 'price', None)
+    logger.info(f"   price attribute exists: {hasattr(tour, 'price')}, value: '{price_value}'")
+    
     if hasattr(tour, 'price') and tour.price:
+        logger.info(f"✅ Price found, returning formatted response")
         return f"💰 **GIÁ TOUR: {tour.name}** 💰\n\n{tour.price}"
+    
+    logger.warning(f"⚠️ No price data for tour: {getattr(tour, 'name', 'Unknown')}")
     return None
 
 def format_tour_location_response(tour):
@@ -3923,13 +3930,12 @@ def chat_endpoint_ultimate():
                                 reply += "\n\n📞 **Hotline tư vấn 24/7:** 0332510486"
                             response_locked = True
                             logger.info(f"🎯 Field-specific response for '{field_name}' (confidence: {confidence:.2f})")
-
-        if not response_locked and any(k in message_lower for k in ['chương trình', 'lịch trình', 'chi tiết tour']) and tour_indices:
-            selected_tour = TOURS_DB.get(tour_indices[0])
-            if selected_tour:
-                reply = format_tour_program_response(selected_tour)
-                response_locked = True
-        ...
+                        else:
+                            # Trường hợp không có dữ liệu cho field này
+                            tour_name = getattr(tour, 'name', 'tour này')
+                            reply = f"❌ **Hiện tại tôi chưa có thông tin về {field_name} của {tour_name}.**\n\n📞 Vui lòng liên hệ hotline **0332510486** để được hỗ trợ chi tiết."
+                            response_locked = True
+                            logger.warning(f"⚠️ No data for field '{field_name}' of tour index {tour_indices[0]}")
         # ================== INTELLIGENT RESPONSE GENERATION ==================
         reply = ""
         sources = []
