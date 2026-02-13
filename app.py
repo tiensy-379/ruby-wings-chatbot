@@ -505,16 +505,18 @@ def resolve_best_tour_indices(query, top_k=3):
             continue
         
         score = 0
+        # 0. Kiểm tra khớp cụm từ liên tục (phrase match) – ưu tiên cao
+        if norm_name in normalized_query:
+            # Nếu toàn bộ tên tour (đã chuẩn hóa) xuất hiện như một cụm liên tục trong query
+            # Điều này xảy ra khi người dùng gõ chính xác tên tour (có thể thêm từ khác)
+            score = 85  # Cao hơn word overlap nhưng thấp hơn exact match
         # 1. Khớp chính xác cả chuỗi
-        if normalized_query == norm_name:
+        elif normalized_query == norm_name:
             score = 100
         # 2. Khớp chứa chuỗi (query nằm trong tên)
         elif normalized_query in norm_name:
             score = 80
-        # 3. Khớp tên nằm trong query
-        elif norm_name in normalized_query:
-            score = 75
-        # 4. Khớp từ khóa riêng lẻ
+        # 3. Khớp từ khóa riêng lẻ
         else:
             name_words = set(norm_name.split())
             common = query_words.intersection(name_words)
@@ -3877,30 +3879,44 @@ def chat_endpoint_ultimate():
         logger.info(f"📌 direct_tour_matches = {direct_tour_matches}")
         logger.info(f"📌 direct_tour_scores = {direct_tour_scores}")
 
-        # Strategy 2: Follow-up context memory (ưu tiên cao nhất)
+                # Strategy 2: Follow-up context memory (ưu tiên cao nhất)
         if is_followup_tour_question:
             last_tour_idx = getattr(context, 'current_tour', None)
-            if isinstance(last_tour_idx, int):
+            context_exists = isinstance(last_tour_idx, int) and last_tour_idx in TOURS_DB
+            context_valid = False
+            if context_exists:
                 last_tour = TOURS_DB.get(last_tour_idx)
-                if last_tour and last_tour.is_tour:
-                    # Dùng context, bỏ qua direct matches
-                    tour_indices = [last_tour_idx]
-                    logger.info(f"🧠 Using context tour {last_tour_idx} for follow-up question")
-                else:
-                    # context không hợp lệ, dùng direct matches
-                    if direct_tour_matches:
-                        tour_indices = direct_tour_matches[:3]
-                        logger.info(f"🎯 Using direct tour matches (context invalid): {tour_indices}")
+                context_valid = last_tour and last_tour.is_tour
+
+            # Kiểm tra xem người dùng có đề cập rõ ràng tour khác không
+            explicit_mention = False
+            if direct_matches_with_scores:
+                for idx, score in direct_matches_with_scores:
+                    if score >= 80:  # Ngưỡng "đề cập rõ ràng"
+                        explicit_mention = True
+                        logger.info(f"🎯 Explicit mention detected: tour idx {idx} with score {score}")
+                        break
+
+            if context_valid and not explicit_mention:
+                # Ưu tiên dùng context nếu không có tour mới rõ ràng
+                tour_indices = [last_tour_idx]
+                logger.info(f"🧠 Using context tour {last_tour_idx} for follow-up (no explicit mention)")
+            elif direct_tour_matches:
+                # Không có context hoặc có tour mới rõ ràng -> dùng direct matches
+                tour_indices = direct_tour_matches[:3]
+                logger.info(f"🎯 Using direct tour matches: {tour_indices}")
             else:
-                # không có context, dùng direct matches
-                if direct_tour_matches:
-                    tour_indices = direct_tour_matches[:3]
-                    logger.info(f"🎯 Using direct tour matches (no context): {tour_indices}")
+                # Không có gì
+                tour_indices = []
+                logger.info("⚠️ No context and no direct matches for follow-up")
         else:
             # không phải follow-up, dùng direct matches
             if direct_tour_matches:
                 tour_indices = direct_tour_matches[:3]
                 logger.info(f"🎯 Direct tour matches found: {tour_indices}")
+            else:
+                tour_indices = []
+                logger.info("⚠️ No direct matches found")
 
         # Strategy 3: Filter-based search (nếu có, giữ nguyên code cũ)
         # ... (giữ nguyên phần filter nếu bạn có)
@@ -3936,20 +3952,7 @@ def chat_endpoint_ultimate():
                     response_locked = True
                     logger.info(f"💰 PRIORITY PRICE HANDLER: trả giá cho tour index {tour_indices[0]}")
        
-        # ================== INTELLIGENT RESPONSE GENERATION ==================
-        reply = ""
-        sources = []
-        response_locked = False
-        if any(k in message_lower for k in ['chương trình', 'lịch trình', 'chi tiết tour']) and tour_indices:
-            selected_tour = TOURS_DB.get(tour_indices[0])
-            if selected_tour:
-                reply = format_tour_program_response(selected_tour)
-                response_locked = True
         
-                # ================== INTELLIGENT RESPONSE GENERATION ==================
-        reply = ""
-        sources = []
-        response_locked = False
                 # ================== HANDLE EXPLICIT TOUR NAME MENTION ==================
         # Nếu người dùng chỉ gõ tên tour (không kèm câu hỏi), ưu tiên trả về thông tin tour
         if not response_locked and tour_indices:
@@ -3996,9 +3999,9 @@ def chat_endpoint_ultimate():
                     context.current_tour = tour_indices[0]
                     context.current_tour_updated_at = datetime.utcnow().isoformat()
                     logger.info(f"🎯 Explicit tour name match: responding with program for '{first_tour.name}' (idx={tour_indices[0]})")
-        # ================== FIELD-SPECIFIC RESPONSE (UPGRADE 3) ==================
+                # ================== FIELD-SPECIFIC RESPONSE (UPGRADE 3) ==================
         # Ưu tiên trả lời chính xác trường dữ liệu khách đang hỏi
-        if UpgradeFlags.is_enabled("3_ENHANCED_FIELDS") and tour_indices:
+        if not response_locked and UpgradeFlags.is_enabled("3_ENHANCED_FIELDS") and tour_indices:
             field_name, confidence, _ = EnhancedFieldDetector.detect_field_with_confidence(user_message)
             if field_name and confidence >= 0.6:
                 tour = TOURS_DB.get(tour_indices[0])
