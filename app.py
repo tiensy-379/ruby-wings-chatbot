@@ -3759,7 +3759,7 @@ def chat_endpoint_ultimate():
         tour_indices = []
         direct_tour_matches = []
         detected_intents = []
-        
+        mandatory_filters = FilterSet()        
         # LOG - CHỈ LOG NHỮNG THÔNG TIN ĐÃ CÓ SẴN
         # logger.info(f"🔍 Chat request: '{user_message}'")
         # logger.info(f"📊 TOURS_DB count: {len(TOURS_DB)}")
