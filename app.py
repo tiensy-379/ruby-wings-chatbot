@@ -52,6 +52,7 @@ class Tour:
     meals: str = ""
     tags: List[str] = field(default_factory=list)
     event_support: str = ""
+    is_tour: bool = True  # ← THÊM DÒNG NÀY
     
     def __str__(self):
         return f"Tour({self.name})"
@@ -487,6 +488,7 @@ def resolve_best_tour_indices(query, top_k=3):
     """
     Tìm index của tour phù hợp nhất dựa trên query.
     Returns list of (index, score) tuples.
+    Chỉ xét các tour có is_tour == True.
     """
     if not query:
         logger.warning("⚠️ resolve_best_tour_indices: empty query")
@@ -497,6 +499,11 @@ def resolve_best_tour_indices(query, top_k=3):
     
     scores = []
     for norm_name, idx in TOUR_NAME_TO_INDEX.items():
+        # norm_name đã được normalize từ lúc index, không cần normalize lại
+        tour = TOURS_DB.get(idx)
+        if not tour or not tour.is_tour:
+            continue
+        
         score = 0
         # 1. Khớp chính xác cả chuỗi
         if normalized_query == norm_name:
@@ -2829,15 +2836,26 @@ def load_knowledge():
                     event_support=tour_data.get("event_support", ""),
                     tags=tour_data.get("tags", []),
                 )
-                
+                # Đánh dấu tour ảo (nội dung giới thiệu, văn hoá tổ chức, không phải tour du lịch)
+                if any(keyword in tour.name.lower() for keyword in [
+                    "giới thiệu ruby wings", 
+                    "văn hoá tổ chức", 
+                    "hành vi chuẩn ruby wings",
+                    "nội dung văn hoá – không phải tour",
+                    "giới thiệu đôi cánh ruby"
+                ]):
+                    tour.is_tour = False
+                    logger.info(f"🚫 Marked as non-tour: '{tour.name}' (idx={idx})")
                 # Store in databases
                 TOURS_DB[idx] = tour
                 
-                # Create normalized name mapping using shared normalize function
-                if tour.name:
+                # Create normalized name mapping – CHỈ INDEX TOUR THẬT
+                if tour.name and tour.is_tour:
                     norm_name = normalize_tour_key(tour.name)
                     TOUR_NAME_TO_INDEX[norm_name] = idx
                     logger.debug(f"📌 Indexed tour: '{norm_name}' -> idx {idx}")
+                else:
+                    logger.debug(f"⏭️ Skipped indexing non-tour: '{tour.name}'")
                 
                 # Add to flat texts for FAISS
                 flat_data = flatten_json({"tours": [tour_data]})
@@ -3779,21 +3797,26 @@ def chat_endpoint_ultimate():
         # ================== AI-POWERED CONTEXT ANALYSIS ==================
         message_lower = user_message.lower()
         message_norm = normalize_tour_key(user_message)
-        # FOLLOW-UP CONTEXT MEMORY
+                # ================== FOLLOW-UP CONTEXT MEMORY ==================
         followup_keywords = [
             'giá tour', 'giá', 'chương trình', 'lịch trình', 'chi tiết tour',
             'tour này', 'tour do', 'giá tour này'
         ]
         is_followup_tour_question = any(k in message_lower for k in followup_keywords)
         
-
-        # Lưu ý: tour_indices đã được khởi tạo [] ở đầu hàm.
+        # Chỉ reuse context khi chưa có tour nào được match trực tiếp
         if is_followup_tour_question and not tour_indices:
             last_tour_idx = getattr(context, 'current_tour', None)
-            if isinstance(last_tour_idx, int) and last_tour_idx in TOURS_DB:
-                tour_indices = [last_tour_idx]
-                logger.info(f"🧠 Reuse context.current_tour={last_tour_idx} for follow-up")
-        # Phân tích cấp độ phức tạp
+            if isinstance(last_tour_idx, int):
+                last_tour = TOURS_DB.get(last_tour_idx)
+                # Chỉ reuse nếu tour tồn tại và LÀ TOUR THẬT (is_tour = True)
+                if last_tour and last_tour.is_tour:
+                    tour_indices = [last_tour_idx]
+                    logger.info(f"🧠 Reuse context.current_tour={last_tour_idx} for follow-up")
+                else:
+                    logger.info(f"⏭️ Context tour {last_tour_idx} is non-tour or invalid, skip reuse")
+        
+        # ================== COMPLEXITY SCORING ==================
         complexity_score = 0
         complexity_indicators = {
             'và': 1, 'cho': 1, 'với': 1, 'nhưng': 2, 'tuy nhiên': 2,
@@ -4198,7 +4221,8 @@ def chat_endpoint_ultimate():
                             if tour_name.strip():
                                 # Tìm tour index
                                 for norm_name, idx in TOUR_NAME_TO_INDEX.items():
-                                    if tour_name.lower() in norm_name.lower():
+                                    tour = TOURS_DB.get(idx)
+                                    if tour and tour.is_tour and tour_name.lower() in norm_name.lower():
                                         comparison_tours.append(idx)
                                         break
                 
