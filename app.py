@@ -391,6 +391,71 @@ def format_tour_program_response(tour) -> str:
 
     lines.append("📞 Hotline: 0332510486")
     return "\n".join(lines)
+
+# ================== TOUR FIELD FORMATTERS ==================
+def format_tour_price_response(tour):
+    """Format price information for a tour"""
+    if hasattr(tour, 'price') and tour.price:
+        return f"💰 **GIÁ TOUR: {tour.name}** 💰\n\n{tour.price}"
+    return None
+
+def format_tour_location_response(tour):
+    """Format location information for a tour"""
+    if hasattr(tour, 'location') and tour.location:
+        return f"📍 **ĐỊA ĐIỂM: {tour.name}** 📍\n\n{tour.location}"
+    return None
+
+def format_tour_duration_response(tour):
+    """Format duration information for a tour"""
+    if hasattr(tour, 'duration') and tour.duration:
+        return f"⏱️ **THỜI GIAN: {tour.name}** ⏱️\n\n{tour.duration}"
+    return None
+
+def format_tour_includes_response(tour):
+    """Format includes (bao gồm) information for a tour"""
+    if hasattr(tour, 'includes') and tour.includes:
+        includes_list = tour.includes if isinstance(tour.includes, list) else [tour.includes]
+        formatted = f"📋 **DỊCH VỤ BAO GỒM - {tour.name}** 📋\n\n"
+        for item in includes_list:
+            formatted += f"• {item}\n"
+        return formatted
+    return None
+
+def format_tour_notes_response(tour):
+    """Format notes (lưu ý) information for a tour"""
+    if hasattr(tour, 'notes') and tour.notes:
+        return f"📌 **LƯU Ý: {tour.name}** 📌\n\n{tour.notes}"
+    return None
+
+def format_tour_style_response(tour):
+    """Format style (phong cách) information for a tour"""
+    if hasattr(tour, 'style') and tour.style:
+        return f"🎯 **PHONG CÁCH TOUR: {tour.name}** 🎯\n\n{tour.style}"
+    return None
+
+def format_tour_transport_response(tour):
+    """Format transport (phương tiện) information for a tour"""
+    if hasattr(tour, 'transport') and tour.transport:
+        return f"🚐 **PHƯƠNG TIỆN: {tour.name}** 🚐\n\n{tour.transport}"
+    return None
+
+def format_tour_accommodation_response(tour):
+    """Format accommodation (nơi ở) information for a tour"""
+    if hasattr(tour, 'accommodation') and tour.accommodation:
+        return f"🏨 **NƠI Ở: {tour.name}** 🏨\n\n{tour.accommodation}"
+    return None
+
+def format_tour_meals_response(tour):
+    """Format meals (bữa ăn) information for a tour"""
+    if hasattr(tour, 'meals') and tour.meals:
+        return f"🍽️ **BỮA ĂN: {tour.name}** 🍽️\n\n{tour.meals}"
+    return None
+
+def format_tour_event_support_response(tour):
+    """Format event support (hỗ trợ sự kiện) information for a tour"""
+    if hasattr(tour, 'event_support') and tour.event_support:
+        return f"🎪 **HỖ TRỢ SỰ KIỆN: {tour.name}** 🎪\n\n{tour.event_support}"
+    return None
 class UpgradeFlags:
     """Control all 10 upgrades with environment variables"""
     
@@ -1171,7 +1236,7 @@ class EnhancedFieldDetector:
             ]
         },
         
-        # SUMMARY
+        # SUMMARY (tổng quan)
         {
             "field": "summary",
             "patterns": [
@@ -1188,7 +1253,7 @@ class EnhancedFieldDetector:
             ]
         },
         
-        # INCLUDES
+        # INCLUDES (bao gồm / lịch trình)
         {
             "field": "includes",
             "patterns": [
@@ -1201,6 +1266,93 @@ class EnhancedFieldDetector:
                 ("lịch trình", 0.8), ("chương trình", 0.8), ("làm gì", 0.7),
                 ("hoạt động", 0.7), ("sinh hoạt", 0.6), ("gồm", 0.6),
                 ("bao gồm", 0.7), ("gồm những", 0.7),
+            ]
+        },
+        
+        # NOTES (lưu ý)
+        {
+            "field": "notes",
+            "patterns": [
+                (r'lưu ý.*gì|những lưu ý|cần biết|chú ý', 0.9),
+                (r'có lưu ý gì không|điều kiện.*gì', 0.8),
+                (r'không bao gồm|ngoại lệ|loại trừ', 0.7),
+                (r'chính sách hủy|hủy tour|hoàn tiền', 0.8),
+            ],
+            "keywords": [
+                ("lưu ý", 0.9), ("chú ý", 0.8), ("cần biết", 0.8),
+                ("không bao gồm", 0.7), ("hủy", 0.6), ("hoàn", 0.6),
+            ]
+        },
+        
+        # STYLE (phong cách)
+        {
+            "field": "style",
+            "patterns": [
+                (r'phong cách.*tour|kiểu.*tour|loại hình.*tour', 0.9),
+                (r'tour.*phù hợp.*với ai|đối tượng.*tour', 0.8),
+                (r'chữa lành|thiền|yoga|retreat|trải nghiệm sâu', 0.8),
+                (r'nhịp.*chậm|chậm.*sâu', 0.7),
+            ],
+            "keywords": [
+                ("phong cách", 0.9), ("kiểu", 0.7), ("loại hình", 0.8),
+                ("đối tượng", 0.7), ("ai", 0.6), ("thiền", 0.8),
+                ("chữa lành", 0.9), ("retreat", 0.9),
+            ]
+        },
+        
+        # TRANSPORT (phương tiện)
+        {
+            "field": "transport",
+            "patterns": [
+                (r'phương tiện.*gì|di chuyển.*bằng gì|xe gì', 1.0),
+                (r'đi lại.*thế nào|đưa đón.*không', 0.9),
+                (r'xe du lịch|xe đời mới|ô tô', 0.8),
+            ],
+            "keywords": [
+                ("xe", 0.7), ("phương tiện", 0.9), ("di chuyển", 0.8),
+                ("đưa đón", 0.8), ("ôtô", 0.7), ("bus", 0.6),
+            ]
+        },
+        
+        # ACCOMMODATION (nơi ở)
+        {
+            "field": "accommodation",
+            "patterns": [
+                (r'ở đâu|ngủ ở đâu|chỗ ở|khách sạn|homestay', 1.0),
+                (r'lưu trú.*thế nào|nghỉ đêm.*ở đâu', 0.9),
+                (r'phòng.*mấy người|tiêu chuẩn phòng', 0.8),
+            ],
+            "keywords": [
+                ("ở", 0.6), ("ngủ", 0.7), ("chỗ ở", 0.9),
+                ("khách sạn", 0.8), ("homestay", 0.8), ("lưu trú", 0.8),
+            ]
+        },
+        
+        # MEALS (bữa ăn)
+        {
+            "field": "meals",
+            "patterns": [
+                (r'ăn gì|bữa ăn|đồ ăn|ẩm thực|đặc sản', 1.0),
+                (r'bữa sáng|bữa trưa|bữa tối|suất ăn', 0.9),
+                (r'có bao gồm ăn không|ăn uống.*thế nào', 0.8),
+            ],
+            "keywords": [
+                ("ăn", 0.7), ("bữa", 0.8), ("suất", 0.7),
+                ("đồ ăn", 0.8), ("ẩm thực", 0.7), ("đặc sản", 0.7),
+            ]
+        },
+        
+        # EVENT_SUPPORT (hỗ trợ đoàn)
+        {
+            "field": "event_support",
+            "patterns": [
+                (r'hỗ trợ.*gì|dịch vụ.*kèm theo|đi kèm', 0.8),
+                (r'lửa trại|giao lưu văn hóa|chụp ảnh', 0.9),
+                (r'hướng dẫn viên|điều phối|tổ chức', 0.7),
+            ],
+            "keywords": [
+                ("hỗ trợ", 0.8), ("dịch vụ", 0.6), ("lửa trại", 0.9),
+                ("giao lưu", 0.8), ("chụp ảnh", 0.7), ("hướng dẫn", 0.7),
             ]
         },
     ]
@@ -3695,9 +3847,46 @@ def chat_endpoint_ultimate():
 
 
         
-        # ================== INTELLIGENT RESPONSE GENERATION ==================
-        # ... (phần còn lại giữ nguyên)
+                # ================== INTELLIGENT RESPONSE GENERATION ==================
+        reply = ""
+        sources = []
+        response_locked = False
         
+        # ================== FIELD-SPECIFIC RESPONSE (UPGRADE 3) ==================
+        # Ưu tiên trả lời chính xác trường dữ liệu khách đang hỏi
+        if UpgradeFlags.is_enabled("3_ENHANCED_FIELDS") and tour_indices:
+            field_name, confidence, _ = EnhancedFieldDetector.detect_field_with_confidence(user_message)
+            if field_name and confidence >= 0.6:
+                tour = TOURS_DB.get(tour_indices[0])
+                if tour:
+                    formatter_map = {
+                        'price': format_tour_price_response,
+                        'location': format_tour_location_response,
+                        'duration': format_tour_duration_response,
+                        'includes': format_tour_includes_response,
+                        'notes': format_tour_notes_response,
+                        'style': format_tour_style_response,
+                        'transport': format_tour_transport_response,
+                        'accommodation': format_tour_accommodation_response,
+                        'meals': format_tour_meals_response,
+                        'event_support': format_tour_event_support_response,
+                        'summary': format_tour_program_response,
+                    }
+                    if field_name in formatter_map:
+                        formatted = formatter_map[field_name](tour)
+                        if formatted:
+                            reply = formatted
+                            if "0332510486" not in reply:
+                                reply += "\n\n📞 **Hotline tư vấn 24/7:** 0332510486"
+                            response_locked = True
+                            logger.info(f"🎯 Field-specific response for '{field_name}' (confidence: {confidence:.2f})")
+
+        if not response_locked and any(k in message_lower for k in ['chương trình', 'lịch trình', 'chi tiết tour']) and tour_indices:
+            selected_tour = TOURS_DB.get(tour_indices[0])
+            if selected_tour:
+                reply = format_tour_program_response(selected_tour)
+                response_locked = True
+        ...
         # ================== INTELLIGENT RESPONSE GENERATION ==================
         reply = ""
         sources = []
