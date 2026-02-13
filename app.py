@@ -427,6 +427,25 @@ class UpgradeFlags:
         flags = UpgradeFlags.get_all_flags()
         return flags.get(f"UPGRADE_{upgrade_name}", False)
 
+def resolve_best_tour_indices(query, top_k=3):
+    """
+    Tìm index của tour phù hợp nhất dựa trên query.
+    Args:
+        query: câu hỏi/chuỗi cần tìm
+        top_k: số lượng tour tối đa trả về
+    Returns:
+        list các index (int)
+    """
+    normalized_query = normalize_tour_key(query)
+    matches = []
+    for norm_name, idx in TOUR_NAME_TO_INDEX.items():
+        if normalized_query in norm_name or norm_name in normalized_query:
+            matches.append((norm_name, idx))
+    # Sắp xếp ưu tiên match chính xác hơn (độ dài norm_name lớn hơn)
+    matches.sort(key=lambda x: len(x[0]), reverse=True)
+    return [idx for _, idx in matches[:top_k]]
+
+
 # =========== FLASK APP CONFIG ===========
 app = Flask(__name__)
 @app.before_request
