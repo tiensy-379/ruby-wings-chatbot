@@ -3930,17 +3930,32 @@ def chat_endpoint_ultimate():
         reply = ""
         sources = []
         response_locked = False
-                # ================== PRIORITY PRICE HANDLER ==================
+                        # ================== PRIORITY PRICE HANDLER ==================
         # Xử lý trực tiếp câu hỏi về giá tour khi đã xác định được tour cụ thể
-        if not response_locked and tour_indices:
+        if not response_locked:
             price_keywords = ['giá bao nhiêu', 'bao nhiêu tiền', 'giá tour', 'giá', 'chi phí']
             if any(kw in message_lower for kw in price_keywords):
-                tour = TOURS_DB.get(tour_indices[0])
-                if tour and tour.price:
-                    reply = f"💰 **GIÁ TOUR: {tour.name}** 💰\n\n{tour.price}"
-                    reply += "\n\n📞 **Hotline tư vấn 24/7:** 0332510486"
-                    response_locked = True
-                    logger.info(f"💰 PRIORITY PRICE HANDLER: trả giá cho tour index {tour_indices[0]}")
+                # Ưu tiên context cho follow-up
+                target_tour_idx = None
+                if is_followup_tour_question:
+                    last_tour_idx = getattr(context, 'current_tour', None)
+                    if isinstance(last_tour_idx, int):
+                        last_tour = TOURS_DB.get(last_tour_idx)
+                        if last_tour and last_tour.is_tour:
+                            target_tour_idx = last_tour_idx
+                            logger.info(f"💰 PRIORITY PRICE HANDLER: using context tour {last_tour_idx} for follow-up")
+                
+                # Nếu không có context hoặc không phải follow-up, dùng tour_indices hiện tại
+                if target_tour_idx is None and tour_indices:
+                    target_tour_idx = tour_indices[0]
+                
+                if target_tour_idx is not None:
+                    tour = TOURS_DB.get(target_tour_idx)
+                    if tour and tour.price:
+                        reply = f"💰 **GIÁ TOUR: {tour.name}** 💰\n\n{tour.price}"
+                        reply += "\n\n📞 **Hotline tư vấn 24/7:** 0332510486"
+                        response_locked = True
+                        logger.info(f"💰 PRIORITY PRICE HANDLER: trả giá cho tour index {target_tour_idx}")
        
         
                 # ================== HANDLE EXPLICIT TOUR NAME MENTION ==================
