@@ -3937,40 +3937,7 @@ def chat_endpoint_ultimate():
                     reply += "\n\n📞 **Hotline tư vấn 24/7:** 0332510486"
                     response_locked = True
                     logger.info(f"💰 PRIORITY PRICE HANDLER: trả giá cho tour index {tour_indices[0]}")
-        # ================== FIELD-SPECIFIC RESPONSE (UPGRADE 3) ==================
-        # Ưu tiên trả lời chính xác trường dữ liệu khách đang hỏi
-        if UpgradeFlags.is_enabled("3_ENHANCED_FIELDS") and tour_indices:
-            field_name, confidence, _ = EnhancedFieldDetector.detect_field_with_confidence(user_message)
-            if field_name and confidence >= 0.6:
-                tour = TOURS_DB.get(tour_indices[0])
-                if tour:
-                    formatter_map = {
-                        'price': format_tour_price_response,
-                        'location': format_tour_location_response,
-                        'duration': format_tour_duration_response,
-                        'includes': format_tour_includes_response,
-                        'notes': format_tour_notes_response,
-                        'style': format_tour_style_response,
-                        'transport': format_tour_transport_response,
-                        'accommodation': format_tour_accommodation_response,
-                        'meals': format_tour_meals_response,
-                        'event_support': format_tour_event_support_response,
-                        'summary': format_tour_program_response,
-                    }
-                    if field_name in formatter_map:
-                        formatted = formatter_map[field_name](tour)
-                        if formatted:
-                            reply = formatted
-                            if "0332510486" not in reply:
-                                reply += "\n\n📞 **Hotline tư vấn 24/7:** 0332510486"
-                            response_locked = True
-                            logger.info(f"🎯 Field-specific response for '{field_name}' (confidence: {confidence:.2f})")
-                        else:
-                            # Trường hợp không có dữ liệu cho field này
-                            tour_name = getattr(tour, 'name', 'tour này')
-                            reply = f"❌ **Hiện tại tôi chưa có thông tin về {field_name} của {tour_name}.**\n\n📞 Vui lòng liên hệ hotline **0332510486** để được hỗ trợ chi tiết."
-                            response_locked = True
-                            logger.warning(f"⚠️ No data for field '{field_name}' of tour index {tour_indices[0]}")
+       
         # ================== INTELLIGENT RESPONSE GENERATION ==================
         reply = ""
         sources = []
