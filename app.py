@@ -3952,7 +3952,52 @@ def chat_endpoint_ultimate():
         reply = ""
         sources = []
         response_locked = False
-        
+                # ================== HANDLE EXPLICIT TOUR NAME MENTION ==================
+        # Nếu người dùng chỉ gõ tên tour (không kèm câu hỏi), ưu tiên trả về thông tin tour
+        if not response_locked and tour_indices:
+            # Kiểm tra xem có phải là tour thật không
+            first_tour = TOURS_DB.get(tour_indices[0])
+            if first_tour and first_tour.is_tour:
+                # Tính điểm tin cậy cho match đầu tiên
+                # (cần lấy score từ resolve_best_tour_indices, nhưng hiện tại tour_indices chỉ là list index)
+                # Cách đơn giản: kiểm tra xem user_message có chứa gần như toàn bộ tên tour không
+                msg_lower = user_message.lower()
+                tour_name_lower = first_tour.name.lower()
+                
+                # Tiêu chí: tin nhắn chứa tên tour (hoặc tên tour nằm trong tin nhắn)
+                is_explicit_tour_name = (
+                    tour_name_lower in msg_lower or 
+                    msg_lower in tour_name_lower or
+                    # Trường hợp "tour Bạch Mã" vs "Non nước Bạch Mã"
+                    any(part in msg_lower for part in tour_name_lower.split() if len(part) > 3)
+                )
+                
+                # Thêm điều kiện: không có từ khóa intent cụ thể (giá, lịch trình, ở đâu, ...)
+                no_specific_intent = not any([
+                    'giá' in msg_lower,
+                    'bao nhiêu' in msg_lower,
+                    'lịch trình' in msg_lower,
+                    'chương trình' in msg_lower,
+                    'ở đâu' in msg_lower,
+                    'đi đâu' in msg_lower,
+                    'phương tiện' in msg_lower,
+                    'ăn' in msg_lower,
+                    'phong cách' in msg_lower,
+                    'lưu ý' in msg_lower,
+                    'so sánh' in msg_lower,
+                    'gợi ý' in msg_lower,
+                    'phù hợp' in msg_lower,
+                ])
+                
+                if is_explicit_tour_name and no_specific_intent:
+                    # Tạo response bằng format_tour_program_response (tóm tắt tour)
+                    reply = format_tour_program_response(first_tour)
+                    if "0332510486" not in reply:
+                        reply += "\n\n📞 **Hotline tư vấn 24/7:** 0332510486"
+                    response_locked = True
+                    context.current_tour = tour_indices[0]
+                    context.current_tour_updated_at = datetime.utcnow().isoformat()
+                    logger.info(f"🎯 Explicit tour name match: responding with program for '{first_tour.name}' (idx={tour_indices[0]})")
         # ================== FIELD-SPECIFIC RESPONSE (UPGRADE 3) ==================
         # Ưu tiên trả lời chính xác trường dữ liệu khách đang hỏi
         if UpgradeFlags.is_enabled("3_ENHANCED_FIELDS") and tour_indices:
