@@ -22,7 +22,6 @@ from difflib import SequenceMatcher
 from enum import Enum
 from functools import lru_cache, wraps
 
-
 # Try to import numpy with detailed error handling
 try:
     import numpy as np
@@ -139,7 +138,7 @@ class Tour:
     meals: str = ""
     tags: List[str] = field(default_factory=list)
     event_support: str = ""
-    is_tour: bool = True  # ← THÊM DÒNG NÀY
+    is_tour: bool = True
     completeness_score: float = 0.0
 
     def __str__(self):
@@ -212,11 +211,26 @@ class CacheEntry:
     def is_expired(self) -> bool:
         return (datetime.utcnow() - self.created_at).total_seconds() > self.ttl_seconds
 
-class EnhancedJSONEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if hasattr(obj, '__dict__'):
-            return obj.__dict__
-        return super().default(obj)
+@dataclass
+class ChatResponse:
+    """Standard chat response format"""
+    reply: str
+    sources: List[Dict]
+    context: Dict
+    tour_indices: List[int]
+    processing_time_ms: int
+    from_memory: bool = False
+
+    def to_dict(self) -> Dict:
+        return {
+            'reply': self.reply,
+            'sources': self.sources,
+            'context': self.context,
+            'tour_indices': self.tour_indices,
+            'processing_time_ms': self.processing_time_ms,
+            'from_memory': self.from_memory
+        }
+
 @dataclass
 class UserProfile:
     """User profile for personalization"""
@@ -227,6 +241,12 @@ class UserProfile:
     physical_level: str = ""
     confidence_scores: Dict[str, float] = field(default_factory=dict)
     overall_confidence: float = 0.0
+
+class EnhancedJSONEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if hasattr(obj, '__dict__'):
+            return obj.__dict__
+        return super().default(obj)
 # =========== ENVIRONMENT VARIABLES ===========
 # Memory Profile
 RAM_PROFILE = os.environ.get("RAM_PROFILE", "512").strip()
