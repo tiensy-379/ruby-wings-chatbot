@@ -56,15 +56,7 @@ class Tour:
     def __str__(self):
         return f"Tour({self.name})"
 from common_utils import flatten_json
-def normalize_tour_key(text: str) -> str:
-    """Normalize Vietnamese text for stable intent/matching/dedup."""
-    if not text:
-        return ""
-    t = unicodedata.normalize("NFKD", str(text).lower())
-    t = "".join(ch for ch in t if not unicodedata.combining(ch))
-    t = re.sub(r"[^a-z0-9\s]", " ", t)
-    t = re.sub(r"\s+", " ", t).strip()
-    return t
+
 import random
 try:
     import numpy as np
@@ -492,10 +484,16 @@ def resolve_best_tour_indices(query, top_k=3):
     - Dùng fuzzy matching cơ bản
     """
     if not query:
+        logger.warning("⚠️ resolve_best_tour_indices: empty query")
         return []
     
     normalized_query = normalize_tour_key(query)
     query_words = set(normalized_query.split())
+    
+    # Debug: log danh sách tour đang có
+    logger.info(f"🔍 TOUR_NAME_TO_INDEX size: {len(TOUR_NAME_TO_INDEX)}")
+    if len(TOUR_NAME_TO_INDEX) == 0:
+        logger.error("❌ TOUR_NAME_TO_INDEX is EMPTY! Tours may not be loaded correctly.")
     
     scores = []
     for norm_name, idx in TOUR_NAME_TO_INDEX.items():
@@ -503,29 +501,38 @@ def resolve_best_tour_indices(query, top_k=3):
         # 1. Khớp chính xác cả chuỗi
         if normalized_query == norm_name:
             score = 100
+            logger.debug(f"🎯 Exact match: '{norm_name}' → {idx}")
         # 2. Khớp chứa chuỗi (query nằm trong tên)
         elif normalized_query in norm_name:
             score = 80
+            logger.debug(f"🔗 Substring match: '{normalized_query}' in '{norm_name}' → {idx}")
         # 3. Khớp tên nằm trong query
         elif norm_name in normalized_query:
             score = 75
+            logger.debug(f"🔗 Reverse substring: '{norm_name}' in '{normalized_query}' → {idx}")
         # 4. Khớp từ khóa riêng lẻ
         else:
             name_words = set(norm_name.split())
             common = query_words.intersection(name_words)
             if common:
-                score = 50 + len(common) * 5  # càng nhiều từ chung càng cao
+                score = 50 + len(common) * 5
+                logger.debug(f"🔤 Word match: {common} → '{norm_name}' score {score}")
         
-        # Phạt nếu query dài nhưng chỉ khớp vài từ
         if score > 0:
-            # Ưu tiên tên ngắn hơn nếu cùng điểm?
-            # Thêm trọng số độ dài để ưu tiên khớp chính xác
-            scores.append((score, len(norm_name), idx))
+            scores.append((score, len(norm_name), idx, norm_name))
     
-    # Sắp xếp theo điểm giảm dần, độ dài tên giảm dần (ưu tiên khớp dài hơn)
+    # Sắp xếp theo điểm giảm dần, độ dài tên giảm dần
     scores.sort(key=lambda x: (-x[0], -x[1]))
     
-    result = [idx for _, _, idx in scores[:top_k]]
+    # Log top matches
+    if scores:
+        logger.info(f"📊 Top matches for '{query}':")
+        for i, (score, _, idx, name) in enumerate(scores[:5]):
+            logger.info(f"   #{i+1}: {name} (idx={idx}, score={score})")
+    else:
+        logger.warning(f"⚠️ No matches found for '{query}'")
+    
+    result = [idx for _, _, idx, _ in scores[:top_k]]
     logger.info(f"🎯 resolve_best_tour_indices('{query}') → {result}")
     return result
 
@@ -2832,16 +2839,18 @@ def load_knowledge():
                     transport=tour_data.get("transport", ""),
                     accommodation=tour_data.get("accommodation", ""),
                     meals=tour_data.get("meals", ""),
+                    event_support=tour_data.get("event_support", ""),
                     tags=tour_data.get("tags", []),
                 )
                 
                 # Store in databases
                 TOURS_DB[idx] = tour
                 
-                # Create normalized name mapping
+                # Create normalized name mapping using shared normalize function
                 if tour.name:
-                    norm_name = re.sub(r'[^\w\s]', '', tour.name.lower()).strip()
+                    norm_name = normalize_tour_key(tour.name)
                     TOUR_NAME_TO_INDEX[norm_name] = idx
+                    logger.debug(f"📌 Indexed tour: '{norm_name}' -> idx {idx}")
                 
                 # Add to flat texts for FAISS
                 flat_data = flatten_json({"tours": [tour_data]})
@@ -2853,7 +2862,11 @@ def load_knowledge():
                 continue
         
         logger.info(f"✅ Processed {len(TOURS_DB)} tours, {len(FLAT_TEXTS)} passages")
-        
+                # Log TOUR_NAME_TO_INDEX for debugging
+        logger.info(f"✅ TOUR_NAME_TO_INDEX initialized with {len(TOUR_NAME_TO_INDEX)} entries")
+        # Log 5 tên đầu tiên
+        for i, (name, idx) in enumerate(list(TOUR_NAME_TO_INDEX.items())[:5]):
+            logger.info(f"   {i+1}. '{name}' -> tour index {idx}")
         if len(TOURS_DB) == 0:
             logger.error("❌ NO tours loaded! Check knowledge.json structure")
             
@@ -3839,7 +3852,9 @@ def chat_endpoint_ultimate():
         direct_tour_matches = []
         
         # Strategy 1: Direct tour name matching (normalized resolver)
+        logger.info(f"🔎 Calling resolve_best_tour_indices with message: '{user_message}'")
         direct_tour_matches = resolve_best_tour_indices(user_message, top_k=5)
+        logger.info(f"📌 direct_tour_matches = {direct_tour_matches}")
         if direct_tour_matches:
             tour_indices = direct_tour_matches[:3]
             logger.info(f"🎯 Direct tour matches found: {tour_indices}")
