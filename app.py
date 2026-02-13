@@ -3901,7 +3901,17 @@ def chat_endpoint_ultimate():
         reply = ""
         sources = []
         response_locked = False
-        
+                # ================== PRIORITY PRICE HANDLER ==================
+        # Xử lý trực tiếp câu hỏi về giá tour khi đã xác định được tour cụ thể
+        if not response_locked and tour_indices:
+            price_keywords = ['giá bao nhiêu', 'bao nhiêu tiền', 'giá tour', 'giá', 'chi phí']
+            if any(kw in message_lower for kw in price_keywords):
+                tour = TOURS_DB.get(tour_indices[0])
+                if tour and tour.price:
+                    reply = f"💰 **GIÁ TOUR: {tour.name}** 💰\n\n{tour.price}"
+                    reply += "\n\n📞 **Hotline tư vấn 24/7:** 0332510486"
+                    response_locked = True
+                    logger.info(f"💰 PRIORITY PRICE HANDLER: trả giá cho tour index {tour_indices[0]}")
         # ================== FIELD-SPECIFIC RESPONSE (UPGRADE 3) ==================
         # Ưu tiên trả lời chính xác trường dữ liệu khách đang hỏi
         if UpgradeFlags.is_enabled("3_ENHANCED_FIELDS") and tour_indices:
