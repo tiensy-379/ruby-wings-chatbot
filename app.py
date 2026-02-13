@@ -4845,43 +4845,17 @@ Trả lời thân thiện, chuyên nghiệp."""
 
 
 # =========== OTHER ENDPOINTS ===========
-@app.route("/")
-def home():
-    """Home endpoint"""
-    return jsonify({
-        "status": "ok",
-        "version": "4.0",
-        "upgrades": UpgradeFlags.get_all_flags(),
-        "services": {
-            "openai": "available" if client else "unavailable",
-            "faiss": "available" if HAS_FAISS else "unavailable",
-            "google_sheets": "available" if HAS_GOOGLE_SHEETS else "unavailable",
-            "meta_capi": "available" if HAS_META_CAPI else "unavailable",
-        },
-        "counts": {
-            "tours": len(TOURS_DB),
-            "passages": len(FLAT_TEXTS),
-            "tour_names": len(TOUR_NAME_TO_INDEX),
-        }
-    })
 
-@app.route("/reindex", methods=["POST"])
-def reindex():
-    """Rebuild index endpoint"""
-    secret = request.headers.get("X-RBW-ADMIN", "")
-    if not secret and os.environ.get("RBW_ALLOW_REINDEX", "") != "1":
-        return jsonify({"error": "reindex not allowed"}), 403
-    
-    load_knowledge()
-    build_index(force_rebuild=True)
-    
-    return jsonify({
-        "ok": True,
-        "count": len(FLAT_TEXTS),
-        "tours": len(TOURS_DB)
-    })
+# ===== STATISTICS FOR TRACKING =====
+STATS_LOCK = threading.RLock()
+GLOBAL_STATS = {}
 
-# =========== GOOGLE SHEETS INTEGRATION ===========
+def increment_stat(stat_name, amount=1):
+    """Increment a global statistic counter"""
+    with STATS_LOCK:
+        GLOBAL_STATS[stat_name] = GLOBAL_STATS.get(stat_name, 0) + amount
+
+# ===== GOOGLE SHEETS CLIENT =====
 _gsheet_client = None
 _gsheet_client_lock = threading.Lock()
 
@@ -4911,9 +4885,45 @@ def get_gspread_client(force_refresh: bool = False):
             logger.error(f"❌ Google Sheets client failed: {e}")
             return None
 
-# ===============================
-# API: SAVE LEAD (Website / Call / Zalo)
-# ===============================
+# ===== HOME ENDPOINT =====
+@app.route("/")
+def home():
+    """Home endpoint"""
+    return jsonify({
+        "status": "ok",
+        "version": "4.0",
+        "upgrades": UpgradeFlags.get_all_flags(),
+        "services": {
+            "openai": "available" if client else "unavailable",
+            "faiss": "available" if HAS_FAISS else "unavailable",
+            "google_sheets": "available" if HAS_GOOGLE_SHEETS else "unavailable",
+            "meta_capi": "available" if HAS_META_CAPI else "unavailable",
+        },
+        "counts": {
+            "tours": len(TOURS_DB),
+            "passages": len(FLAT_TEXTS),
+            "tour_names": len(TOUR_NAME_TO_INDEX),
+        }
+    })
+
+# ===== REINDEX ENDPOINT =====
+@app.route("/reindex", methods=["POST"])
+def reindex():
+    """Rebuild index endpoint"""
+    secret = request.headers.get("X-RBW-ADMIN", "")
+    if not secret and os.environ.get("RBW_ALLOW_REINDEX", "") != "1":
+        return jsonify({"error": "reindex not allowed"}), 403
+    
+    load_knowledge()
+    build_index(force_rebuild=True)
+    
+    return jsonify({
+        "ok": True,
+        "count": len(FLAT_TEXTS),
+        "tours": len(TOURS_DB)
+    })
+
+# ===== SAVE LEAD ENDPOINT =====
 @app.route('/api/save-lead', methods=['POST', 'OPTIONS'])
 def save_lead():
     if request.method == 'OPTIONS':
@@ -4923,7 +4933,7 @@ def save_lead():
         data = request.get_json() or {}
 
         # =====================================================
-        # 1. EXTRACT & VALIDATE (GIỮ NGUYÊN LOGIC CŨ)
+        # 1. EXTRACT & VALIDATE
         # =====================================================
         phone = (data.get('phone') or '').strip()
         name = (data.get('name') or '').strip()
@@ -4932,12 +4942,8 @@ def save_lead():
         page_url = (data.get('page_url') or '').strip()
         note = (data.get('note') or '').strip()
 
-        # 🔑 FE → BE event_id (KHÔNG tự sinh)
         event_id = data.get('event_id')
-        # 🔒 HARD DEDUP: CAPI chỉ chạy khi có event_id từ FE
-        if not event_id:
-            logger.info("ℹ️ Lead without event_id → Pixel only, skip CAPI")
-        if not phone and not data.get('event_id'):
+        if not phone and not event_id:
             return jsonify({'error': 'Phone number is required'}), 400
 
         phone_clean = re.sub(r'\D', '', phone)
@@ -4945,7 +4951,6 @@ def save_lead():
             return jsonify({'error': 'Invalid phone number format'}), 400
 
         timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-
 
         lead_data = {
             'timestamp': timestamp,
@@ -4959,7 +4964,7 @@ def save_lead():
         }
 
         # =====================================================
-        # 2. SAVE GOOGLE SHEETS (CHỈ GHI KHI CÓ LEAD THẬT)
+        # 2. SAVE TO GOOGLE SHEETS
         # =====================================================
         if ENABLE_GOOGLE_SHEETS and phone_clean:
             try:
@@ -4997,7 +5002,7 @@ def save_lead():
                 logger.error(f'❌ Google Sheets error: {e}')
 
         # =====================================================
-        # 3. FALLBACK STORAGE (KHÔNG ĐỤNG)
+        # 3. FALLBACK STORAGE
         # =====================================================
         if ENABLE_FALLBACK_STORAGE:
             try:
@@ -5017,7 +5022,7 @@ def save_lead():
                 logger.error(f'❌ Fallback storage error: {e}')
 
         # =====================================================
-        # 4. META PARAM BUILDER (FBP / FBC – FALLBACK DEDUP)
+        # 4. META PARAM BUILDER
         # =====================================================
         meta = MetaParamService()
         meta.process_request(request)
@@ -5025,37 +5030,28 @@ def save_lead():
         fbp = meta.get_fbp()
         fbc = meta.get_fbc()
 
-        # Chuẩn Meta: event_source_url
         event_source_url = (
             page_url
             or request.headers.get("Referer")
             or request.url
         )
-        
+
         # =====================================================
-        # 5. META CAPI – LEAD (CHUẨN META, DEDUP 100%)
+        # 5. META CAPI – LEAD
         # =====================================================
         if ENABLE_META_CAPI_LEAD and HAS_META_CAPI:
-
             test_code = os.environ.get("META_TEST_EVENT_CODE", "").strip()
             is_test_mode = bool(test_code)
 
-            # ===== PROD: bắt buộc có event_id để dedup =====
             if not event_id and not is_test_mode:
-                logger.warning(
-                    "⚠️ Lead submitted without event_id "
-                    "(PROD mode → Pixel only, CAPI skipped)"
-                )
+                logger.warning("⚠️ Lead without event_id → Pixel only, CAPI skipped")
             else:
                 try:
-                    # ================= LEAD – META CAPI (CHỈ FORM THẬT) =================
-                    phone_clean = re.sub(r'\D', '', phone or '')
-
                     if phone_clean and re.match(r'^0\d{9,10}$', phone_clean) and event_id:
                         send_meta_lead(
                             request=request,
                             event_name="Contact",
-                            event_id=event_id,          # 🔒 BẮT BUỘC từ FE
+                            event_id=event_id,
                             phone=phone_clean,
                             fbp=fbp,
                             fbc=fbc,
@@ -5065,24 +5061,15 @@ def save_lead():
                                 if tour_interest else "Website Lead Form"
                             )
                         )
-
                         increment_stat("meta_capi_leads")
-                        logger.info(
-                            f"📩 Meta CAPI Lead sent | "
-                            f"mode=PROD | event_id={event_id}"
-                        )
+                        logger.info(f"📩 Meta CAPI Lead sent | event_id={event_id}")
                     else:
-                        logger.warning(
-                            "⚠️ Meta CAPI Lead bị bỏ qua: thiếu event_id hoặc chưa phải lead thật"
-                        )
-
-
+                        logger.warning("⚠️ Meta CAPI Lead skipped: invalid phone or missing event_id")
                 except Exception as e:
                     increment_stat("meta_capi_errors")
                     logger.error(f"❌ Meta CAPI Lead error: {e}")
 
         increment_stat("leads")
-
 
         # =====================================================
         # 6. RESPONSE
@@ -5102,54 +5089,30 @@ def save_lead():
         return jsonify({'error': str(e)}), 500
 
 
-
-# ===============================
-# API: CALL / ZALO CLICK (Meta CAPI - CallButtonClick)
-# ===============================
-# =========================================================
-# API: CONTACT CLICK (ALIAS – FIX 404, SAFE)
-# =========================================================
+# ===== CORS HELPER =====
 ALLOWED_ORIGINS = [
     "https://rubywings.vn",
     "https://www.rubywings.vn",
-    "http://localhost:3000",  # local dev
+    "http://localhost:3000",
 ]
 
 def cors_origin():
-    """
-    CORS production-safe:
-    - Cho phép Origin trong whitelist
-    - Same-origin / server-side → cho qua
-    - Origin lạ → vẫn trả về Origin để KHÔNG làm chết hệ
-    - Không dùng "*" cho browser-origin (tránh lỗi credentials)
-    """
+    """Return appropriate CORS origin"""
     origin = request.headers.get("Origin")
-
-    # Same-origin / server-side / tool (no Origin header)
     if not origin:
         return "https://www.rubywings.vn"
-
-    # Whitelist chuẩn
     if origin in ALLOWED_ORIGINS:
         return origin
-
-    # Fallback an toàn: KHÔNG chặn POST, nhưng KHÔNG mở wildcard
     return origin
 
-
-
+# ===== TRACK CONTACT ENDPOINT =====
 @app.route("/api/track-contact", methods=["POST", "OPTIONS"])
 def track_contact():
-    logger.warning(f"[CORS AUDIT] Origin={request.headers.get('Origin')}")
-    # ===== CORS PREFLIGHT =====
     if request.method == 'OPTIONS':
         response = jsonify({'status': 'ok'})
         response.headers.add("Access-Control-Allow-Origin", cors_origin())
         response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
-        response.headers.add(
-            "Access-Control-Allow-Headers",
-            "Content-Type, X-RW-EVENT-ID"
-        )
+        response.headers.add("Access-Control-Allow-Headers", "Content-Type, X-RW-EVENT-ID")
         response.headers.add("Access-Control-Max-Age", "86400")
         return response, 200
 
@@ -5161,28 +5124,24 @@ def track_contact():
 
         logger.info(f"📞 Track contact: source={source}, event_id={event_id[:8] if event_id else 'None'}")
 
-        # 🔒 1. CHECK EVENT_ID (bắt buộc cho CAPI)
         if not event_id:
             logger.warning(f"⚠️ Missing event_id → Pixel only ({source})")
             response = jsonify({'success': True, 'message': 'Pixel only (no CAPI)'})
             response.headers.add("Access-Control-Allow-Origin", cors_origin())
             return response
 
-        # 🔒 2. CHECK META CAPI AVAILABILITY
         if not ENABLE_META_CAPI_LEAD or not HAS_META_CAPI:
             logger.info(f"ℹ️ Meta CAPI disabled: ENABLE_META_CAPI_LEAD={ENABLE_META_CAPI_LEAD}, HAS_META_CAPI={HAS_META_CAPI}")
             response = jsonify({'success': True, 'message': 'CAPI disabled'})
             response.headers.add("Access-Control-Allow-Origin", cors_origin())
             return response
 
-        # 🔒 3. EXTRACT META PARAMS
         meta = MetaParamService()
         meta.process_request(request)
 
-        # 🔒 4. SEND META CAPI
         send_meta_lead(
             request=request,
-            event_name="Lead",  # Chuẩn Meta: "Lead" thay vì "Contact"
+            event_name="Lead",
             event_id=event_id,
             phone=phone or "",
             fbp=meta.get_fbp(),
@@ -5204,6 +5163,7 @@ def track_contact():
         return response, 500
 
 
+# ===== TRACK CALL ENDPOINT =====
 @app.route('/api/track-call', methods=['POST', 'OPTIONS'])
 def track_call():
     if request.method == 'OPTIONS':
@@ -5211,12 +5171,10 @@ def track_call():
 
     try:
         data = request.get_json() or {}
-
         event_id = data.get('event_id')
         phone = data.get('phone')
         action = data.get('action', 'Call/Zalo Click')
 
-        # ===== META PARAM BUILDER =====
         meta = MetaParamService()
         meta.process_request(request)
 
@@ -5226,11 +5184,11 @@ def track_call():
         if ENABLE_META_CAPI_CALL and HAS_META_CAPI:
             send_meta_lead(
                 request=request,
-                event_name="CallButtonClick",  # KHÔNG đổi
-                event_id=event_id,             # từ FE
+                event_name="CallButtonClick",
+                event_id=event_id,
                 phone=phone,
-                fbp=fbp,                       # fallback dedup
-                fbc=fbc,                       # fallback dedup
+                fbp=fbp,
+                fbc=fbc,
                 content_name=action
             )
             increment_stat('meta_capi_calls')
@@ -5244,11 +5202,7 @@ def track_call():
         return jsonify({'error': str(e)}), 500
 
 
-
-
-
-
-
+# ===== HEALTH CHECK =====
 @app.route('/api/health', methods=['GET'])
 def health_check():
     """Health check endpoint"""
@@ -5259,7 +5213,7 @@ def health_check():
             "services": {
                 "chatbot": "running",
                 "openai": "available" if client else "unavailable",
-                "faiss": "available" if INDEX else "unavailable",
+                "faiss": "available" if INDEX is not None else "unavailable",
                 "tours_db": len(TOURS_DB),
                 "upgrades": {k: v for k, v in UpgradeFlags.get_all_flags().items() 
                            if k.startswith("UPGRADE_")}
@@ -5278,120 +5232,8 @@ def health_check():
             "error": str(e)
         }), 500
 
-# =========== INITIALIZATION ===========
-def initialize_app():
-    """Initialize the application"""
-    logger.info("🚀 Starting Ruby Wings Chatbot v4.0 (Dataclass Rewrite)...")
-    
-    # Apply memory optimizations
-    optimize_for_memory_profile()
-    
-    # Load knowledge base
-    load_knowledge()
-    
-    # Load or build tours database (SAFE)
-    if os.path.exists(FAISS_MAPPING_PATH):
-        try:
-            with open(FAISS_MAPPING_PATH, 'r', encoding='utf-8') as f:
-                loaded = json.load(f)
 
-            # Defensive: chỉ chấp nhận list[dict]
-            if isinstance(loaded, list):
-                safe_mapping = [m for m in loaded if isinstance(m, dict)]
-                MAPPING[:] = safe_mapping
-                FLAT_TEXTS[:] = [m.get('text', '') for m in safe_mapping]
-                logger.info(f"📁 Loaded {len(MAPPING)} mappings from disk (safe)")
-            else:
-                MAPPING[:] = []
-                FLAT_TEXTS[:] = []
-                logger.warning(
-                    "⚠️ FAISS_MAPPING_PATH is not list, skip loading mappings"
-                )
-
-        except Exception as e:
-            MAPPING[:] = []
-            FLAT_TEXTS[:] = []
-            logger.error(f"❌ Failed to load mappings safely: {e}")
-    
-    # Build tour databases
-    # index_tour_names()
-    # build_tours_db()
-    
-    # Build index in background
-    def build_index_background():
-        time.sleep(2)
-        success = build_index(force_rebuild=False)
-        if success:
-            logger.info("✅ Index ready")
-        else:
-            logger.warning("⚠️ Index building failed")
-    
-    threading.Thread(target=build_index_background, daemon=True).start()
-    
-    # Initialize Google Sheets client
-    if ENABLE_GOOGLE_SHEETS:
-        threading.Thread(target=get_gspread_client, daemon=True).start()
-    
-    # Log active upgrades
-    active_upgrades = [
-        name for name, enabled in UpgradeFlags.get_all_flags().items()
-        if enabled and name.startswith("UPGRADE_")
-    ]
-    logger.info(f"🔧 Active upgrades: {len(active_upgrades)}")
-    for upgrade in active_upgrades:
-        logger.info(f"   • {upgrade}")
-    
-    # Log memory profile
-    logger.info(
-        f"🧠 Memory Profile: {RAM_PROFILE}MB | "
-        f"Low RAM: {IS_LOW_RAM} | High RAM: {IS_HIGH_RAM}"
-    )
-    logger.info(f"📊 Tours Database: {len(TOURS_DB)} tours loaded")
-    
-    logger.info("✅ Application initialized successfully with dataclasses")
-
-
-# =========== APPLICATION START ===========
-# ================== INITIALIZE ON STARTUP ==================
-# ================== ĐẢM BẢO KHỞI TẠO KHI ỨNG DỤNG CHẠY ==================
-def initialize_on_start():
-    """Khởi tạo dữ liệu khi ứng dụng bắt đầu"""
-    try:
-        logger.info("🚀 Khởi động Ruby Wings Chatbot v4...")
-        
-        # Đảm bảo thư mục data tồn tại
-        if not os.path.exists("data"):
-            os.makedirs("data")
-            logger.info("📁 Tạo thư mục data")
-        
-        # Tải knowledge base
-        load_knowledge()
-        logger.info(f"✅ Đã tải {len(TOURS_DB)} tours, {len(TOUR_NAME_TO_INDEX)} tên tour")
-        
-        if len(TOURS_DB) == 0:
-            logger.error("❌ KHÔNG tải được tours nào từ knowledge.json!")
-            logger.error(f"   Current directory: {os.getcwd()}")
-            logger.error(f"   Files: {os.listdir('.')}")
-            if os.path.exists("data"):
-                logger.error(f"   Data files: {os.listdir('data')}")
-        
-        # Xây dựng FAISS index nếu có
-        if HAS_FAISS and len(FLAT_TEXTS) > 0:
-            build_index()
-            logger.info(f"✅ Đã xây dựng FAISS index với {len(FLAT_TEXTS)} passages")
-        else:
-            logger.warning("⚠️ Không thể xây dựng FAISS index, sử dụng fallback search")
-            
-    except Exception as e:
-        logger.error(f"❌ Lỗi khởi tạo: {e}")
-        traceback.print_exc()
-
-# CHỈ chạy khi ứng dụng thực sự khởi động
-if not os.environ.get('RENDER'):  # Trên Render, khởi tạo qua before_request
-    initialize_on_start()
-else:
-    logger.info("🔄 Render mode - Khởi tạo qua before_request")
-    pass
+# ===== DEBUG ENDPOINT =====
 @app.route("/api/debug", methods=["GET"])
 def debug_endpoint():
     """Debug endpoint to check loaded data"""
@@ -5425,7 +5267,6 @@ def debug_endpoint():
     # Thêm thông tin về các file trong thư mục data nếu có
     if os.path.exists("data"):
         debug_info["file_info"]["files_in_data_dir"] = os.listdir("data")
-        # Kiểm tra knowledge.json
         knowledge_paths = [
             "data/knowledge.json",
             "knowledge.json",
@@ -5434,7 +5275,6 @@ def debug_endpoint():
         for path in knowledge_paths:
             if os.path.exists(path):
                 debug_info["file_info"]["knowledge_json_found"] = path
-                # Đọc kích thước file
                 try:
                     size = os.path.getsize(path)
                     debug_info["file_info"]["knowledge_json_size"] = f"{size} bytes"
@@ -5442,10 +5282,7 @@ def debug_endpoint():
                     pass
                 break
     
-    # Thêm thông tin về upgrades
     debug_info["upgrades"] = UpgradeFlags.get_all_flags()
-    
-    # Thêm thông tin về các services
     debug_info["services"] = {
         "openai": "available" if client else "unavailable",
         "faiss": "available" if HAS_FAISS else "unavailable",
@@ -5454,84 +5291,107 @@ def debug_endpoint():
     }
     
     return jsonify(debug_info)
-# Run initialization
-initialize_app()
-if __name__ == "__main__":
-# ================== ĐẢM BẢO KHỞI TẠO KHI ỨNG DỤNG CHẠY ==================
-    def initialize_on_start():
-        """Khởi tạo dữ liệu khi ứng dụng bắt đầu"""
-        try:
-            logger.info("🚀 Khởi động Ruby Wings Chatbot v4...")
-            
-            # Đảm bảo thư mục data tồn tại
-            if not os.path.exists("data"):
-                os.makedirs("data")
-                logger.info("📁 Tạo thư mục data")
-            
-            # Tải knowledge base
-            load_knowledge()
-            logger.info(f"✅ Đã tải {len(TOURS_DB)} tours, {len(TOUR_NAME_TO_INDEX)} tên tour")
-            
-            if len(TOURS_DB) == 0:
-                logger.error("❌ KHÔNG tải được tours nào từ knowledge.json!")
-                logger.error(f"   Current directory: {os.getcwd()}")
-                logger.error(f"   Files: {os.listdir('.')}")
-                if os.path.exists("data"):
-                    logger.error(f"   Data files: {os.listdir('data')}")
-            
-            # Xây dựng FAISS index nếu có
-            if HAS_FAISS and len(FLAT_TEXTS) > 0:
-                build_index()
-                logger.info(f"✅ Đã xây dựng FAISS index với {len(FLAT_TEXTS)} passages")
-            else:
-                logger.warning("⚠️ Không thể xây dựng FAISS index, sử dụng fallback search")
-                
-        except Exception as e:
-            logger.error(f"❌ Lỗi khởi tạo: {e}")
-            traceback.print_exc()
 
-# CHỈ chạy khi ứng dụng thực sự khởi động
-if not os.environ.get('RENDER'):  # Trên Render, khởi tạo qua before_request
-    initialize_on_start()
-else:
-    logger.info("🔄 Render mode - Khởi tạo qua before_request")
+
+# ===== FALLBACK TOUR SEARCH =====
 def get_fallback_tours(query=None, limit=5):
     """Fallback khi FAISS không trả về kết quả"""
     try:
         all_tours = list(TOURS_DB.values())
         
         if query:
-            # Simple keyword matching
             query_lower = query.lower()
             matched_tours = []
             
             for tour in all_tours:
                 score = 0
-                
-                # Check name
                 if tour.name and query_lower in tour.name.lower():
                     score += 3
-                
-                # Check location
                 if tour.location and query_lower in tour.location.lower():
                     score += 2
-                
-                # Check tags
                 if tour.tags:
                     for tag in tour.tags:
                         if query_lower in tag.lower():
                             score += 1
-                
                 if score > 0:
                     matched_tours.append((score, tour))
             
-            # Sort by score
             matched_tours.sort(key=lambda x: x[0], reverse=True)
             return [tour for _, tour in matched_tours[:limit]]
         
-        # Return first N tours if no query
         return all_tours[:limit]
         
     except Exception as e:
         logger.error(f"Fallback tour error: {e}")
         return list(TOURS_DB.values())[:min(limit, len(TOURS_DB))]
+
+
+# ===== APPLICATION INITIALIZATION =====
+def initialize_app():
+    """Initialize the application (called once at startup)"""
+    logger.info("🚀 Starting Ruby Wings Chatbot v4.0 (Dataclass Rewrite)...")
+    
+    # Apply memory optimizations
+    optimize_for_memory_profile()
+    
+    # Load knowledge base
+    load_knowledge()
+    
+    # Load or build tours database (SAFE)
+    if os.path.exists(FAISS_MAPPING_PATH):
+        try:
+            with open(FAISS_MAPPING_PATH, 'r', encoding='utf-8') as f:
+                loaded = json.load(f)
+
+            if isinstance(loaded, list):
+                safe_mapping = [m for m in loaded if isinstance(m, dict)]
+                MAPPING[:] = safe_mapping
+                FLAT_TEXTS[:] = [m.get('text', '') for m in safe_mapping]
+                logger.info(f"📁 Loaded {len(MAPPING)} mappings from disk (safe)")
+            else:
+                MAPPING[:] = []
+                FLAT_TEXTS[:] = []
+                logger.warning("⚠️ FAISS_MAPPING_PATH is not list, skip loading mappings")
+
+        except Exception as e:
+            MAPPING[:] = []
+            FLAT_TEXTS[:] = []
+            logger.error(f"❌ Failed to load mappings safely: {e}")
+    
+    # Build index in background
+    def build_index_background():
+        time.sleep(2)
+        success = build_index(force_rebuild=False)
+        if success:
+            logger.info("✅ Index ready")
+        else:
+            logger.warning("⚠️ Index building failed")
+    
+    threading.Thread(target=build_index_background, daemon=True).start()
+    
+    # Initialize Google Sheets client
+    if ENABLE_GOOGLE_SHEETS:
+        threading.Thread(target=get_gspread_client, daemon=True).start()
+    
+    # Log active upgrades
+    active_upgrades = [
+        name for name, enabled in UpgradeFlags.get_all_flags().items()
+        if enabled and name.startswith("UPGRADE_")
+    ]
+    logger.info(f"🔧 Active upgrades: {len(active_upgrades)}")
+    for upgrade in active_upgrades:
+        logger.info(f"   • {upgrade}")
+    
+    logger.info(f"🧠 Memory Profile: {RAM_PROFILE}MB | Low RAM: {IS_LOW_RAM} | High RAM: {IS_HIGH_RAM}")
+    logger.info(f"📊 Tours Database: {len(TOURS_DB)} tours loaded")
+    logger.info("✅ Application initialized successfully with dataclasses")
+
+
+# ===== STARTUP =====
+# Initialize the app immediately when module loads
+initialize_app()
+
+if __name__ == "__main__":
+    # Run Flask development server (only when executed directly)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
