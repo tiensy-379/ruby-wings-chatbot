@@ -3870,42 +3870,27 @@ def chat_endpoint_ultimate():
                 # Strategy 2: Follow-up context memory (ưu tiên cao nhất)
         if is_followup_tour_question:
             last_tour_idx = getattr(context, 'current_tour', None)
-            context_exists = isinstance(last_tour_idx, int) and last_tour_idx in TOURS_DB
-            context_valid = False
-            if context_exists:
+            if isinstance(last_tour_idx, int):
                 last_tour = TOURS_DB.get(last_tour_idx)
-                context_valid = last_tour and last_tour.is_tour
-
-                        # Kiểm tra xem người dùng có đề cập rõ ràng tour khác không
-            explicit_mention = False
-            max_direct_score = 0
-            if direct_matches_with_scores:
-                for idx, score in direct_matches_with_scores:
-                    if score > max_direct_score:
-                        max_direct_score = score
-                    if score >= 95:  # Ngưỡng rất cao, chỉ khi tên tour xuất hiện gần như chính xác
-                        explicit_mention = True
-                        logger.info(f"🎯 Explicit mention detected: tour idx {idx} with score {score}")
-                        break
-
-            if context_valid and (max_direct_score < 70 or not explicit_mention):
-                # Nếu điểm cao nhất từ direct match dưới 70, coi như không có đề cập rõ ràng
-                tour_indices = [last_tour_idx]
-                logger.info(f"🧠 Using context tour {last_tour_idx} for follow-up (context priority)")
-            elif direct_tour_matches:
-                tour_indices = direct_tour_matches[:3]
-                logger.info(f"🎯 Using direct tour matches: {tour_indices}")
+                if last_tour and last_tour.is_tour:
+                    # Luôn dùng context, bỏ qua direct matches
+                    tour_indices = [last_tour_idx]
+                    logger.info(f"🧠 Forced using context tour {last_tour_idx} for follow-up")
+                else:
+                    # context không hợp lệ, dùng direct matches
+                    if direct_tour_matches:
+                        tour_indices = direct_tour_matches[:3]
+                        logger.info(f"🎯 Using direct tour matches (context invalid): {tour_indices}")
             else:
-                tour_indices = []
-                logger.info("⚠️ No context and no direct matches for follow-up")
+                # không có context, dùng direct matches
+                if direct_tour_matches:
+                    tour_indices = direct_tour_matches[:3]
+                    logger.info(f"🎯 Using direct tour matches (no context): {tour_indices}")
         else:
             # không phải follow-up, dùng direct matches
             if direct_tour_matches:
                 tour_indices = direct_tour_matches[:3]
                 logger.info(f"🎯 Direct tour matches found: {tour_indices}")
-            else:
-                tour_indices = []
-                logger.info("⚠️ No direct matches found")
 
         # Strategy 3: Filter-based search (nếu có, giữ nguyên code cũ)
         # ... (giữ nguyên phần filter nếu bạn có)
@@ -3929,13 +3914,13 @@ def chat_endpoint_ultimate():
         reply = ""
         sources = []
         response_locked = False
-                        # ================== PRIORITY PRICE HANDLER ==================
+                # ================== PRIORITY PRICE HANDLER ==================
         # Xử lý trực tiếp câu hỏi về giá tour khi đã xác định được tour cụ thể
         if not response_locked:
             price_keywords = ['giá bao nhiêu', 'bao nhiêu tiền', 'giá tour', 'giá', 'chi phí']
             if any(kw in message_lower for kw in price_keywords):
-                # Ưu tiên context cho follow-up
                 target_tour_idx = None
+                # Ưu tiên context nếu là follow-up
                 if is_followup_tour_question:
                     last_tour_idx = getattr(context, 'current_tour', None)
                     if isinstance(last_tour_idx, int):
@@ -3943,11 +3928,9 @@ def chat_endpoint_ultimate():
                         if last_tour and last_tour.is_tour:
                             target_tour_idx = last_tour_idx
                             logger.info(f"💰 PRIORITY PRICE HANDLER: using context tour {last_tour_idx} for follow-up")
-                
                 # Nếu không có context hoặc không phải follow-up, dùng tour_indices hiện tại
                 if target_tour_idx is None and tour_indices:
                     target_tour_idx = tour_indices[0]
-                
                 if target_tour_idx is not None:
                     tour = TOURS_DB.get(target_tour_idx)
                     if tour and tour.price:
