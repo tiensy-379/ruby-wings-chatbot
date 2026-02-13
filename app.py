@@ -5437,8 +5437,8 @@ def initialize_app():
             logger.error(f"❌ Failed to load mappings safely: {e}")
     
     # Build tour databases
-    index_tour_names()
-    build_tours_db()
+    # index_tour_names()
+    # build_tours_db()
     
     # Build index in background
     def build_index_background():
