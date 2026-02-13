@@ -2816,12 +2816,13 @@ def load_knowledge():
         tours = KNOW.get("tours", [])
         for idx, tour_data in enumerate(tours):
             try:
-                                # Debug: Log first tour structure
+                # Debug: Log first tour structure
                 if idx == 0:
-                    logger.info(f"🏷️ First tour data keys: {list(tour_data.keys())}")# Create Tour object
-                               # Create Tour object với trường index
+                    logger.info(f"🏷️ First tour data keys: {list(tour_data.keys())}")
+                
+                # Create Tour object với trường index
                 tour = Tour(
-                    index=idx,  # QUAN TRỌNG: Thêm index
+                    index=idx,
                     name=tour_data.get("tour_name", "").strip(),
                     summary=tour_data.get("summary", ""),
                     location=tour_data.get("location", ""),
@@ -2836,6 +2837,11 @@ def load_knowledge():
                     event_support=tour_data.get("event_support", ""),
                     tags=tour_data.get("tags", []),
                 )
+                
+                # Đảm bảo thuộc tính is_tour tồn tại (phòng trường hợp class Tour chưa có default)
+                if not hasattr(tour, 'is_tour'):
+                    tour.is_tour = True
+                
                 # Đánh dấu tour ảo (nội dung giới thiệu, văn hoá tổ chức, không phải tour du lịch)
                 if any(keyword in tour.name.lower() for keyword in [
                     "giới thiệu ruby wings", 
@@ -2846,6 +2852,7 @@ def load_knowledge():
                 ]):
                     tour.is_tour = False
                     logger.info(f"🚫 Marked as non-tour: '{tour.name}' (idx={idx})")
+                
                 # Store in databases
                 TOURS_DB[idx] = tour
                 
@@ -2867,11 +2874,12 @@ def load_knowledge():
                 continue
         
         logger.info(f"✅ Processed {len(TOURS_DB)} tours, {len(FLAT_TEXTS)} passages")
-                # Log TOUR_NAME_TO_INDEX for debugging
+        # Log TOUR_NAME_TO_INDEX for debugging
         logger.info(f"✅ TOUR_NAME_TO_INDEX initialized with {len(TOUR_NAME_TO_INDEX)} entries")
         # Log 5 tên đầu tiên
         for i, (name, idx) in enumerate(list(TOUR_NAME_TO_INDEX.items())[:5]):
             logger.info(f"   {i+1}. '{name}' -> tour index {idx}")
+        
         if len(TOURS_DB) == 0:
             logger.error("❌ NO tours loaded! Check knowledge.json structure")
             
