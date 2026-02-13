@@ -1,4 +1,13 @@
 def safe_validate(reply):
+    def normalize_tour_key(text: str) -> str:
+        """Normalize tour name/text for stable matching & dedup."""
+        if not text:
+            return ""
+        t = unicodedata.normalize("NFKD", str(text).lower())
+        t = "".join(ch for ch in t if not unicodedata.combining(ch))
+        t = re.sub(r"[^a-z0-9\s]", " ", t)
+        t = re.sub(r"\s+", " ", t).strip()
+        return t
     try:
         if not isinstance(reply, dict):
             return reply
@@ -50,10 +59,20 @@ class Tour:
     accommodation: str = ""
     meals: str = ""
     tags: List[str] = field(default_factory=list)
+    event_support: str = ""
     
     def __str__(self):
         return f"Tour({self.name})"
 from common_utils import flatten_json
+def normalize_tour_key(text: str) -> str:
+    """Normalize Vietnamese text for stable intent/matching/dedup."""
+    if not text:
+        return ""
+    t = unicodedata.normalize("NFKD", str(text).lower())
+    t = "".join(ch for ch in t if not unicodedata.combining(ch))
+    t = re.sub(r"[^a-z0-9\s]", " ", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
 import random
 try:
     import numpy as np
@@ -285,8 +304,93 @@ def get_stats() -> dict:
     """Get current stats"""
     with STATS_LOCK:
         return GLOBAL_STATS.copy()
+    def resolve_best_tour_indices(user_message: str, top_k: int = 3) -> List[int]:
+        """Resolve tour by exact-normalized match first, then token overlap score."""
+        msg_norm = normalize_tour_key(user_message)
+        if not msg_norm:
+            return []
+
+        scored = []
+        for norm_name, idx in TOUR_NAME_TO_INDEX.items():
+            name_norm = normalize_tour_key(norm_name)
+            if not name_norm:
+                continue
+
+            # Exact/contains boost
+            score = 0
+            if name_norm in msg_norm:
+                score += 100
+
+            # Token overlap
+            msg_tokens = set(msg_norm.split())
+            name_tokens = set(name_norm.split())
+            overlap = len(msg_tokens.intersection(name_tokens))
+            score += overlap * 5
+
+            if score > 0:
+                scored.append((idx, score))
+
+        scored.sort(key=lambda x: x[1], reverse=True)
+
+        ordered = []
+        seen = set()
+        for idx, _ in scored:
+            if idx not in seen:
+                seen.add(idx)
+                ordered.append(idx)
+            if len(ordered) >= top_k:
+                break
+        return ordered
 
 # =========== UPGRADE FEATURE FLAGS ===========
+def format_tour_program_response(tour) -> str:
+    """Build detailed response from knowledge fields (12 fields + event_support)."""
+    if not tour:
+        return ""
+
+    name = getattr(tour, 'name', '') or 'Tour'
+    summary = getattr(tour, 'summary', '') or ''
+    location = getattr(tour, 'location', '') or ''
+    duration = getattr(tour, 'duration', '') or ''
+    price = getattr(tour, 'price', '') or ''
+    includes = getattr(tour, 'includes', []) or []
+    notes = getattr(tour, 'notes', '') or ''
+    style = getattr(tour, 'style', '') or ''
+    transport = getattr(tour, 'transport', '') or ''
+    accommodation = getattr(tour, 'accommodation', '') or ''
+    meals = getattr(tour, 'meals', '') or ''
+    event_support = getattr(tour, 'event_support', '') or ''
+
+    lines = [f"📘 **CHƯƠNG TRÌNH: {name}**"]
+    if summary:
+        lines.append(f"- Tổng quan: {summary}")
+    if location:
+        lines.append(f"- Địa điểm: {location}")
+    if duration:
+        lines.append(f"- Thời lượng: {duration}")
+    if price:
+        lines.append(f"- Giá: {price}")
+    if style:
+        lines.append(f"- Phong cách: {style}")
+    if transport:
+        lines.append(f"- Phương tiện: {transport}")
+    if accommodation:
+        lines.append(f"- Lưu trú: {accommodation}")
+    if meals:
+        lines.append(f"- Bữa ăn: {meals}")
+
+    if includes:
+        lines.append("- Lịch trình/bao gồm:")
+        for item in includes[:12]:
+            lines.append(f"  • {item}")
+
+    if notes:
+        lines.append(f"- Lưu ý: {notes}")
+    if event_support:
+        lines.append(f"- Hỗ trợ đoàn: {event_support}")
+
+    lines.append("📞 Hotline: 0332510486")
+    return "\n".join(lines)
 class UpgradeFlags:
     """Control all 10 upgrades with environment variables"""
     
@@ -322,6 +426,25 @@ class UpgradeFlags:
     def is_enabled(upgrade_name: str) -> bool:
         flags = UpgradeFlags.get_all_flags()
         return flags.get(f"UPGRADE_{upgrade_name}", False)
+
+def resolve_best_tour_indices(query, top_k=3):
+    """
+    Tìm index của tour phù hợp nhất dựa trên query.
+    Args:
+        query: câu hỏi/chuỗi cần tìm
+        top_k: số lượng tour tối đa trả về
+    Returns:
+        list các index (int)
+    """
+    normalized_query = normalize_tour_key(query)
+    matches = []
+    for norm_name, idx in TOUR_NAME_TO_INDEX.items():
+        if normalized_query in norm_name or norm_name in normalized_query:
+            matches.append((norm_name, idx))
+    # Sắp xếp ưu tiên match chính xác hơn (độ dài norm_name lớn hơn)
+    matches.sort(key=lambda x: len(x[0]), reverse=True)
+    return [idx for _, idx in matches[:top_k]]
+
 
 # =========== FLASK APP CONFIG ===========
 app = Flask(__name__)
@@ -1712,7 +1835,6 @@ class ConversationStateMachine:
     def _determine_state(self, user_message: str, bot_response: str) -> ConversationState:
         """Determine new state based on current interaction"""
         message_lower = user_message.lower()
-        
         farewell_words = ['tạm biệt', 'cảm ơn', 'thanks', 'bye', 'goodbye']
         if any(word in message_lower for word in farewell_words):
             return ConversationState.FAREWELL
@@ -3476,13 +3598,14 @@ def chat_endpoint_ultimate():
         
         # ================== AI-POWERED CONTEXT ANALYSIS ==================
         message_lower = user_message.lower()
-        # CONTEXT MEMORY (follow-up):
-        # Nếu user đang hỏi nối tiếp về giá/chương trình/lịch trình,
-        # và lượt này chưa match được tour mới thì dùng tour gần nhất trong session.
+        message_norm = normalize_tour_key(user_message)
+        # FOLLOW-UP CONTEXT MEMORY
         followup_keywords = [
-            'giá tour', 'giá', 'chương trình', 'lịch trình', 'chi tiết tour', 'tour này'
+            'giá tour', 'giá', 'chương trình', 'lịch trình', 'chi tiết tour',
+            'tour này', 'tour do', 'giá tour này'
         ]
         is_followup_tour_question = any(k in message_lower for k in followup_keywords)
+        
 
         # Lưu ý: tour_indices đã được khởi tạo [] ở đầu hàm.
         if is_followup_tour_question and not tour_indices:
@@ -3520,11 +3643,13 @@ def chat_endpoint_ultimate():
             'group_info': ['nhóm','nhom','đoàn','doan','công ty','cong ty','gia đình','gia dinh','đi theo nhóm','di theo nhom','đi theo đoàn','di theo doan','đoàn đông','doan dong','tour cho nhóm','tour cho doan','tour gia đình','tour cong ty','đoàn bao nhiêu người','doan bao nhieu nguoi'],
             'custom_request': ['tùy chỉnh','tuy chinh','riêng','tour riêng','ca nhan hoa','cá nhân hóa','theo yêu cầu','theo yeu cau','thiết kế riêng','thiet ke rieng','làm tour riêng','lam tour rieng','tour thiết kế','tour thiet ke','chỉnh theo nhu cầu','chinh theo nhu cau'],
 }
+
         
         detected_intents = []
         for intent, keywords in intent_categories.items():
             for keyword in keywords:
-                if keyword in message_lower:
+                kw_norm = normalize_tour_key(keyword)
+                if keyword in message_lower or (kw_norm and kw_norm in message_norm):
                     detected_intents.append(intent)
                     break
         
@@ -3533,28 +3658,18 @@ def chat_endpoint_ultimate():
         tour_indices = []
         direct_tour_matches = []
         
-        # Strategy 1: Direct tour name matching
-        if TOUR_NAME_TO_INDEX and len(TOUR_NAME_TO_INDEX) > 0:
-            temp_matches = []
-            for norm_name, idx in TOUR_NAME_TO_INDEX.items():
-                if not norm_name:
-                    continue
-                # Kiểm tra tên tour có trong message không
-                tour_words = set(norm_name.split())
-                msg_words = set(message_lower.split())
-                common_words = tour_words.intersection(msg_words)
-                
-                if len(common_words) >= 2:  # Ít nhất 2 từ trùng
-                    temp_matches.append(idx)
-            
-            direct_tour_matches = temp_matches
-        
-
-        
+        # Strategy 1: Direct tour name matching (normalized resolver)
+        direct_tour_matches = resolve_best_tour_indices(user_message, top_k=5)
         if direct_tour_matches:
-            tour_indices = direct_tour_matches[:3]  # Chỉ lấy 3 tour đầu
+            tour_indices = direct_tour_matches[:3]
             logger.info(f"🎯 Direct tour matches found: {tour_indices}")
-        
+
+        # Nếu không match được tour mới, dùng tour gần nhất trong context cho follow-up
+        if is_followup_tour_question and not tour_indices:
+            last_tour_idx = getattr(context, 'current_tour', None)
+            if isinstance(last_tour_idx, int) and last_tour_idx in TOURS_DB:
+                tour_indices = [last_tour_idx]
+                logger.info(f"🧠 Reuse context.current_tour={last_tour_idx} for follow-up")
         # Strategy 3: Filter-based search
         mandatory_filters = FilterSet()
         if UpgradeFlags.is_enabled("1_MANDATORY_FILTER"):
@@ -3586,10 +3701,15 @@ def chat_endpoint_ultimate():
         # ================== INTELLIGENT RESPONSE GENERATION ==================
         reply = ""
         sources = []
+        response_locked = False
+        if any(k in message_lower for k in ['chương trình', 'lịch trình', 'chi tiết tour']) and tour_indices:
+            selected_tour = TOURS_DB.get(tour_indices[0])
+            if selected_tour:
+                reply = format_tour_program_response(selected_tour)
+                response_locked = True
         
         # 🔹 CASE 1: LISTING TOURS
-        if 'tour_listing' in detected_intents or any(keyword in message_lower for keyword in ['có những tour nào', 'danh sách tour', 'liệt kê tour', 'tour nào có']):
-            logger.info("📋 Processing tour listing request")
+        if (not response_locked) and ('tour_listing' in detected_intents or any(keyword in message_lower for keyword in ['có những tour nào', 'danh sách tour', 'liệt kê tour', 'tour nào có'])):
             
             # TẮT TẠM MANDATORY FILTER ĐỂ TEST
             # use_filters = UpgradeFlags.is_enabled("1_MANDATORY_FILTER") and not mandatory_filters.is_empty()
@@ -3605,14 +3725,17 @@ def chat_endpoint_ultimate():
                 all_tours = list(TOURS_DB.values())
                 logger.info(f"🎯 Getting ALL tours: {len(all_tours)} tours")
             
-            # Apply deduplication
+            # Apply deduplication (normalized)
             if UpgradeFlags.is_enabled("2_DEDUPLICATION") and all_tours:
-                seen_names = set()
+                seen_keys = set()
                 unique_tours = []
                 for tour in all_tours:
-                    name = tour.name
-                    if name and name not in seen_names:
-                        seen_names.add(name)
+                    try:
+                        key = normalize_tour_key(getattr(tour, "name", ""))
+                    except Exception:
+                        key = (getattr(tour, "name", "") or "").strip().lower()
+                    if key and key not in seen_keys:
+                        seen_keys.add(key)
                         unique_tours.append(tour)
                 all_tours = unique_tours
             
@@ -3679,7 +3802,7 @@ def chat_endpoint_ultimate():
                 reply += "📞 **Hotline tư vấn 24/7:** 0332510486"
         
         # 🔹 CASE 2: PRICE INQUIRY
-        elif 'price_inquiry' in detected_intents or any(keyword in message_lower for keyword in ['giá bao nhiêu', 'bao nhiêu tiền']):
+        elif 'price_inquiry' in detected_intents or any(keyword in message_lower for keyword in ['giá bao nhiêu', 'bao nhiêu tiền', 'giá tour', 'giá tour này', 'giá tout', 'gía tour']):
             logger.info("💰 Processing price inquiry")
             
             if tour_indices:
@@ -3699,25 +3822,26 @@ def chat_endpoint_ultimate():
                     reply = "💰 **THÔNG TIN GIÁ TOUR** 💰\n\n"
                     reply += "\n".join(price_responses)
                     reply += "\n\n📞 **Giá ưu đãi cho nhóm & đặt sớm:** 0332510486"
+                    response_locked = True
                 else:
                     # Dùng AI để trả lời thông minh
                     if client and HAS_OPENAI:
                         try:
                             prompt = f"""Bạn là tư vấn viên Ruby Wings. Khách hỏi về giá tour nhưng chưa chỉ định tour cụ thể.
 
-THÔNG TIN CHUNG VỀ GIÁ TOUR RUBY WINGS:
-- Tour 1 ngày: từ 500.000đ - 1.500.000đ
-- Tour 2 ngày 1 đêm: từ 1.500.000đ - 3.000.000đ  
-- Tour 3 ngày 2 đêm: từ 2.500.000đ - 5.000.000đ
-- Tour nhóm: có chính sách giảm giá theo số lượng
-- Tour cao cấp: giá theo yêu cầu
+                                        THÔNG TIN CHUNG VỀ GIÁ TOUR RUBY WINGS:
+                                        - Tour 1 ngày: từ 500.000đ - 1.500.000đ
+                                        - Tour 2 ngày 1 đêm: từ 1.500.000đ - 3.000.000đ  
+                                        - Tour 3 ngày 2 đêm: từ 2.500.000đ - 5.000.000đ
+                                        - Tour nhóm: có chính sách giảm giá theo số lượng
+                                        - Tour cao cấp: giá theo yêu cầu
 
-YÊU CẦU:
-1. Giải thích phạm vi giá tour của Ruby Wings
-2. Hỏi lại khách về loại tour cụ thể
-3. Đề nghị liên hệ hotline để báo giá chi tiết
+                                        YÊU CẦU:
+                                        1. Giải thích phạm vi giá tour của Ruby Wings
+                                        2. Hỏi lại khách về loại tour cụ thể
+                                        3. Đề nghị liên hệ hotline để báo giá chi tiết
 
-Trả lời ngắn gọn, chuyên nghiệp."""
+                                        Trả lời ngắn gọn, chuyên nghiệp."""
 
                             response = client.chat.completions.create(
                                 model=CHAT_MODEL,
@@ -3739,6 +3863,11 @@ Trả lời ngắn gọn, chuyên nghiệp."""
                             reply = "Giá tour tùy thuộc vào loại tour, thời gian và số lượng người. Vui lòng cho biết bạn quan tâm tour nào để tôi báo giá cụ thể."
                     else:
                         reply = "Giá tour Ruby Wings rất đa dạng, từ tour 1 ngày giá 500.000đ đến tour cao cấp 5.000.000đ. Bạn muốn biết giá tour cụ thể nào?"
+            # Bảo hiểm context lần cuối trước khi rơi về bảng giá chung
+            if not tour_indices:
+                last_tour_idx = getattr(context, 'current_tour', None)
+                if isinstance(last_tour_idx, int) and last_tour_idx in TOURS_DB:
+                    tour_indices = [last_tour_idx]
             else:
                 # Không có tour cụ thể
                 reply = "💰 **BẢNG GIÁ THAM KHẢO RUBY WINGS** 💰\n\n"
@@ -4365,7 +4494,13 @@ Trả lời trong 150-200 từ."""
             
             else:
                 reply = "Ruby Wings có chính sách ưu đãi hấp dẫn và quy trình đặt tour chuyên nghiệp. Liên hệ hotline để được tư vấn chi tiết."
-        
+        if (not response_locked) and ('pha tam giang' in message_norm or 'đầm chuồn' in message_lower):
+            exact_hits = resolve_best_tour_indices('Di sản Huế Đầm Chuồn Hoàng hôn phá Tam Giang', top_k=1)
+            if exact_hits:
+                t = TOURS_DB.get(exact_hits[0])
+                if t:
+                    reply = format_tour_program_response(t)
+                    response_locked = True
         # 🔹 CASE 11: OUT OF SCOPE QUESTIONS (xử lý bằng AI)
         else:
             logger.info("🤖 Processing with general search")
