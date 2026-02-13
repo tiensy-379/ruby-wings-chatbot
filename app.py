@@ -3883,17 +3883,16 @@ def chat_endpoint_ultimate():
                 for idx, score in direct_matches_with_scores:
                     if score > max_direct_score:
                         max_direct_score = score
-                    if score >= 90:  # Tăng ngưỡng lên 90 để tránh nhiễu
+                    if score >= 95:  # Ngưỡng rất cao, chỉ khi tên tour xuất hiện gần như chính xác
                         explicit_mention = True
                         logger.info(f"🎯 Explicit mention detected: tour idx {idx} with score {score}")
                         break
 
-            if context_valid and (not explicit_mention or max_direct_score < 70):
-                # Ưu tiên dùng context nếu không có tour mới rõ ràng, hoặc direct match điểm thấp
+            if context_valid and (max_direct_score < 70 or not explicit_mention):
+                # Nếu điểm cao nhất từ direct match dưới 70, coi như không có đề cập rõ ràng
                 tour_indices = [last_tour_idx]
                 logger.info(f"🧠 Using context tour {last_tour_idx} for follow-up (context priority)")
             elif direct_tour_matches:
-                # Không có context hoặc có tour mới rõ ràng -> dùng direct matches
                 tour_indices = direct_tour_matches[:3]
                 logger.info(f"🎯 Using direct tour matches: {tour_indices}")
             else:
