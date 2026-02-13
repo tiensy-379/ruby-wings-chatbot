@@ -1,13 +1,5 @@
 def safe_validate(reply):
-    def normalize_tour_key(text: str) -> str:
-        """Normalize tour name/text for stable matching & dedup."""
-        if not text:
-            return ""
-        t = unicodedata.normalize("NFKD", str(text).lower())
-        t = "".join(ch for ch in t if not unicodedata.combining(ch))
-        t = re.sub(r"[^a-z0-9\s]", " ", t)
-        t = re.sub(r"\s+", " ", t).strip()
-        return t
+    
     try:
         if not isinstance(reply, dict):
             return reply
@@ -495,20 +487,47 @@ class UpgradeFlags:
 def resolve_best_tour_indices(query, top_k=3):
     """
     Tìm index của tour phù hợp nhất dựa trên query.
-    Args:
-        query: câu hỏi/chuỗi cần tìm
-        top_k: số lượng tour tối đa trả về
-    Returns:
-        list các index (int)
+    - Ưu tiên khớp chính xác tên tour (normalized)
+    - Nếu không, tìm từ khóa xuất hiện trong tên
+    - Dùng fuzzy matching cơ bản
     """
+    if not query:
+        return []
+    
     normalized_query = normalize_tour_key(query)
-    matches = []
+    query_words = set(normalized_query.split())
+    
+    scores = []
     for norm_name, idx in TOUR_NAME_TO_INDEX.items():
-        if normalized_query in norm_name or norm_name in normalized_query:
-            matches.append((norm_name, idx))
-    # Sắp xếp ưu tiên match chính xác hơn (độ dài norm_name lớn hơn)
-    matches.sort(key=lambda x: len(x[0]), reverse=True)
-    return [idx for _, idx in matches[:top_k]]
+        score = 0
+        # 1. Khớp chính xác cả chuỗi
+        if normalized_query == norm_name:
+            score = 100
+        # 2. Khớp chứa chuỗi (query nằm trong tên)
+        elif normalized_query in norm_name:
+            score = 80
+        # 3. Khớp tên nằm trong query
+        elif norm_name in normalized_query:
+            score = 75
+        # 4. Khớp từ khóa riêng lẻ
+        else:
+            name_words = set(norm_name.split())
+            common = query_words.intersection(name_words)
+            if common:
+                score = 50 + len(common) * 5  # càng nhiều từ chung càng cao
+        
+        # Phạt nếu query dài nhưng chỉ khớp vài từ
+        if score > 0:
+            # Ưu tiên tên ngắn hơn nếu cùng điểm?
+            # Thêm trọng số độ dài để ưu tiên khớp chính xác
+            scores.append((score, len(norm_name), idx))
+    
+    # Sắp xếp theo điểm giảm dần, độ dài tên giảm dần (ưu tiên khớp dài hơn)
+    scores.sort(key=lambda x: (-x[0], -x[1]))
+    
+    result = [idx for _, _, idx in scores[:top_k]]
+    logger.info(f"🎯 resolve_best_tour_indices('{query}') → {result}")
+    return result
 
 
 # =========== FLASK APP CONFIG ===========
@@ -1162,7 +1181,16 @@ class DeduplicationEngine:
         
         logger.info(f"🔄 Tour merging: {len(tour_indices)} → {len(best_tours)} unique tours")
         return best_tours
-
+def normalize_tour_key(text: str) -> str:
+    """Normalize tour name/text for stable matching & dedup."""
+    if not text:
+        return ""
+    import unicodedata, re
+    t = unicodedata.normalize("NFKD", str(text).lower())
+    t = "".join(ch for ch in t if not unicodedata.combining(ch))
+    t = re.sub(r"[^a-z0-9\s]", " ", t)
+    t = re.sub(r"\s+", " ", t).strip()
+    return t
 # =========== UPGRADE 3: ENHANCED FIELD DETECTION (DATACLASS COMPATIBLE) ===========
 class EnhancedFieldDetector:
     """
@@ -3992,26 +4020,27 @@ def chat_endpoint_ultimate():
         
         # 🔹 CASE 2: PRICE INQUIRY
         elif 'price_inquiry' in detected_intents or any(keyword in message_lower for keyword in ['giá bao nhiêu', 'bao nhiêu tiền', 'giá tour', 'giá tour này', 'giá tout', 'gía tour']):
-            logger.info("💰 Processing price inquiry")
-            
-            if tour_indices:
-                # Có tour cụ thể
-                price_responses = []
-                for idx in tour_indices[:2]:  # Chỉ 2 tour đầu
-                    tour = TOURS_DB.get(idx)
-                    if tour and tour.price:
-                        price_text = tour.price
-                        # Làm đẹp price text
-                        if 'nghìn' in price_text.lower():
-                            price_text = price_text.replace('nghìn', 'k').replace('Nghìn', 'k')
-                        
-                        price_responses.append(f"**{tour.name}:** {price_text}")
+            if not response_locked:
+                logger.info("💰 Processing price inquiry")
                 
-                if price_responses:
-                    reply = "💰 **THÔNG TIN GIÁ TOUR** 💰\n\n"
-                    reply += "\n".join(price_responses)
-                    reply += "\n\n📞 **Giá ưu đãi cho nhóm & đặt sớm:** 0332510486"
-                    response_locked = True
+                if tour_indices:
+                    # Có tour cụ thể
+                    price_responses = []
+                    for idx in tour_indices[:2]:  # Chỉ 2 tour đầu
+                        tour = TOURS_DB.get(idx)
+                        if tour and tour.price:
+                            price_text = tour.price
+                            # Làm đẹp price text
+                            if 'nghìn' in price_text.lower():
+                                price_text = price_text.replace('nghìn', 'k').replace('Nghìn', 'k')
+                            
+                            price_responses.append(f"**{tour.name}:** {price_text}")
+                    
+                    if price_responses:
+                        reply = "💰 **THÔNG TIN GIÁ TOUR** 💰\n\n"
+                        reply += "\n".join(price_responses)
+                        reply += "\n\n📞 **Giá ưu đãi cho nhóm & đặt sớm:** 0332510486"
+                        response_locked = True
                 else:
                     # Dùng AI để trả lời thông minh
                     if client and HAS_OPENAI:
