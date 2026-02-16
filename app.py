@@ -52,7 +52,6 @@ class Tour:
     meals: str = ""
     tags: List[str] = field(default_factory=list)
     event_support: str = ""
-    is_tour: bool = True  # ← THÊM DÒNG NÀY
     
     def __str__(self):
         return f"Tour({self.name})"
@@ -487,8 +486,9 @@ class UpgradeFlags:
 def resolve_best_tour_indices(query, top_k=3):
     """
     Tìm index của tour phù hợp nhất dựa trên query.
-    Returns list of (index, score) tuples.
-    Chỉ xét các tour có is_tour == True.
+    - Ưu tiên khớp chính xác tên tour (normalized)
+    - Nếu không, tìm từ khóa xuất hiện trong tên
+    - Dùng fuzzy matching cơ bản
     """
     if not query:
         logger.warning("⚠️ resolve_best_tour_indices: empty query")
@@ -497,38 +497,49 @@ def resolve_best_tour_indices(query, top_k=3):
     normalized_query = normalize_tour_key(query)
     query_words = set(normalized_query.split())
     
+    # Debug: log danh sách tour đang có
+    logger.info(f"🔍 TOUR_NAME_TO_INDEX size: {len(TOUR_NAME_TO_INDEX)}")
+    if len(TOUR_NAME_TO_INDEX) == 0:
+        logger.error("❌ TOUR_NAME_TO_INDEX is EMPTY! Tours may not be loaded correctly.")
+    
     scores = []
     for norm_name, idx in TOUR_NAME_TO_INDEX.items():
-        # norm_name đã được normalize từ lúc index, không cần normalize lại
-        tour = TOURS_DB.get(idx)
-        if not tour or not tour.is_tour:
-            continue
-        
         score = 0
-        # 0. Kiểm tra khớp cụm từ liên tục (phrase match) – ưu tiên cao
-        if norm_name in normalized_query:
-            # Nếu toàn bộ tên tour (đã chuẩn hóa) xuất hiện như một cụm liên tục trong query
-            # Điều này xảy ra khi người dùng gõ chính xác tên tour (có thể thêm từ khác)
-            score = 85  # Cao hơn word overlap nhưng thấp hơn exact match
         # 1. Khớp chính xác cả chuỗi
-        elif normalized_query == norm_name:
+        if normalized_query == norm_name:
             score = 100
+            logger.debug(f"🎯 Exact match: '{norm_name}' → {idx}")
         # 2. Khớp chứa chuỗi (query nằm trong tên)
         elif normalized_query in norm_name:
             score = 80
-        # 3. Khớp từ khóa riêng lẻ
+            logger.debug(f"🔗 Substring match: '{normalized_query}' in '{norm_name}' → {idx}")
+        # 3. Khớp tên nằm trong query
+        elif norm_name in normalized_query:
+            score = 75
+            logger.debug(f"🔗 Reverse substring: '{norm_name}' in '{normalized_query}' → {idx}")
+        # 4. Khớp từ khóa riêng lẻ
         else:
             name_words = set(norm_name.split())
             common = query_words.intersection(name_words)
             if common:
                 score = 50 + len(common) * 5
+                logger.debug(f"🔤 Word match: {common} → '{norm_name}' score {score}")
         
         if score > 0:
             scores.append((score, len(norm_name), idx, norm_name))
     
+    # Sắp xếp theo điểm giảm dần, độ dài tên giảm dần
     scores.sort(key=lambda x: (-x[0], -x[1]))
     
-    result = [(idx, score) for score, _, idx, _ in scores[:top_k]]
+    # Log top matches
+    if scores:
+        logger.info(f"📊 Top matches for '{query}':")
+        for i, (score, _, idx, name) in enumerate(scores[:5]):
+            logger.info(f"   #{i+1}: {name} (idx={idx}, score={score})")
+    else:
+        logger.warning(f"⚠️ No matches found for '{query}'")
+    
+    result = [idx for _, _, idx, _ in scores[:top_k]]
     logger.info(f"🎯 resolve_best_tour_indices('{query}') → {result}")
     return result
 
@@ -2818,13 +2829,12 @@ def load_knowledge():
         tours = KNOW.get("tours", [])
         for idx, tour_data in enumerate(tours):
             try:
-                # Debug: Log first tour structure
+                                # Debug: Log first tour structure
                 if idx == 0:
-                    logger.info(f"🏷️ First tour data keys: {list(tour_data.keys())}")
-                
-                # Create Tour object với trường index
+                    logger.info(f"🏷️ First tour data keys: {list(tour_data.keys())}")# Create Tour object
+                               # Create Tour object với trường index
                 tour = Tour(
-                    index=idx,
+                    index=idx,  # QUAN TRỌNG: Thêm index
                     name=tour_data.get("tour_name", "").strip(),
                     summary=tour_data.get("summary", ""),
                     location=tour_data.get("location", ""),
@@ -2840,31 +2850,14 @@ def load_knowledge():
                     tags=tour_data.get("tags", []),
                 )
                 
-                # Đảm bảo thuộc tính is_tour tồn tại (phòng trường hợp class Tour chưa có default)
-                if not hasattr(tour, 'is_tour'):
-                    tour.is_tour = True
-                
-                # Đánh dấu tour ảo (nội dung giới thiệu, văn hoá tổ chức, không phải tour du lịch)
-                if any(keyword in tour.name.lower() for keyword in [
-                    "giới thiệu ruby wings", 
-                    "văn hoá tổ chức", 
-                    "hành vi chuẩn ruby wings",
-                    "nội dung văn hoá – không phải tour",
-                    "giới thiệu đôi cánh ruby"
-                ]):
-                    tour.is_tour = False
-                    logger.info(f"🚫 Marked as non-tour: '{tour.name}' (idx={idx})")
-                
                 # Store in databases
                 TOURS_DB[idx] = tour
                 
-                # Create normalized name mapping – CHỈ INDEX TOUR THẬT
-                if tour.name and tour.is_tour:
+                # Create normalized name mapping using shared normalize function
+                if tour.name:
                     norm_name = normalize_tour_key(tour.name)
                     TOUR_NAME_TO_INDEX[norm_name] = idx
                     logger.debug(f"📌 Indexed tour: '{norm_name}' -> idx {idx}")
-                else:
-                    logger.debug(f"⏭️ Skipped indexing non-tour: '{tour.name}'")
                 
                 # Add to flat texts for FAISS
                 flat_data = flatten_json({"tours": [tour_data]})
@@ -2876,12 +2869,11 @@ def load_knowledge():
                 continue
         
         logger.info(f"✅ Processed {len(TOURS_DB)} tours, {len(FLAT_TEXTS)} passages")
-        # Log TOUR_NAME_TO_INDEX for debugging
+                # Log TOUR_NAME_TO_INDEX for debugging
         logger.info(f"✅ TOUR_NAME_TO_INDEX initialized with {len(TOUR_NAME_TO_INDEX)} entries")
         # Log 5 tên đầu tiên
         for i, (name, idx) in enumerate(list(TOUR_NAME_TO_INDEX.items())[:5]):
             logger.info(f"   {i+1}. '{name}' -> tour index {idx}")
-        
         if len(TOURS_DB) == 0:
             logger.error("❌ NO tours loaded! Check knowledge.json structure")
             
@@ -3759,7 +3751,7 @@ def chat_endpoint_ultimate():
         tour_indices = []
         direct_tour_matches = []
         detected_intents = []
-        mandatory_filters = FilterSet()        
+        
         # LOG - CHỈ LOG NHỮNG THÔNG TIN ĐÃ CÓ SẴN
         # logger.info(f"🔍 Chat request: '{user_message}'")
         # logger.info(f"📊 TOURS_DB count: {len(TOURS_DB)}")
@@ -3807,15 +3799,21 @@ def chat_endpoint_ultimate():
         # ================== AI-POWERED CONTEXT ANALYSIS ==================
         message_lower = user_message.lower()
         message_norm = normalize_tour_key(user_message)
-
-        # ================== FOLLOW-UP CONTEXT MEMORY ==================
+        # FOLLOW-UP CONTEXT MEMORY
         followup_keywords = [
             'giá tour', 'giá', 'chương trình', 'lịch trình', 'chi tiết tour',
             'tour này', 'tour do', 'giá tour này'
         ]
         is_followup_tour_question = any(k in message_lower for k in followup_keywords)
         
-        # ================== COMPLEXITY SCORING ==================
+
+        # Lưu ý: tour_indices đã được khởi tạo [] ở đầu hàm.
+        if is_followup_tour_question and not tour_indices:
+            last_tour_idx = getattr(context, 'current_tour', None)
+            if isinstance(last_tour_idx, int) and last_tour_idx in TOURS_DB:
+                tour_indices = [last_tour_idx]
+                logger.info(f"🧠 Reuse context.current_tour={last_tour_idx} for follow-up")
+        # Phân tích cấp độ phức tạp
         complexity_score = 0
         complexity_indicators = {
             'và': 1, 'cho': 1, 'với': 1, 'nhưng': 2, 'tuy nhiên': 2,
@@ -3857,55 +3855,43 @@ def chat_endpoint_ultimate():
         
                 # ================== TOUR RESOLUTION ENGINE ==================
         # FIX: KHỞI TẠO LẠI ĐỂ ĐẢM BẢO SẠCH
-            tour_indices = []
-            direct_tour_matches = []
-            
-            # Strategy 1: Direct tour name matching (normalized resolver)
-            # Gọi resolve để lấy cả tour và điểm số
-            direct_matches_with_scores = resolve_best_tour_indices(user_message, top_k=5)
-            direct_tour_matches = [idx for idx, _ in direct_matches_with_scores[:3]]
-            direct_tour_scores = {idx: score for idx, score in direct_matches_with_scores}
-            logger.info(f"📌 direct_tour_matches = {direct_tour_matches}")
-            logger.info(f"📌 direct_tour_scores = {direct_tour_scores}")
+        tour_indices = []
+        direct_tour_matches = []
+        
+        # Strategy 1: Direct tour name matching (normalized resolver)
+        logger.info(f"🔎 Calling resolve_best_tour_indices with message: '{user_message}'")
+        direct_tour_matches = resolve_best_tour_indices(user_message, top_k=5)
+        logger.info(f"📌 direct_tour_matches = {direct_tour_matches}")
+        if direct_tour_matches:
+            tour_indices = direct_tour_matches[:3]
+            logger.info(f"🎯 Direct tour matches found: {tour_indices}")
 
-                # Strategy 2: Follow-up context memory (ưu tiên cao nhất)
-        if is_followup_tour_question:
+        # Nếu không match được tour mới, dùng tour gần nhất trong context cho follow-up
+        if is_followup_tour_question and not tour_indices:
             last_tour_idx = getattr(context, 'current_tour', None)
-            if isinstance(last_tour_idx, int):
-                last_tour = TOURS_DB.get(last_tour_idx)
-                if last_tour and last_tour.is_tour:
-                    # Luôn dùng context, bỏ qua direct matches
-                    tour_indices = [last_tour_idx]
-                    logger.info(f"🧠 STRATEGY 2: Using context tour {last_tour_idx} for follow-up")
-                else:
-                    # context không hợp lệ, dùng direct matches
-                    if direct_tour_matches:
-                        tour_indices = direct_tour_matches[:3]
-                        logger.info(f"🎯 STRATEGY 2: Using direct tour matches (context invalid): {tour_indices}")
-            else:
-                # không có context, dùng direct matches
-                if direct_tour_matches:
-                    tour_indices = direct_tour_matches[:3]
-                    logger.info(f"🎯 STRATEGY 2: Using direct tour matches (no context): {tour_indices}")
-        else:
-            # không phải follow-up, dùng direct matches
-            if direct_tour_matches:
-                tour_indices = direct_tour_matches[:3]
-                logger.info(f"🎯 STRATEGY 2: Direct tour matches found: {tour_indices}")
-
-        # Strategy 3: Filter-based search (nếu có, giữ nguyên code cũ)
-        # ... (giữ nguyên phần filter nếu bạn có)
-
-        # Cập nhật context.current_tour nếu có tour thật được chọn
-        if tour_indices:
-            first_tour = TOURS_DB.get(tour_indices[0])
-            if first_tour and first_tour.is_tour:
-                context.current_tour = tour_indices[0]
-                context.current_tour_updated_at = datetime.utcnow().isoformat()
-                context.last_tour_name = first_tour.name
-                logger.info(f"📝 Updated context.current_tour = {tour_indices[0]} ({first_tour.name})")
+            if isinstance(last_tour_idx, int) and last_tour_idx in TOURS_DB:
+                tour_indices = [last_tour_idx]
+                logger.info(f"🧠 Reuse context.current_tour={last_tour_idx} for follow-up")
+        # Strategy 3: Filter-based search
+        mandatory_filters = FilterSet()
+        if UpgradeFlags.is_enabled("1_MANDATORY_FILTER"):
+            mandatory_filters = MandatoryFilterSystem.extract_filters(user_message)
+            
+            if not mandatory_filters.is_empty():
+                filtered_indices = MandatoryFilterSystem.apply_filters(TOURS_DB, mandatory_filters)
+                if filtered_indices:
+                    if tour_indices:
+                        # Kết hợp kết quả
+                        combined = list(set(tour_indices) & set(filtered_indices))
+                        tour_indices = combined if combined else filtered_indices[:3]
+                    else:
+                        tour_indices = filtered_indices[:5]  # Giới hạn 5 tour
+                    logger.info(f"🎯 Filter-based search: {len(tour_indices)} tours")
+        
+    
         
         # LOG KẾT QUẢ SAU KHI ĐÃ XỬ LÝ XONG
+        logger.info(f"🎯 Direct tour matches: {direct_tour_matches}")
         logger.info(f"🎯 Final tour indices: {tour_indices}")
         logger.info(f"🎯 Detected intents: {detected_intents}")
 
@@ -3917,79 +3903,67 @@ def chat_endpoint_ultimate():
         response_locked = False
                 # ================== PRIORITY PRICE HANDLER ==================
         # Xử lý trực tiếp câu hỏi về giá tour khi đã xác định được tour cụ thể
-        if not response_locked:
+        if not response_locked and tour_indices:
             price_keywords = ['giá bao nhiêu', 'bao nhiêu tiền', 'giá tour', 'giá', 'chi phí']
             if any(kw in message_lower for kw in price_keywords):
-                target_tour_idx = None
-                # Ưu tiên context nếu là follow-up
-                if is_followup_tour_question:
-                    last_tour_idx = getattr(context, 'current_tour', None)
-                    if isinstance(last_tour_idx, int):
-                        last_tour = TOURS_DB.get(last_tour_idx)
-                        if last_tour and last_tour.is_tour:
-                            target_tour_idx = last_tour_idx
-                            logger.info(f"💰 PRIORITY PRICE HANDLER: using context tour {last_tour_idx} for follow-up")
-                # Nếu không có context hoặc không phải follow-up, dùng tour_indices hiện tại
-                if target_tour_idx is None and tour_indices:
-                    target_tour_idx = tour_indices[0]
-                if target_tour_idx is not None:
-                    tour = TOURS_DB.get(target_tour_idx)
-                    if tour and tour.price:
-                        reply = f"💰 **GIÁ TOUR: {tour.name}** 💰\n\n{tour.price}"
-                        reply += "\n\n📞 **Hotline tư vấn 24/7:** 0332510486"
-                        response_locked = True
-                        logger.info(f"💰 PRIORITY PRICE HANDLER: trả giá cho tour index {target_tour_idx}")
-       
-        
-                # ================== HANDLE EXPLICIT TOUR NAME MENTION ==================
-        # Nếu người dùng chỉ gõ tên tour (không kèm câu hỏi), ưu tiên trả về thông tin tour
-        if not response_locked and tour_indices:
-            # Kiểm tra xem có phải là tour thật không
-            first_tour = TOURS_DB.get(tour_indices[0])
-            if first_tour and first_tour.is_tour:
-                # Tính điểm tin cậy cho match đầu tiên
-                # (cần lấy score từ resolve_best_tour_indices, nhưng hiện tại tour_indices chỉ là list index)
-                # Cách đơn giản: kiểm tra xem user_message có chứa gần như toàn bộ tên tour không
-                msg_lower = user_message.lower()
-                tour_name_lower = first_tour.name.lower()
-                
-                # Tiêu chí: tin nhắn chứa tên tour (hoặc tên tour nằm trong tin nhắn)
-                is_explicit_tour_name = (
-                    tour_name_lower in msg_lower or 
-                    msg_lower in tour_name_lower or
-                    # Trường hợp "tour Bạch Mã" vs "Non nước Bạch Mã"
-                    any(part in msg_lower for part in tour_name_lower.split() if len(part) > 3)
-                )
-                
-                # Thêm điều kiện: không có từ khóa intent cụ thể (giá, lịch trình, ở đâu, ...)
-                no_specific_intent = not any([
-                    'giá' in msg_lower,
-                    'bao nhiêu' in msg_lower,
-                    'lịch trình' in msg_lower,
-                    'chương trình' in msg_lower,
-                    'ở đâu' in msg_lower,
-                    'đi đâu' in msg_lower,
-                    'phương tiện' in msg_lower,
-                    'ăn' in msg_lower,
-                    'phong cách' in msg_lower,
-                    'lưu ý' in msg_lower,
-                    'so sánh' in msg_lower,
-                    'gợi ý' in msg_lower,
-                    'phù hợp' in msg_lower,
-                ])
-                
-                if is_explicit_tour_name and no_specific_intent:
-                    # Tạo response bằng format_tour_program_response (tóm tắt tour)
-                    reply = format_tour_program_response(first_tour)
-                    if "0332510486" not in reply:
-                        reply += "\n\n📞 **Hotline tư vấn 24/7:** 0332510486"
+                tour = TOURS_DB.get(tour_indices[0])
+                if tour and tour.price:
+                    reply = f"💰 **GIÁ TOUR: {tour.name}** 💰\n\n{tour.price}"
+                    reply += "\n\n📞 **Hotline tư vấn 24/7:** 0332510486"
                     response_locked = True
-                    context.current_tour = tour_indices[0]
-                    context.current_tour_updated_at = datetime.utcnow().isoformat()
-                    logger.info(f"🎯 Explicit tour name match: responding with program for '{first_tour.name}' (idx={tour_indices[0]})")
-                # ================== FIELD-SPECIFIC RESPONSE (UPGRADE 3) ==================
+                    logger.info(f"💰 PRIORITY PRICE HANDLER: trả giá cho tour index {tour_indices[0]}")
+        # ================== FIELD-SPECIFIC RESPONSE (UPGRADE 3) ==================
         # Ưu tiên trả lời chính xác trường dữ liệu khách đang hỏi
-        if not response_locked and UpgradeFlags.is_enabled("3_ENHANCED_FIELDS") and tour_indices:
+        if UpgradeFlags.is_enabled("3_ENHANCED_FIELDS") and tour_indices:
+            field_name, confidence, _ = EnhancedFieldDetector.detect_field_with_confidence(user_message)
+            if field_name and confidence >= 0.6:
+                tour = TOURS_DB.get(tour_indices[0])
+                if tour:
+                    formatter_map = {
+                        'price': format_tour_price_response,
+                        'location': format_tour_location_response,
+                        'duration': format_tour_duration_response,
+                        'includes': format_tour_includes_response,
+                        'notes': format_tour_notes_response,
+                        'style': format_tour_style_response,
+                        'transport': format_tour_transport_response,
+                        'accommodation': format_tour_accommodation_response,
+                        'meals': format_tour_meals_response,
+                        'event_support': format_tour_event_support_response,
+                        'summary': format_tour_program_response,
+                    }
+                    if field_name in formatter_map:
+                        formatted = formatter_map[field_name](tour)
+                        if formatted:
+                            reply = formatted
+                            if "0332510486" not in reply:
+                                reply += "\n\n📞 **Hotline tư vấn 24/7:** 0332510486"
+                            response_locked = True
+                            logger.info(f"🎯 Field-specific response for '{field_name}' (confidence: {confidence:.2f})")
+                        else:
+                            # Trường hợp không có dữ liệu cho field này
+                            tour_name = getattr(tour, 'name', 'tour này')
+                            reply = f"❌ **Hiện tại tôi chưa có thông tin về {field_name} của {tour_name}.**\n\n📞 Vui lòng liên hệ hotline **0332510486** để được hỗ trợ chi tiết."
+                            response_locked = True
+                            logger.warning(f"⚠️ No data for field '{field_name}' of tour index {tour_indices[0]}")
+        # ================== INTELLIGENT RESPONSE GENERATION ==================
+        reply = ""
+        sources = []
+        response_locked = False
+        if any(k in message_lower for k in ['chương trình', 'lịch trình', 'chi tiết tour']) and tour_indices:
+            selected_tour = TOURS_DB.get(tour_indices[0])
+            if selected_tour:
+                reply = format_tour_program_response(selected_tour)
+                response_locked = True
+        
+                # ================== INTELLIGENT RESPONSE GENERATION ==================
+        reply = ""
+        sources = []
+        response_locked = False
+        
+        # ================== FIELD-SPECIFIC RESPONSE (UPGRADE 3) ==================
+        # Ưu tiên trả lời chính xác trường dữ liệu khách đang hỏi
+        if UpgradeFlags.is_enabled("3_ENHANCED_FIELDS") and tour_indices:
             field_name, confidence, _ = EnhancedFieldDetector.detect_field_with_confidence(user_message)
             if field_name and confidence >= 0.6:
                 tour = TOURS_DB.get(tour_indices[0])
@@ -4222,8 +4196,7 @@ def chat_endpoint_ultimate():
                             if tour_name.strip():
                                 # Tìm tour index
                                 for norm_name, idx in TOUR_NAME_TO_INDEX.items():
-                                    tour = TOURS_DB.get(idx)
-                                    if tour and tour.is_tour and tour_name.lower() in norm_name.lower():
+                                    if tour_name.lower() in norm_name.lower():
                                         comparison_tours.append(idx)
                                         break
                 
@@ -4821,11 +4794,10 @@ def chat_endpoint_ultimate():
                     reply = "Ruby Wings có chính sách ưu đãi hấp dẫn và quy trình đặt tour chuyên nghiệp. Liên hệ hotline để được tư vấn chi tiết."
         
         # 🔹 SPECIAL CASE: Phá Tam Giang / Đầm Chuồn
-                if (not response_locked) and ('pha tam giang' in message_norm or 'đầm chuồn' in message_lower):
-                    exact_hits_with_scores = resolve_best_tour_indices('Di sản Huế Đầm Chuồn Hoàng hôn phá Tam Giang', top_k=1)
-                    if exact_hits_with_scores:
-                        idx, _ = exact_hits_with_scores[0]
-                        t = TOURS_DB.get(idx)
+        if (not response_locked) and ('pha tam giang' in message_norm or 'đầm chuồn' in message_lower):
+            exact_hits = resolve_best_tour_indices('Di sản Huế Đầm Chuồn Hoàng hôn phá Tam Giang', top_k=1)
+            if exact_hits:
+                t = TOURS_DB.get(exact_hits[0])
                 if t:
                     reply = format_tour_program_response(t)
                     response_locked = True
