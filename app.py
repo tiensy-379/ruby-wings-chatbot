@@ -546,6 +546,24 @@ def resolve_best_tour_indices(query, top_k=3):
 
 # =========== FLASK APP CONFIG ===========
 app = Flask(__name__)
+
+# ===== ROBOTS.TXT (PRODUCTION SAFE) =====
+@app.route("/robots.txt")
+def robots_txt():
+    """
+    robots.txt for Render backend
+    - Block all bots from crawling API
+    - Allow Render health check endpoint
+    SAFE: does not affect Chatbot or Meta CAPI
+    """
+    return (
+        "User-agent: *\n"
+        "Disallow: /\n"
+        "Allow: /api/health\n",
+        200,
+        {"Content-Type": "text/plain"}
+    )
+
 @app.before_request
 def ensure_data_loaded():
     """Đảm bảo dữ liệu được tải trước khi xử lý request"""
@@ -575,8 +593,10 @@ def ensure_data_loaded():
             traceback.print_exc()
             # Vẫn đánh dấu đã khởi tạo để không retry
             APP_INITIALIZED = True
+
 app.json_encoder = EnhancedJSONEncoder  # Use custom JSON encoder
 CORS(app, origins=CORS_ORIGINS, supports_credentials=True)
+
 from meta_capi import send_meta_pageview
 
 @app.before_request
